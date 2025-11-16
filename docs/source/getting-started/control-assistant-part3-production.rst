@@ -111,7 +111,6 @@ Your query goes through three intelligent phases that transform natural language
       **Performance Note:** The framework can operate in :ref:`bypass mode <bypass-task-extraction-section>` (controlled via ``/task:off`` slash command or config) which skips LLM-based extraction and passes formatted context directly to classification, trading some intelligence for speed on standalone queries.
 
       .. dropdown:: 🖥️ **View Terminal Output**
-         :color: light
 
          .. code-block:: text
 
@@ -167,7 +166,6 @@ Your query goes through three intelligent phases that transform natural language
       **Performance Note:** The framework can operate in :ref:`bypass mode <bypass-capability-selection-section>` (controlled via ``/caps:off`` slash command or config) which skips classification and activates all capabilities, useful for debugging when you're unsure which capabilities should be active.
 
       .. dropdown:: 🖥️ **View Terminal Output**
-         :color: light
 
          .. code-block:: text
 
@@ -217,7 +215,6 @@ Your query goes through three intelligent phases that transform natural language
       **Quality Control**:
 
       .. dropdown:: 🖥️ **View Terminal Output**
-         :color: light
 
          .. code-block:: text
 
@@ -438,7 +435,6 @@ With the execution plan complete, the framework executes each planned step in se
       **Found 1 channel**: ``DIAG:DCCT:MAIN:CURRENT:RB``
 
       .. dropdown:: 🖥️  **View Terminal Output**
-         :color: dark
 
          .. code-block:: text
 
@@ -483,7 +479,6 @@ With the execution plan complete, the framework executes each planned step in se
       - **End**: 2025-11-11 15:25:16
 
       .. dropdown:: 🖥️  **View Terminal Output**
-         :color: dark
 
          .. code-block:: text
 
@@ -514,7 +509,6 @@ With the execution plan complete, the framework executes each planned step in se
       Successfully retrieved **10,000 data points** for **3 channels** covering the full 24-hour period (2025-11-10 15:25:16 to 2025-11-11 15:25:16).
 
       .. dropdown:: 🖥️  **View Terminal Output**
-         :color: dark
 
          .. code-block:: text
 
@@ -549,7 +543,6 @@ With the execution plan complete, the framework executes each planned step in se
       The Python capability automatically determined this was a safe read-only visualization task requiring no approval.
 
       .. dropdown:: 🖥️  **View Terminal Output**
-         :color: dark
 
          .. code-block:: text
 
@@ -1061,11 +1054,11 @@ The control assistant template includes two more production-validated context cl
 Step 8: Adapting for Your Facility
 ==================================
 
-The control assistant template works immediately with mock services for development. This step shows how to adapt it for your actual facility by connecting to real hardware, customizing the channel database, and adding facility-specific knowledge.
+The control assistant template works immediately with mock services for development. This step shows how to adapt it for your actual facility by connecting to real hardware and customizing the channel database.
 
 **What You'll Customize:**
 
-.. grid:: 2
+.. grid:: 1 1 3 3
 
    .. grid-item-card:: 🗄️ Channel Database
       :link: #build-your-channel-database
@@ -1081,11 +1074,6 @@ The control assistant template works immediately with mock services for developm
       :link: #migrate-to-production-archiver
 
       Historical data from your archiver system
-
-   .. grid-item-card:: 🏢 Facility Context
-      :link: #add-facility-specific-context
-
-      Domain knowledge, terminology, and operational patterns
 
 .. _build-your-channel-database:
 
