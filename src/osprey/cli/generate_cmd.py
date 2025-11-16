@@ -51,6 +51,40 @@ def initialize_registry():
     return True
 
 
+def _determine_capabilities_path(capability_name: str) -> Path:
+    """Determine the proper capabilities directory based on project structure.
+
+    Tries to find the capabilities directory from the registry path.
+    Falls back to ./capabilities/ if registry not found.
+
+    Args:
+        capability_name: Name of the capability
+
+    Returns:
+        Path to the capability file
+    """
+    try:
+        from osprey.generators.registry_updater import find_registry_file
+
+        registry_path = find_registry_file()
+        if registry_path:
+            # Capabilities should be in the same directory as registry
+            # e.g., if registry is at src/my_project/registry.py
+            # capabilities should be at src/my_project/capabilities/
+            capabilities_dir = registry_path.parent / 'capabilities'
+
+            # Create the directory if it doesn't exist
+            capabilities_dir.mkdir(parents=True, exist_ok=True)
+
+            return capabilities_dir / f"{capability_name}.py"
+    except Exception:
+        # If anything fails, fall back to simple path
+        pass
+
+    # Fallback: use simple relative path
+    return Path(f"capabilities/{capability_name}.py")
+
+
 @click.group()
 def generate():
     """Generate Osprey components from various sources.
@@ -178,9 +212,10 @@ def capability(
 
     # Derive output file if not provided
     if not output_file:
-        output_file = f"capabilities/{capability_name}.py"
-
-    output_path = Path(output_file)
+        # Try to determine the proper capabilities directory from registry
+        output_path = _determine_capabilities_path(capability_name)
+    else:
+        output_path = Path(output_file)
 
     # Check if simulated mode
     simulated = mcp_url.lower() == "simulated"
@@ -247,6 +282,97 @@ def capability(
         raise click.Abort() from e
 
 
+async def _offer_config_integration(generator):
+    """Offer to automatically add mcp_react model to config.yml.
+
+    Args:
+        generator: MCPCapabilityGenerator instance
+    """
+    try:
+        import questionary
+
+        from osprey.generators.config_updater import (
+            add_capability_react_to_config,
+            find_config_file,
+            get_config_preview,
+            get_orchestrator_model_config,
+            has_capability_react_model,
+        )
+
+        from .styles import get_questionary_style
+
+        capability_name = generator.capability_name
+
+        # Find config file
+        config_path = find_config_file()
+        if not config_path:
+            return
+
+        # Check if already configured
+        if has_capability_react_model(config_path, capability_name):
+            model_key = f"{capability_name}_react"
+            console.print(f"\n[{Styles.DIM}]ℹ️  {model_key} model already configured in config.yml[/{Styles.DIM}]")
+            return
+
+        # Get orchestrator config as template
+        template_config = get_orchestrator_model_config(config_path)
+
+        # Ask user
+        console.print()
+        console.print(f"[{Styles.HEADER}]Config Integration:[/{Styles.HEADER}]")
+        console.print(f"  Found config: [{Styles.VALUE}]{config_path}[/{Styles.VALUE}]")
+        console.print()
+
+        model_key = f"{capability_name}_react"
+        add_to_config = await questionary.confirm(
+            f"Add {model_key} model configuration to config.yml?",
+            default=True,
+            style=get_questionary_style()
+        ).ask_async()
+
+        if not add_to_config:
+            console.print("\n  " + Messages.info('Skipped. You can add manually if needed.'))
+            return
+
+        # Show preview
+        console.print(f"\n[{Styles.HEADER}]Preview of changes:[/{Styles.HEADER}]")
+        preview = get_config_preview(capability_name, template_config)
+        console.print(preview)
+
+        # Confirm
+        confirm = await questionary.confirm(
+            "Apply these changes to config.yml?",
+            default=True,
+            style=get_questionary_style()
+        ).ask_async()
+
+        if confirm:
+            # Backup first
+            backup_path = config_path.with_suffix('.yml.bak')
+            backup_path.write_text(config_path.read_text())
+
+            # Write new content
+            new_content, _ = add_capability_react_to_config(config_path, capability_name, template_config)
+            config_path.write_text(new_content)
+
+            console.print(f"\n  {Messages.success(f'Updated {config_path}')}")
+            console.print(f"  [{Styles.DIM}]Backup saved to: {backup_path}[/{Styles.DIM}]")
+            console.print()
+            console.print("  " + Messages.info(f'{model_key} model configured! {capability_name} will use this model.'))
+        else:
+            console.print("\n  " + Messages.info('Changes not applied. '
+                         'Add manually to config.yml if needed.'))
+
+    except ImportError:
+        # questionary not available
+        pass
+    except Exception as e:
+        # Escape the error message to prevent Rich markup interpretation
+        error_msg = str(e).replace('[', '\\[').replace(']', '\\]')
+        console.print(f"\n[{Styles.WARNING}]⚠️  Could not update config: {error_msg}[/{Styles.WARNING}]")
+        console.print("  " + Styles.DIM + "Add mcp_react model manually to config.yml." + f"[/{Styles.DIM}]")
+
+
 async def _offer_registry_integration(generator, classifier_analysis, orchestrator_analysis):
     """Offer to automatically add capability to registry.
 
@@ -258,12 +384,13 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
     try:
         import questionary
 
-        from .styles import get_questionary_style
         from osprey.generators.registry_updater import (
             add_to_registry,
             find_registry_file,
             is_already_registered,
         )
+
+        from .styles import get_questionary_style
 
         # Find registry file from config
         registry_path = find_registry_file()
@@ -284,11 +411,11 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
         console.print(f"  Found registry: [{Styles.VALUE}]{registry_path}[/{Styles.VALUE}]")
         console.print()
 
-        add_to_reg = questionary.confirm(
+        add_to_reg = await questionary.confirm(
             "Add this capability to your registry automatically?",
             default=True,
             style=get_questionary_style()
-        ).ask()
+        ).ask_async()
 
         if not add_to_reg:
             console.print("\n  " + Messages.info('Skipped registry update. '
@@ -316,11 +443,11 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
         console.print(preview)
 
         # Confirm
-        confirm = questionary.confirm(
+        confirm = await questionary.confirm(
             "Apply these changes to registry.py?",
             default=True,
             style=get_questionary_style()
-        ).ask()
+        ).ask_async()
 
         if confirm:
             # Backup first
@@ -343,7 +470,9 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
         # questionary not available
         console.print(f"\n[{Styles.DIM}]Note: Install questionary for interactive registry updates[/{Styles.DIM}]")
     except Exception as e:
-        console.print(f"\n[{Styles.WARNING}]⚠️  Could not update registry: {e}[/{Styles.WARNING}]")
+        # Escape the error message to prevent Rich markup interpretation
+        error_msg = str(e).replace('[', '\\[').replace(']', '\\]')
+        console.print(f"\n[{Styles.WARNING}]⚠️  Could not update registry: {error_msg}[/{Styles.WARNING}]")
         console.print("  " + Styles.DIM + "Add capability manually using snippet at bottom of generated file." + f"[/{Styles.DIM}]")
 
 
@@ -434,6 +563,9 @@ async def _generate_capability_async(
             orchestrator_analysis
         )
 
+        # Offer to add mcp_react model to config
+        await _offer_config_integration(generator)
+
 
 @generate.command(name='mcp-server')
 @click.option(
@@ -449,12 +581,6 @@ async def _generate_capability_async(
     help='Output file path (default: ./<name>_server.py)'
 )
 @click.option(
-    '--tools', '-t',
-    type=click.Choice(['weather', 'slack', 'api'], case_sensitive=False),
-    default='weather',
-    help='Tool preset to include (default: weather)'
-)
-@click.option(
     '--port', '-p',
     default=3001,
     type=int,
@@ -463,21 +589,20 @@ async def _generate_capability_async(
 def mcp_server(
     server_name: str,
     output_file: str,
-    tools: str,
     port: int
 ):
     """Generate demo MCP server for testing.
 
-    Creates a demo MCP server that you can run locally to test
-    Osprey's MCP capability generation. The server uses FastMCP
+    Creates a demo MCP server with weather tools that you can run locally
+    to test Osprey's MCP capability generation. The server uses FastMCP
     for simple, Pythonic MCP server implementation.
 
-    Tool presets available:
+    Included tools:
 
     \b
-      - weather: Current conditions, forecasts, weather alerts
-      - slack: Message sending, channel listing, history retrieval
-      - api: Generic REST API operations (GET, POST, PUT)
+      - get_current_weather: Get current weather conditions
+      - get_forecast: Get weather forecast for upcoming days
+      - get_weather_alerts: Get active weather alerts and warnings
 
     Examples:
 
@@ -485,8 +610,8 @@ def mcp_server(
       # Generate weather demo server
       $ osprey generate mcp-server
 
-      # Generate Slack demo server on custom port
-      $ osprey generate mcp-server --tools slack --port 3002
+      # Generate on custom port
+      $ osprey generate mcp-server --port 3002
 
       # Custom output location
       $ osprey generate mcp-server --name my_server --output ./servers/mcp.py
@@ -506,7 +631,7 @@ def mcp_server(
 
     console.print("\n🚀 [header]Generating MCP Server[/header]\n")
     console.print(f"  [{Styles.LABEL}]Server:[/{Styles.LABEL}] [{Styles.VALUE}]{server_name}[/{Styles.VALUE}]")
-    console.print(f"  [{Styles.LABEL}]Tools:[/{Styles.LABEL}] [{Styles.VALUE}]{tools}[/{Styles.VALUE}]")
+    console.print(f"  [{Styles.LABEL}]Tools:[/{Styles.LABEL}] [{Styles.VALUE}]weather (demo)[/{Styles.VALUE}]")
     console.print(f"  [{Styles.LABEL}]Port:[/{Styles.LABEL}] [{Styles.VALUE}]{port}[/{Styles.VALUE}]")
     console.print(f"  [{Styles.LABEL}]Output:[/{Styles.LABEL}] [{Styles.VALUE}]{output_path}[/{Styles.VALUE}]\n")
 
@@ -516,8 +641,7 @@ def mcp_server(
             output_path = write_mcp_server_file(
                 output_path=output_path,
                 server_name=server_name,
-                port=port,
-                tools=tools
+                port=port
             )
 
         console.print(f"  {Messages.success(f'Server generated: {output_path}')}\n")

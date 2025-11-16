@@ -51,6 +51,7 @@ class ToolPattern(BaseModel):
 
 class ExampleStepRaw(BaseModel):
     """Raw example step from LLM."""
+    context_key: str = Field(description="Descriptive identifier for this step (e.g., 'current_weather_sf', 'alerts_boston')")
     tool_name: str = Field(default="", description="Tool to invoke (can be empty for high-level planning)")
     task_objective: str = Field(description="What user wants to accomplish")
     scenario: str = Field(description="Real-world scenario description")
@@ -72,13 +73,14 @@ class OrchestratorAnalysis(BaseModel):
 SIMULATED_TOOLS = [
     {
         "name": "get_current_weather",
-        "description": "Get current weather conditions for a location",
+        "description": "Get current weather conditions for a location. If location is not provided, defaults to San Francisco.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "City name (e.g., 'San Francisco'), coordinates, or location string"
+                    "default": "San Francisco",
+                    "description": "City name or coordinates (defaults to San Francisco if not provided)"
                 },
                 "units": {
                     "type": "string",
@@ -87,18 +89,19 @@ SIMULATED_TOOLS = [
                     "description": "Temperature units"
                 }
             },
-            "required": ["location"]
+            "required": []
         }
     },
     {
         "name": "get_forecast",
-        "description": "Get weather forecast for upcoming days",
+        "description": "Get weather forecast for upcoming days. If location is not provided, defaults to San Francisco.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "City name or coordinates"
+                    "default": "San Francisco",
+                    "description": "City name or coordinates (defaults to San Francisco if not provided)"
                 },
                 "days": {
                     "type": "integer",
@@ -114,18 +117,19 @@ SIMULATED_TOOLS = [
                     "description": "Temperature units"
                 }
             },
-            "required": ["location"]
+            "required": []
         }
     },
     {
         "name": "get_weather_alerts",
-        "description": "Get active weather alerts and warnings for a location",
+        "description": "Get active weather alerts and warnings for a location. If location is not provided, defaults to San Francisco.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "City name or coordinates"
+                    "default": "San Francisco",
+                    "description": "City name or coordinates (defaults to San Francisco if not provided)"
                 },
                 "severity": {
                     "type": "string",
@@ -134,7 +138,7 @@ SIMULATED_TOOLS = [
                     "description": "Filter by alert severity level"
                 }
             },
-            "required": ["location"]
+            "required": []
         }
     },
 ]
@@ -183,7 +187,7 @@ class MCPCapabilityGenerator:
             List of tool dictionaries with name, description, and inputSchema
 
         Raises:
-            RuntimeError: If MCP client not installed when needed
+            RuntimeError: If MCP client not installed or server unreachable
         """
         if simulated:
             if self.verbose:
@@ -205,27 +209,58 @@ class MCPCapabilityGenerator:
             # FastMCP SSE endpoint is at /sse
             sse_url = mcp_url if mcp_url.endswith('/sse') else f"{mcp_url}/sse"
 
-            # Use native MCP client to get tools in standardized format
-            async with sse_client(sse_url) as (read, write):
-                async with ClientSession(read, write) as session:
-                    # Initialize the session
-                    await session.initialize()
+            try:
+                # Use native MCP client to get tools in standardized format
+                async with sse_client(sse_url) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        # Initialize the session
+                        await session.initialize()
 
-                    # List tools using standard MCP protocol
-                    tools_result = await session.list_tools()
+                        # List tools using standard MCP protocol
+                        tools_result = await session.list_tools()
 
-                    # Convert from MCP's Pydantic models to dicts for JSON serialization
-                    self.tools = []
-                    for tool in tools_result.tools:
-                        tool_dict = {
-                            "name": tool.name,
-                            "description": tool.description or "",
-                            "inputSchema": tool.inputSchema if hasattr(tool, 'inputSchema') else {}
-                        }
-                        self.tools.append(tool_dict)
+                        # Convert from MCP's Pydantic models to dicts for JSON serialization
+                        self.tools = []
+                        for tool in tools_result.tools:
+                            tool_dict = {
+                                "name": tool.name,
+                                "description": tool.description or "",
+                                "inputSchema": tool.inputSchema if hasattr(tool, 'inputSchema') else {}
+                            }
+                            self.tools.append(tool_dict)
 
-            if self.verbose:
-                print(f"✓ Discovered {len(self.tools)} tools")
+                if self.verbose:
+                    print(f"✓ Discovered {len(self.tools)} tools")
+
+            except (ConnectionError, ConnectionRefusedError, TimeoutError, OSError) as e:
+                # Connection-specific errors - likely server not running
+                error_msg = (
+                    f"\n❌ Cannot connect to MCP server at {sse_url}\n\n"
+                    f"The MCP server appears to be down or not responding.\n"
+                    f"Please ensure the MCP server is running before generating capabilities.\n\n"
+                    f"To use simulated mode instead (no server needed), add --simulated flag.\n\n"
+                    f"Error details: {type(e).__name__}: {e}"
+                )
+                raise RuntimeError(error_msg) from e
+            except Exception as e:
+                # Check if this looks like a connection/TaskGroup error (common when server is down)
+                error_str = str(e).lower()
+                if any(term in error_str for term in ["taskgroup", "connection", "refused", "timeout", "unreachable", "connecterror"]):
+                    error_msg = (
+                        f"\n❌ Cannot connect to MCP server at {sse_url}\n\n"
+                        f"The MCP server appears to be down or unreachable.\n"
+                        f"Please start the MCP server before generating capabilities.\n\n"
+                        f"To use simulated mode instead (no server needed), add --simulated flag.\n\n"
+                        f"Error details: {type(e).__name__}: {e}"
+                    )
+                    raise RuntimeError(error_msg) from e
+                else:
+                    # Some other error during tool discovery
+                    error_msg = (
+                        f"\n❌ Failed to discover tools from MCP server at {sse_url}\n\n"
+                        f"Error details: {type(e).__name__}: {e}"
+                    )
+                    raise RuntimeError(error_msg) from e
 
         return self.tools
 
@@ -327,6 +362,11 @@ The orchestrator should ONLY know:
 Generate:
 - 3-5 example scenarios showing WHAT users might ask for (not HOW to implement with tools)
 - Each example should have a clear task_objective that describes the goal, not the implementation
+- **IMPORTANT**: Each example MUST have a descriptive context_key that captures the essence of the step
+  - Good: "current_weather_sf", "severe_alerts_boston", "forecast_tokyo_5day"
+  - Bad: "result_1", "weather_data", "output"
+  - The context_key should be specific, descriptive, and use snake_case
+- **CRITICAL**: If any tool parameters have default values, include AT LEAST ONE example that demonstrates using those defaults (omitting the parameter from task_objective). This teaches the orchestrator that parameters with defaults are truly optional.
 - Important notes about formulating good task objectives for the capability
 
 Do NOT include tool_name in examples - the ReAct agent decides which tools to use.
@@ -410,7 +450,8 @@ Output as JSON matching the OrchestratorAnalysis schema.
         # Build orchestrator examples
         orchestrator_examples = []
         for i, ex in enumerate(orchestrator_analysis.example_steps):
-            context_key = f"{self.capability_name}_result_{i+1}"
+            # Use LLM-generated context_key (descriptive), fallback to generic if missing
+            context_key = ex.context_key if ex.context_key else f"{self.capability_name}_result_{i+1}"
             orchestrator_examples.append(
                 f"            OrchestratorExample(\n"
                 f"                step=PlannedStep(\n"
@@ -466,14 +507,24 @@ NEXT STEPS:
 2. **IMPORTANT: Customize {context_class_name}** - The generated context class is a minimal placeholder.
    Customize it based on your MCP server's actual data structure. See the TODO comments
    and documentation link in the context class section.
-3. Adjust MCP server URL and transport in MCP_SERVER_CONFIG if needed
-4. Install required dependencies:
+3. **Configure ReAct Agent Model** - Add to your config.yml:
+   ```yaml
+   models:
+     {self.capability_name}_react:  # Optional - dedicated model for {self.capability_name} tool execution
+       provider: anthropic  # or openai, cborg, etc.
+       model_id: claude-sonnet-4
+       max_tokens: 4096
+   ```
+   If not configured, falls back to using the "orchestrator" model.
+   The ReAct agent needs good reasoning for autonomous tool selection.
+4. Adjust MCP server URL and transport in MCP_SERVER_CONFIG if needed
+5. Install required dependencies:
    - pip install langchain-mcp-adapters langgraph
    - pip install langchain-anthropic  # If using Anthropic provider
    - pip install langchain-openai     # If using OpenAI or CBORG provider
-5. Consider moving {context_class_name} to a shared context_classes.py
-6. Add to your registry.py (see registration snippet at bottom)
-7. Test with real queries
+6. Consider moving {context_class_name} to a shared context_classes.py
+7. Add to your registry.py (see registration snippet at bottom)
+8. Test with real queries
 
 Generated by: osprey generate capability --from-mcp
 """
@@ -624,7 +675,12 @@ class {class_name}(BaseCapability):
                 logger.info(f"Loaded {{len(tools)}} tools from MCP server")
 
                 # Get LLM instance for ReAct agent
-                model_config = get_model_config("orchestrator")
+                # Try to use dedicated "{self.capability_name}_react" model first, fallback to "orchestrator"
+                try:
+                    model_config = get_model_config("{self.capability_name}_react")
+                except Exception:
+                    model_config = get_model_config("orchestrator")
+
                 provider = model_config.get("provider")
                 model_id = model_config.get("model_id")
                 provider_config = get_provider_config(provider)
@@ -659,9 +715,30 @@ class {class_name}(BaseCapability):
                 cls._react_agent = create_react_agent(llm, tools)
                 logger.info("ReAct agent initialized")
 
+            except (ConnectionError, ConnectionRefusedError, TimeoutError, OSError) as e:
+                # Connection-specific errors - likely server not running
+                error_msg = (
+                    f"{self.server_name} MCP server is not reachable at {{cls.MCP_SERVER_URL}}. "
+                    f"Please ensure the MCP server is running. Error: {{type(e).__name__}}: {{e}}"
+                )
+                logger.error(error_msg)
+                raise {self.server_name}ConnectionError(error_msg) from e
             except Exception as e:
-                logger.error(f"Failed to initialize ReAct agent: {{e}}")
-                raise {self.server_name}ConnectionError(f"Cannot initialize ReAct agent: {{e}}")
+                # Check if this looks like a connection/TaskGroup error (common when server is down)
+                error_str = str(e).lower()
+                if any(term in error_str for term in ["taskgroup", "connection", "refused", "timeout", "unreachable"]):
+                    error_msg = (
+                        f"{self.server_name} MCP server appears to be down or unreachable at {{cls.MCP_SERVER_URL}}. "
+                        f"Please start the MCP server before using this capability. "
+                        f"Technical details: {{type(e).__name__}}: {{e}}"
+                    )
+                    logger.error(error_msg)
+                    raise {self.server_name}ConnectionError(error_msg) from e
+                else:
+                    # Some other initialization error
+                    error_msg = f"Failed to initialize {self.server_name} ReAct agent: {{type(e).__name__}}: {{e}}"
+                    logger.error(error_msg)
+                    raise {self.server_name}ConnectionError(error_msg) from e
 
         return cls._react_agent
 
@@ -783,7 +860,7 @@ class {class_name}(BaseCapability):
                 2. Formulate clear task_objective descriptions
 
                 **Step Structure:**
-                - context_key: Unique identifier (e.g., "{self.capability_name}_result_1")
+                - context_key: Descriptive identifier (e.g., "current_weather_sf", "forecast_tokyo_5day")
                 - capability: "{self.capability_name}"
                 - task_objective: Clear description of WHAT the user wants
                 - expected_output: "{context_type}"

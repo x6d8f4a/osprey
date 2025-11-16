@@ -9,33 +9,22 @@ from pathlib import Path
 
 def generate_mcp_server(
     server_name: str = "demo_mcp",
-    port: int = 3001,
-    tools: str = "weather"
+    port: int = 3001
 ) -> str:
     """Generate MCP server Python code.
 
     Args:
         server_name: Name for the server
         port: Port to run on
-        tools: Tool preset to include ('weather', 'slack', 'api')
 
     Returns:
         Complete Python source code for MCP server
     """
 
-    # Get tool implementations based on preset
-    if tools == "weather":
-        tool_code = _get_weather_tools()
-        description = "Weather Demo MCP Server"
-    elif tools == "slack":
-        tool_code = _get_slack_tools()
-        description = "Slack Demo MCP Server"
-    elif tools == "api":
-        tool_code = _get_api_tools()
-        description = "API Demo MCP Server"
-    else:
-        tool_code = _get_weather_tools()
-        description = "Demo MCP Server"
+    # Always use weather tools for demo
+    tool_code = _get_weather_tools()
+    tool_metadata = _get_weather_metadata()
+    description = "Weather Demo MCP Server"
 
     server_code = f'''#!/usr/bin/env python3
 """
@@ -72,18 +61,101 @@ mcp = FastMCP("{description}")
 
 
 # =============================================================================
-# Server Startup
+# Tool Metadata (for display purposes)
 # =============================================================================
 
+TOOL_METADATA = {tool_metadata}
+
+
+# =============================================================================
+# Server Startup with Osprey Styling
+# =============================================================================
+
+def print_startup_info():
+    """Display server startup information using Osprey styling."""
+    try:
+        from osprey.cli.styles import console, Messages, Styles
+
+        console.print()
+        console.print("=" * 70)
+        console.print(f"[{{Styles.HEADER}}]{description}[/{{Styles.HEADER}}]")
+        console.print("=" * 70)
+        console.print()
+
+        console.print(f"  [{{Styles.LABEL}}]Server URL:[/{{Styles.LABEL}}] [{{Styles.VALUE}}]http://localhost:{port}[/{{Styles.VALUE}}]")
+        console.print(f"  [{{Styles.LABEL}}]SSE Endpoint:[/{{Styles.LABEL}}] [{{Styles.VALUE}}]http://localhost:{port}/sse[/{{Styles.VALUE}}]")
+        console.print()
+
+        console.print(f"[{{Styles.HEADER}}]Available Tools:[/{{Styles.HEADER}}]")
+        console.print()
+
+        # Display tool information
+        for i, tool_info in enumerate(TOOL_METADATA, 1):
+            console.print(f"  [{{Styles.ACCENT}}]{{i}}. {{tool_info['name']}}[/{{Styles.ACCENT}}]")
+            if tool_info.get('description'):
+                console.print(f"     [{{Styles.DIM}}]{{tool_info['description']}}[/{{Styles.DIM}}]")
+
+            # Show parameters
+            if tool_info.get('parameters'):
+                console.print(f"     [{{Styles.LABEL}}]Parameters:[/{{Styles.LABEL}}]")
+                for param in tool_info['parameters']:
+                    param_name = param['name']
+                    param_type = param.get('type', 'any')
+                    param_required = param.get('required', False)
+                    param_desc = param.get('description', '')
+                    req_marker = "required" if param_required else "optional"
+
+                    console.print(f"       • [{{Styles.VALUE}}]{{param_name}}[/{{Styles.VALUE}}] "
+                                f"([{{Styles.DIM}}]{{param_type}}, {{req_marker}}[/{{Styles.DIM}}])")
+                    if param_desc:
+                        console.print(f"         [{{Styles.DIM}}]{{param_desc}}[/{{Styles.DIM}}]")
+            console.print()
+
+        console.print(f"[{{Styles.INFO}}]Next Steps:[/{{Styles.INFO}}]")
+        console.print(f"  1. Keep this server running")
+        console.print(f"  2. In another terminal: [{{Styles.COMMAND}}]osprey generate capability --from-mcp http://localhost:{port} --name {server_name}[/{{Styles.COMMAND}}]")
+        console.print()
+        console.print(f"  [{{Styles.DIM}}]Press Ctrl+C to stop the server[/{{Styles.DIM}}]")
+        console.print("=" * 70)
+        console.print()
+
+    except ImportError:
+        # Fallback to basic printing if Osprey styles not available
+        print("=" * 70)
+        print(f"{description}")
+        print("=" * 70)
+        print(f"\\nServer URL: http://localhost:{port}")
+        print(f"SSE endpoint: http://localhost:{port}/sse")
+        print()
+        print("Available Tools:")
+        for i, tool_info in enumerate(TOOL_METADATA, 1):
+            print(f"  {{i}}. {{tool_info['name']}}")
+            if tool_info.get('description'):
+                print(f"     {{tool_info['description']}}")
+            if tool_info.get('parameters'):
+                print(f"     Parameters:")
+                for param in tool_info['parameters']:
+                    req = "required" if param.get('required') else "optional"
+                    print(f"       - {{param['name']}} ({{param.get('type', 'any')}}, {{req}})")
+        print()
+        print("Press Ctrl+C to stop the server")
+        print("=" * 70)
+        print()
+
+
 if __name__ == "__main__":
-    print("=" * 70)
-    print("{description}")
-    print("=" * 70)
-    print(f"\\nStarting server on http://localhost:{port}")
-    print(f"SSE endpoint: http://localhost:{port}/sse")
-    print("\\nPress Ctrl+C to stop the server")
-    print("=" * 70)
-    print()
+    import sys
+    import time
+    from threading import Thread
+
+    def delayed_info():
+        """Print startup info after FastMCP banner."""
+        time.sleep(0.5)  # Wait for FastMCP banner to finish
+        print_startup_info()
+        sys.stdout.flush()
+
+    # Start info printer in background thread
+    Thread(target=delayed_info, daemon=True).start()
 
     # Run the server with SSE transport
     mcp.run(transport="sse", host="0.0.0.0", port={port})
@@ -96,10 +168,12 @@ def _get_weather_tools() -> str:
     """Get Weather tool implementations."""
     return '''@mcp.tool()
 def get_current_weather(
-    location: str,
+    location: str = "San Francisco",
     units: Literal["celsius", "fahrenheit"] = "celsius"
 ) -> dict:
-    """Get current weather conditions for a location."""
+    """Get current weather conditions for a location.
+
+    If location is not provided, defaults to San Francisco."""
     # Mock weather data
     temp_c = 18
     temp_f = 64
@@ -128,11 +202,13 @@ def get_current_weather(
 
 @mcp.tool()
 def get_forecast(
-    location: str,
+    location: str = "San Francisco",
     days: int = 5,
     units: Literal["celsius", "fahrenheit"] = "celsius"
 ) -> dict:
-    """Get weather forecast for upcoming days."""
+    """Get weather forecast for upcoming days.
+
+    If location is not provided, defaults to San Francisco."""
     # Mock forecast data
     forecast_data = []
     conditions_cycle = ["Sunny", "Partly Cloudy", "Cloudy", "Light Rain", "Clear"]
@@ -168,10 +244,12 @@ def get_forecast(
 
 @mcp.tool()
 def get_weather_alerts(
-    location: str,
+    location: str = "San Francisco",
     severity: Literal["all", "severe", "moderate", "minor"] = "all"
 ) -> dict:
-    """Get active weather alerts and warnings for a location."""
+    """Get active weather alerts and warnings for a location.
+
+    If location is not provided, defaults to San Francisco."""
     # Mock alert data - sometimes return alerts, sometimes empty
     # For demo purposes, locations with "Miami" or "Storm" return alerts
     has_alerts = "miami" in location.lower() or "storm" in location.lower()
@@ -204,117 +282,41 @@ def get_weather_alerts(
 '''
 
 
-def _get_slack_tools() -> str:
-    """Get Slack tool implementations."""
-    return '''@mcp.tool()
-def send_message(
-    channel: str,
-    text: str,
-    thread_ts: Optional[str] = None
-) -> dict:
-    """Send a message to a Slack channel."""
-    return {
-        "ok": True,
-        "channel": channel,
-        "ts": "1234567890.123456",
-        "message": {
-            "text": text,
-            "user": "U12345678",
-            "ts": "1234567890.123456",
-            "thread_ts": thread_ts
-        }
-    }
-
-
-@mcp.tool()
-def list_channels(
-    types: str = "public_channel",
-    limit: int = 100
-) -> dict:
-    """List channels in workspace."""
-    return {
-        "ok": True,
-        "channels": [
-            {"id": "C123", "name": "general", "is_member": True},
-            {"id": "C456", "name": "random", "is_member": True},
-            {"id": "C789", "name": "announcements", "is_member": False}
+def _get_weather_metadata() -> str:
+    """Get weather tool metadata."""
+    return '''[
+    {
+        "name": "get_current_weather",
+        "description": "Get current weather conditions for a location",
+        "parameters": [
+            {"name": "location", "type": "string", "required": False, "description": "City name or coordinates (defaults to San Francisco)"},
+            {"name": "units", "type": "string", "required": False, "description": "Temperature units (celsius/fahrenheit)"}
+        ]
+    },
+    {
+        "name": "get_forecast",
+        "description": "Get weather forecast for upcoming days",
+        "parameters": [
+            {"name": "location", "type": "string", "required": False, "description": "City name or coordinates (defaults to San Francisco)"},
+            {"name": "days", "type": "integer", "required": False, "description": "Number of forecast days (1-7)"},
+            {"name": "units", "type": "string", "required": False, "description": "Temperature units (celsius/fahrenheit)"}
+        ]
+    },
+    {
+        "name": "get_weather_alerts",
+        "description": "Get active weather alerts and warnings for a location",
+        "parameters": [
+            {"name": "location", "type": "string", "required": False, "description": "City name or coordinates (defaults to San Francisco)"},
+            {"name": "severity", "type": "string", "required": False, "description": "Filter by alert severity (all/severe/moderate/minor)"}
         ]
     }
-
-
-@mcp.tool()
-def get_channel_history(
-    channel: str,
-    limit: int = 10
-) -> dict:
-    """Get channel message history."""
-    return {
-        "ok": True,
-        "messages": [
-            {
-                "type": "message",
-                "user": "U12345",
-                "text": "Hello world!",
-                "ts": "1234567890.123456"
-            }
-        ]
-    }
-'''
-
-
-def _get_api_tools() -> str:
-    """Get generic API tool implementations."""
-    return '''@mcp.tool()
-def get_data(
-    endpoint: str,
-    params: Optional[dict] = None
-) -> dict:
-    """Make a GET request to an API endpoint."""
-    return {
-        "status": 200,
-        "endpoint": endpoint,
-        "params": params or {},
-        "data": {"message": "Demo response", "items": [1, 2, 3]}
-    }
-
-
-@mcp.tool()
-def post_data(
-    endpoint: str,
-    data: dict
-) -> dict:
-    """Make a POST request to an API endpoint."""
-    return {
-        "status": 201,
-        "endpoint": endpoint,
-        "created": True,
-        "id": "demo-123",
-        "data": data
-    }
-
-
-@mcp.tool()
-def update_data(
-    endpoint: str,
-    id: str,
-    data: dict
-) -> dict:
-    """Make a PUT/PATCH request to update data."""
-    return {
-        "status": 200,
-        "endpoint": endpoint,
-        "id": id,
-        "updated": True,
-        "data": data
-    }
-'''
+]'''
 
 
 def write_mcp_server_file(
     output_path: Path,
     server_name: str = "demo_mcp",
-    port: int = 3001,
-    tools: str = "weather"
+    port: int = 3001
 ) -> Path:
     """Generate and write MCP server file.
 
@@ -322,12 +324,11 @@ def write_mcp_server_file(
         output_path: Where to write the server file
         server_name: Name for the server
         port: Port to run on
-        tools: Tool preset to include
 
     Returns:
         Path to written file
     """
-    code = generate_mcp_server(server_name, port, tools)
+    code = generate_mcp_server(server_name, port)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(code)

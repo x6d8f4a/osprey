@@ -139,8 +139,9 @@ def add_to_registry(
     )
 
     # Find the capabilities list and add before the closing ]
-    # Look for the pattern: capabilities=[...], and insert before the last item's comma or ]
-    capabilities_pattern = r'(capabilities=\s*\[)(.*?)(\s*\],)'
+    # Look for the pattern: capabilities=[...], followed by context_classes
+    # This prevents matching ],  inside CapabilityRegistration entries (e.g., provides=["TYPE"],)
+    capabilities_pattern = r'(capabilities=\s*\[)(.*?)(\s*\],\s*context_classes)'
 
     def add_to_capabilities(match):
         prefix = match.group(1)
