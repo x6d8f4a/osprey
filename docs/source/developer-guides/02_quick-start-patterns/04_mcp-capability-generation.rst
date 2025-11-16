@@ -607,6 +607,26 @@ Try this example query:
 
 Your control assistant now demonstrates the full MCP integration pattern, which you can adapt for any MCP-compatible service.
 
+Removing Capabilities
+=====================
+
+If you need to remove a capability, Osprey provides an automated removal command that cleans up all associated files and configurations.
+
+.. code-block:: bash
+
+   # Remove capability interactively (recommended)
+   osprey remove capability --name weather_demo
+
+   # Force removal without confirmation
+   osprey remove capability --name weather_demo --force
+
+**What Gets Removed:**
+
+- **Registry entries**: Capability and context class registrations from ``registry.py``
+- **Config model**: The ``{capability_name}_react`` model configuration from ``config.yml``
+- **Capability file**: The capability Python file
+- **Automatic backups**: ``.bak`` files are created before modifications
+
 .. seealso::
 
    - :doc:`01_building-your-first-capability` - Understanding capability fundamentals

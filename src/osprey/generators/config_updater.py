@@ -5,12 +5,11 @@ Automatically adds mcp_react model configuration to config.yml with user confirm
 
 import re
 from pathlib import Path
-from typing import Optional, Tuple
 
 import yaml
 
 
-def find_config_file() -> Optional[Path]:
+def find_config_file() -> Path | None:
     """Find the config.yml file in current directory.
 
     Returns:
@@ -31,7 +30,7 @@ def has_capability_react_model(config_path: Path, capability_name: str) -> bool:
         True if {capability_name}_react is already configured
     """
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         model_key = f"{capability_name}_react"
@@ -43,7 +42,7 @@ def has_capability_react_model(config_path: Path, capability_name: str) -> bool:
     return False
 
 
-def get_orchestrator_model_config(config_path: Path) -> Optional[dict]:
+def get_orchestrator_model_config(config_path: Path) -> dict | None:
     """Get the orchestrator model configuration to use as template.
 
     Args:
@@ -53,7 +52,7 @@ def get_orchestrator_model_config(config_path: Path) -> Optional[dict]:
         Dict with provider, model_id, max_tokens or None
     """
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         if 'models' in config and 'orchestrator' in config['models']:
@@ -69,7 +68,7 @@ def get_orchestrator_model_config(config_path: Path) -> Optional[dict]:
     return None
 
 
-def generate_capability_react_yaml(capability_name: str, template_config: Optional[dict] = None) -> str:
+def generate_capability_react_yaml(capability_name: str, template_config: dict | None = None) -> str:
     """Generate YAML snippet for capability-specific react model.
 
     Args:
@@ -89,14 +88,13 @@ def generate_capability_react_yaml(capability_name: str, template_config: Option
         model_id = 'claude-sonnet-4'
         max_tokens = 4096
 
-    model_key = f"{capability_name}_react"
-    return f"""  {model_key}:
+    return f"""  {capability_name}_react:
     provider: {provider}
     model_id: {model_id}
     max_tokens: {max_tokens}"""
 
 
-def add_capability_react_to_config(config_path: Path, capability_name: str, template_config: Optional[dict] = None) -> Tuple[str, str]:
+def add_capability_react_to_config(config_path: Path, capability_name: str, template_config: dict | None = None) -> tuple[str, str]:
     """Add capability-specific react model to config.yml.
 
     Args:
@@ -129,7 +127,6 @@ def add_capability_react_to_config(config_path: Path, capability_name: str, temp
     new_content = re.sub(models_pattern, add_capability_react, content, count=1)
 
     # Create preview
-    model_key = f"{capability_name}_react"
     preview = f"""
 [bold]{capability_name.title()} ReAct Model Configuration:[/bold]
 {capability_react_yaml}
@@ -140,7 +137,7 @@ def add_capability_react_to_config(config_path: Path, capability_name: str, temp
     return new_content, preview
 
 
-def get_config_preview(capability_name: str, template_config: Optional[dict] = None) -> str:
+def get_config_preview(capability_name: str, template_config: dict | None = None) -> str:
     """Get a preview of what will be added to config.
 
     Args:
@@ -151,7 +148,6 @@ def get_config_preview(capability_name: str, template_config: Optional[dict] = N
         Formatted preview string
     """
     capability_react_yaml = generate_capability_react_yaml(capability_name, template_config)
-    model_key = f"{capability_name}_react"
 
     return f"""
 [bold]{capability_name.title()} ReAct Model Configuration:[/bold]
@@ -161,4 +157,76 @@ def get_config_preview(capability_name: str, template_config: Optional[dict] = N
 [dim]Note: This model will be used by {capability_name} for autonomous tool selection.
 If not configured, the capability falls back to using the 'orchestrator' model.[/dim]
 """
+
+
+def remove_capability_react_from_config(
+    config_path: Path,
+    capability_name: str
+) -> tuple[str, str, bool]:
+    """Remove capability-specific react model from config.yml.
+
+    Args:
+        config_path: Path to config.yml
+        capability_name: Capability name (e.g., 'weather_demo')
+
+    Returns:
+        Tuple of (new_content, preview, found) where:
+        - new_content: Updated config content
+        - preview: Human-readable description of what was removed
+        - found: True if model was found and removed
+    """
+    content = config_path.read_text()
+    model_key = f"{capability_name}_react"
+
+    # Pattern to match the entire model entry including all its properties
+    # Matches:
+    #   capability_name_react:
+    #     provider: ...
+    #     model_id: ...
+    #     max_tokens: ...
+    model_pattern = rf'^  {re.escape(model_key)}:\s*\n(?:    .*\n)*'
+
+    match = re.search(model_pattern, content, flags=re.MULTILINE)
+
+    if not match:
+        preview = f"\n[dim]No config entry found for '{model_key}'[/dim]"
+        return content, preview, False
+
+    # Extract what we're removing for preview
+    removed_section = match.group(0).rstrip()
+
+    # Remove the section
+    new_content = re.sub(model_pattern, '', content, flags=re.MULTILINE)
+
+    # Generate preview
+    preview = f"""
+[bold]{capability_name.title()} ReAct Model Configuration:[/bold]
+[red]- REMOVE:[/red]
+{removed_section}
+"""
+
+    return new_content, preview, True
+
+
+def get_capability_react_config(config_path: Path, capability_name: str) -> dict | None:
+    """Get the capability-specific react model configuration.
+
+    Args:
+        config_path: Path to config.yml
+        capability_name: Capability name
+
+    Returns:
+        Dict with model configuration or None if not found
+    """
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        model_key = f"{capability_name}_react"
+        if 'models' in config and model_key in config['models']:
+            return config['models'][model_key]
+    except Exception:
+        pass
+
+    return None
 

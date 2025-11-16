@@ -5,10 +5,9 @@ Automatically adds generated capabilities to project registry with user confirma
 
 import re
 from pathlib import Path
-from typing import Optional
 
 
-def find_registry_file() -> Optional[Path]:
+def find_registry_file() -> Path | None:
     """Find the registry.py file from config.yml.
 
     Reads registry_path from config.yml in current directory.
@@ -190,6 +189,132 @@ def is_already_registered(registry_path: Path, capability_name: str) -> bool:
     """
     content = registry_path.read_text()
     # Look for name="{capability_name}"
-    pattern = rf'name\s*=\s*["\']'+ re.escape(capability_name) + r'["\']'
+    pattern = r'name\s*=\s*["\']'+ re.escape(capability_name) + r'["\']'
     return bool(re.search(pattern, content))
+
+
+def remove_from_registry(
+    registry_path: Path,
+    capability_name: str
+) -> tuple[str, str, bool]:
+    """Remove capability and context class from registry file.
+
+    Args:
+        registry_path: Path to registry.py
+        capability_name: Capability name to remove
+
+    Returns:
+        Tuple of (new_content, preview, found) where:
+        - new_content: Updated file content
+        - preview: Human-readable description of what was removed
+        - found: True if capability was found and removed
+    """
+    content = registry_path.read_text()
+
+    # Track what we found
+    found_capability = False
+    found_context = False
+    capability_preview = ""
+    context_preview = ""
+
+    # Remove CapabilityRegistration entry
+    # Match the entire CapabilityRegistration(...), block
+    # Looking for name="{capability_name}" within the block
+    capability_pattern = r'CapabilityRegistration\s*\(\s*name\s*=\s*["\']' + re.escape(capability_name) + r'["\'][^)]*\)\s*,\s*\n'
+
+    capability_match = re.search(capability_pattern, content, flags=re.DOTALL)
+    if capability_match:
+        found_capability = True
+        capability_preview = capability_match.group(0).strip()
+        content = re.sub(capability_pattern, '', content, flags=re.DOTALL)
+
+    # Remove ContextClassRegistration entry
+    # We need to find the context_type that was associated with this capability
+    # First, extract context_type from the capability registration (if we found it)
+    context_type = None
+    if capability_match:
+        provides_match = re.search(r'provides\s*=\s*\[\s*["\']([^"\']+)["\']', capability_preview)
+        if provides_match:
+            context_type = provides_match.group(1)
+
+    # If we found a context_type, remove its registration
+    if context_type:
+        context_pattern = r'ContextClassRegistration\s*\(\s*context_type\s*=\s*["\']' + re.escape(context_type) + r'["\'][^)]*\)\s*,\s*\n'
+        context_match = re.search(context_pattern, content, flags=re.DOTALL)
+        if context_match:
+            found_context = True
+            context_preview = context_match.group(0).strip()
+            content = re.sub(context_pattern, '', content, flags=re.DOTALL)
+
+    # Generate preview
+    found = found_capability or found_context
+
+    if not found:
+        preview = f"\n[dim]No registry entries found for '{capability_name}'[/dim]"
+    else:
+        preview = "\n[bold]Capability Registration:[/bold]\n"
+        if found_capability:
+            preview += f"[red]- REMOVE:[/red]\n{capability_preview}\n"
+        else:
+            preview += "[dim]Not found[/dim]\n"
+
+        preview += "\n[bold]Context Class Registration:[/bold]\n"
+        if found_context:
+            preview += f"[red]- REMOVE:[/red]\n{context_preview}\n"
+        else:
+            preview += "[dim]Not found[/dim]\n"
+
+    return content, preview, found
+
+
+def get_capability_info(registry_path: Path, capability_name: str) -> dict | None:
+    """Extract capability information from registry.
+
+    Args:
+        registry_path: Path to registry.py
+        capability_name: Capability name
+
+    Returns:
+        Dict with class_name, context_type, context_class_name or None if not found
+    """
+    content = registry_path.read_text()
+
+    # Find the CapabilityRegistration block
+    capability_pattern = r'CapabilityRegistration\s*\(\s*name\s*=\s*["\']' + re.escape(capability_name) + r'["\'][^)]*\)'
+    match = re.search(capability_pattern, content, flags=re.DOTALL)
+
+    if not match:
+        return None
+
+    block = match.group(0)
+
+    # Extract fields
+    info = {}
+
+    # Extract class_name
+    class_match = re.search(r'class_name\s*=\s*["\']([^"\']+)["\']', block)
+    if class_match:
+        info['class_name'] = class_match.group(1)
+
+    # Extract context_type from provides list
+    provides_match = re.search(r'provides\s*=\s*\[\s*["\']([^"\']+)["\']', block)
+    if provides_match:
+        info['context_type'] = provides_match.group(1)
+
+    # Extract module_path
+    module_match = re.search(r'module_path\s*=\s*["\']([^"\']+)["\']', block)
+    if module_match:
+        info['module_path'] = module_match.group(1)
+
+    # Find context class name from ContextClassRegistration
+    if 'context_type' in info:
+        context_pattern = r'ContextClassRegistration\s*\(\s*context_type\s*=\s*["\']' + re.escape(info['context_type']) + r'["\'][^)]*\)'
+        context_match = re.search(context_pattern, content, flags=re.DOTALL)
+        if context_match:
+            context_block = context_match.group(0)
+            context_class_match = re.search(r'class_name\s*=\s*["\']([^"\']+)["\']', context_block)
+            if context_class_match:
+                info['context_class_name'] = context_class_match.group(1)
+
+    return info if info else None
 
