@@ -72,6 +72,7 @@ dependencies = [
     # Archiver connectors return pandas DataFrames for time-series data
     "pandas>=2.2.3",
     "numpy>=2.2.6",  # Required by pandas
+    "matplotlib>=3.10.3",  # Required for Python capability visualization (core use case)
 
     # Networking and protocols
     "websocket-client>=1.7.0",
@@ -97,11 +98,10 @@ docs = [
 ]
 
 # Scientific computing stack - additional packages for Python execution capability
-# Note: pandas and numpy are in base requirements (needed for archiver connectors)
+# Note: pandas, numpy, and matplotlib are in base requirements (needed for core functionality)
 # These packages are available in the execution environment for advanced data analysis
 scientific = [
     "scipy>=1.15.3",
-    "matplotlib>=3.10.3",
     "seaborn",
     "scikit-learn",
     "ipywidgets",  # Interactive widgets for Jupyter notebooks

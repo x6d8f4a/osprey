@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Core Dependencies**: Added `matplotlib>=3.10.3` to core dependencies
+  - Python capability visualization now works out of the box without requiring `[scientific]` extras
+  - Ensures tutorial examples (plotting beam current, etc.) work immediately after installation
+  - Moved from optional `scientific` extras to required dependencies for improved user experience
+
 ## [0.9.0] - 2025-11-16
 
 ### Added
