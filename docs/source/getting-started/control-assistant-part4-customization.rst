@@ -158,9 +158,7 @@ In your agent's ``registry.py``, extend the existing registry configuration to i
                # Add custom framework prompts
                framework_prompt_providers=[
                    FrameworkPromptProviderRegistration(
-                       application_name="my_control_assistant",
                        module_path="my_control_assistant.framework_prompts",
-                       description="Custom prompts for MyFacility control assistant",
                        prompt_builders={
                            "orchestrator": "MyFacilityOrchestratorPromptBuilder",
                            # Add other builders as needed:

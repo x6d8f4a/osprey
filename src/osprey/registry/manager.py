@@ -1303,30 +1303,23 @@ class RegistryManager:
 
                 # Register the provider
                 from osprey.prompts.loader import _prompt_loader
-                _prompt_loader._providers[reg.application_name] = provider
+                provider_key = reg.module_path
+                _prompt_loader._providers[provider_key] = provider
 
-                self._registries['framework_prompt_providers'][reg.application_name] = reg
-                logger.debug(f"Registered explicit provider for {reg.application_name} with {len(reg.prompt_builders)} builders")
+                self._registries['framework_prompt_providers'][provider_key] = reg
+                logger.debug(f"Registered prompt provider from {reg.module_path} with {len(reg.prompt_builders)} custom builders")
 
             except Exception as e:
-                logger.warning(f"Failed to initialize framework prompt provider {reg.application_name}: {e}")
+                logger.warning(f"Failed to initialize prompt provider from {reg.module_path}: {e}")
 
-        # Set default provider - prefer application-specific providers over framework defaults
+        # Set default provider - use the last registered application provider
         if self.config.framework_prompt_providers:
-            # Find the first non-framework provider for production-ready default selection
-            default_app = None
-            for provider in self.config.framework_prompt_providers:
-                if provider.application_name != "framework_defaults":
-                    default_app = provider.application_name
-                    break
-
-            # Fallback to framework defaults if no application providers exist
-            if default_app is None:
-                default_app = self.config.framework_prompt_providers[0].application_name
+            # Use last provider as default (typically the application's provider, not framework defaults)
+            default_provider_key = self.config.framework_prompt_providers[-1].module_path
 
             from osprey.prompts.loader import set_default_framework_prompt_provider
-            set_default_framework_prompt_provider(default_app)
-            logger.info(f"Set default framework prompt provider to: {default_app}")
+            set_default_framework_prompt_provider(default_provider_key)
+            logger.info(f"Set default prompt provider: {default_provider_key}")
 
         logger.info(f"Registered {len(self._registries['framework_prompt_providers'])} framework prompt providers")
 
@@ -1377,18 +1370,18 @@ class RegistryManager:
         # Log summary
         total_builders = len(reg.prompt_builders)
         if successful_overrides:
-            logger.info(f"Successfully loaded {len(successful_overrides)}/{total_builders} custom prompt builders for {reg.application_name}")
+            logger.info(f"Successfully loaded {len(successful_overrides)}/{total_builders} custom prompt builders from {reg.module_path}")
         if failed_overrides:
-            logger.warning(f"Failed to load {len(failed_overrides)} prompt builders for {reg.application_name} - using framework defaults")
+            logger.warning(f"Failed to load {len(failed_overrides)} prompt builders from {reg.module_path} - using framework defaults")
             for prompt_type, class_name, error in failed_overrides:
                 logger.debug(f"  -> {prompt_type}({class_name}): {error}")
 
         # Validate the final provider implements the complete interface
-        self._validate_prompt_provider(provider, reg.application_name)
+        self._validate_prompt_provider(provider, reg.module_path)
 
         return provider
 
-    def _validate_prompt_provider(self, provider, application_name):
+    def _validate_prompt_provider(self, provider, module_path):
         """Validate prompt provider implements required interface methods.
 
         Ensures the provider implements all required methods for framework operation.
@@ -1397,8 +1390,8 @@ class RegistryManager:
 
         :param provider: Prompt provider instance to validate
         :type provider: framework.prompts.defaults.DefaultPromptProvider
-        :param application_name: Application name for error reporting
-        :type application_name: str
+        :param module_path: Module path for error reporting
+        :type module_path: str
         """
         required_methods = [
             'get_orchestrator_prompt_builder',
@@ -1417,9 +1410,9 @@ class RegistryManager:
                 missing_methods.append(method_name)
 
         if missing_methods:
-            logger.error(f"Prompt provider for {application_name} is missing required methods: {missing_methods}")
+            logger.error(f"Prompt provider from {module_path} is missing required methods: {missing_methods}")
         else:
-            logger.debug(f"Prompt provider for {application_name} passed interface validation")
+            logger.debug(f"Prompt provider from {module_path} passed interface validation")
 
 
     # ==============================================================================

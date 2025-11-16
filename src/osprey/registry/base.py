@@ -242,40 +242,70 @@ class DomainAnalyzerRegistration:
 
 @dataclass
 class FrameworkPromptProviderRegistration:
-    """Registration metadata for application-specific prompt providers.
+    """Registration metadata for prompt provider customization.
 
-    Defines the metadata required for dependency injection of application-specific
-    prompt builders. Uses the professional pattern of "start with defaults, override
-    specific components" - applications only declare what they want to customize,
-    everything else uses framework defaults.
+    Defines which prompt builders to override from framework defaults.
+    Uses the "selective override" pattern - only specify what you want to customize,
+    everything else uses framework defaults automatically.
 
-    :param application_name: Application identifier (e.g., 'als_assistant')
-    :type application_name: str
-    :param module_path: Python module path for lazy import
+    :param module_path: Python module path containing your custom builder classes
     :type module_path: str
-    :param description: Human-readable description of prompt provider
-    :type description: str
-    :param prompt_builders: Mapping of prompt types to override with custom builder classes
+    :param prompt_builders: Mapping of prompt types to your custom builder class names
     :type prompt_builders: dict[str, str]
+    :param application_name: (Deprecated) Application identifier - no longer used
+    :type application_name: str | None
+    :param description: (Deprecated) Human-readable description - no longer used
+    :type description: str | None
 
     Examples:
-        Basic application override::
+        Override task extraction only::
 
             FrameworkPromptProviderRegistration(
-                application_name="als_assistant",
-                module_path="applications.als_assistant.framework_prompts",
-                description="ALS-specific prompt customizations",
+                module_path="weather_agent.framework_prompts",
+                prompt_builders={
+                    "task_extraction": "WeatherTaskExtractionPromptBuilder"
+                }
+            )
+
+        Override multiple prompts::
+
+            FrameworkPromptProviderRegistration(
+                module_path="als_assistant.framework_prompts",
                 prompt_builders={
                     "orchestrator": "ALSOrchestratorPromptBuilder",
+                    "task_extraction": "ALSTaskExtractionPromptBuilder",
                     "memory_extraction": "ALSMemoryExtractionPromptBuilder"
-                    # time_range_parsing not listed = uses framework default
                 }
             )
     """
-    application_name: str  # Application identifier (e.g., "als_assistant")
-    module_path: str      # Module path for lazy loading (e.g., "applications.als_assistant.framework_prompts")
-    description: str
-    prompt_builders: dict[str, str] = field(default_factory=dict)  # prompt_type -> class_name mapping
+    module_path: str      # Module path containing custom builders
+    prompt_builders: dict[str, str] = field(default_factory=dict)  # prompt_type -> class_name
+
+    # Deprecated fields (kept for backward compatibility)
+    application_name: str | None = None
+    description: str | None = None
+
+    def __post_init__(self):
+        """Emit deprecation warnings for removed fields."""
+        import warnings
+
+        if self.application_name is not None:
+            warnings.warn(
+                "The 'application_name' parameter in FrameworkPromptProviderRegistration is deprecated "
+                "and will be removed in v0.10. It is no longer used by the framework. "
+                "Please remove it from your registry configuration.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+
+        if self.description is not None:
+            warnings.warn(
+                "The 'description' parameter in FrameworkPromptProviderRegistration is deprecated "
+                "and will be removed in v0.10. It is no longer used by the framework. "
+                "Please remove it from your registry configuration.",
+                DeprecationWarning,
+                stacklevel=2
+            )
 
 @dataclass
 class ServiceRegistration:

@@ -391,12 +391,10 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                 ),
             ],
 
-            # Framework prompt providers
+            # Framework prompt providers (defaults - typically overridden by applications)
             framework_prompt_providers=[
                 FrameworkPromptProviderRegistration(
-                    application_name="framework_defaults",
                     module_path="osprey.prompts.defaults",
-                    description="Default framework prompt implementations for all infrastructure and framework capabilities",
                     prompt_builders={
                         "orchestrator": "DefaultOrchestratorPromptBuilder",
                         "task_extraction": "DefaultTaskExtractionPromptBuilder",

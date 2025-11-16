@@ -85,6 +85,7 @@ Either method generates a complete, self-contained project with the following st
    │       ├── mock_weather_api.py         # Mock data source (no external APIs)
    │       ├── context_classes.py          # Data models for weather information
    │       ├── registry.py                 # Component registration
+   │       ├── framework_prompts.py        # Domain-specific prompt customizations
    │       └── capabilities/
    │           ├── __init__.py
    │           └── current_weather.py      # Weather retrieval logic
@@ -94,7 +95,7 @@ Either method generates a complete, self-contained project with the following st
 .. admonition:: Want to see it in action first?
    :class: tip
 
-   If you're the type who likes to play with the toy before reading the manual, jump straight to :ref:`Step 7: Run Your Agent <hello-world-deploy-test>` to get your agent running in minutes! You can always come back here to understand how everything works under the hood.
+   If you're the type who likes to play with the toy before reading the manual, jump straight to :ref:`Step 8: Run Your Agent <hello-world-deploy-test>` to get your agent running in minutes! You can always come back here to understand how everything works under the hood.
 
 This tutorial will walk you through understanding how each component works and how they integrate together to create a complete AI agent application.
 
@@ -684,23 +685,268 @@ The classifier guide teaches the LLM when to activate your capability based on u
                   actions_if_true=ClassifierActions()
               )
 
-Step 5: Understanding the Registry
+
+Step 5: Domain Adaptation
+--------------------------
+
+Weather applications need to synthesize information from multi-turn conversations where location, time, and weather concerns are mentioned across different exchanges. The generated project includes ``framework_prompts.py`` with weather-specific examples that teach the framework how to identify and combine these domain-specific elements.
+
+**The Problem**
+
+Consider this conversation:
+
+.. code-block:: text
+
+   User: I'm planning a trip and need to check weather patterns
+   Agent: I can help with weather patterns for your trip! Which destination are you considering?
+   User: I'm thinking about New York
+   Agent: Great! When are you planning to visit New York?
+   User: Next weekend, and I'm particularly concerned about rain
+
+The final message should extract a complete weather query: **"Get weather forecast for New York for next weekend with focus on precipitation."** This requires understanding that:
+
+- Location ("New York") was mentioned two exchanges ago
+- Time ("next weekend") was just specified
+- "Concerned about rain" → emphasize precipitation data (weather-domain knowledge)
+
+Without domain-specific examples, the framework might not recognize that "concerned about rain" should translate into prioritizing precipitation information - this is weather-specific context that doesn't apply to other domains.
+
+**The Solution**
+
+The project includes a custom prompt builder that extends the framework's task extraction with 8 weather-specific examples:
+
+.. code-block:: python
+
+   class WeatherTaskExtractionPromptBuilder(DefaultTaskExtractionPromptBuilder):
+       """Weather-specific task extraction with domain examples."""
+
+       def __init__(self):
+           super().__init__(include_default_examples=False)
+           self._add_weather_examples()
+
+       def get_role_definition(self) -> str:
+           return "You are a weather assistant task extraction specialist..."
+
+       def _add_weather_examples(self):
+           # Location carry-forward example
+           self.examples.append(TaskExtractionExample(
+               messages=[
+                   MessageUtils.create_user_message("What's the weather in San Francisco?"),
+                   MessageUtils.create_assistant_message("Tonight in SF..."),
+                   MessageUtils.create_user_message("What about tomorrow?"),
+               ],
+               expected_output=ExtractedTask(
+                   task="Get weather forecast for San Francisco for tomorrow",
+                   depends_on_chat_history=True
+               )
+           ))
+           # ... 7 more examples
+
+.. dropdown:: Complete Framework Prompts Implementation
+
+   Full custom prompt builder with 8 weather-specific examples (`view template on GitHub <https://github.com/als-apg/osprey/blob/main/src/osprey/templates/apps/hello_world_weather/framework_prompts.py.j2>`_)
+
+   .. code-block:: python
+
+      """Weather Agent Framework Prompt Customizations."""
+
+      import textwrap
+      from osprey.prompts.defaults import DefaultTaskExtractionPromptBuilder, TaskExtractionExample, ExtractedTask
+      from osprey.state import MessageUtils, UserMemories
+
+
+      class WeatherTaskExtractionPromptBuilder(DefaultTaskExtractionPromptBuilder):
+          """Weather-specific task extraction prompt builder."""
+
+          def __init__(self):
+              """Initialize with weather-specific examples only."""
+              super().__init__(include_default_examples=False)
+              self._add_weather_examples()
+
+          def get_role_definition(self) -> str:
+              """Get the weather-specific role definition."""
+              return "You are a weather assistant task extraction specialist that analyzes conversations to extract actionable weather-related tasks."
+
+          def get_instructions(self) -> str:
+              """Get the weather-specific task extraction instructions."""
+              return textwrap.dedent("""
+              Your job is to:
+              1. Understand what the user is asking for in the context of weather information
+              2. Extract a clear, actionable task related to weather queries
+              3. Determine if the task depends on chat history context
+              4. Determine if the task depends on user memory
+
+              ## Weather-Specific Guidelines:
+              - Create self-contained task descriptions executable without conversation context
+              - Resolve temporal references ("tomorrow", "next week") to specific time periods
+              - Carry forward location references from previous messages
+              - Extract specific locations, times, and weather parameters from previous responses
+              - Understand weather-specific concerns ("rain" → precipitation, "good for walking" → temperature + conditions)
+              - Set depends_on_chat_history=True if task references previous messages
+              - Set depends_on_user_memory=True only when task needs specific information from user memory
+              """).strip()
+
+          def _add_weather_examples(self):
+              """Add weather-specific examples."""
+
+              # Example 1: Multi-turn progressive refinement - weather planning context
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("I'm planning a trip and need to check weather patterns"),
+                      MessageUtils.create_assistant_message(
+                          "I can help with weather patterns for your trip! Which destination are you considering?"
+                      ),
+                      MessageUtils.create_user_message("I'm thinking about New York"),
+                      MessageUtils.create_assistant_message(
+                          "Great! When are you planning to visit New York? I can check the forecast."
+                      ),
+                      MessageUtils.create_user_message("Next weekend, and I'm particularly concerned about rain"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get weather forecast for New York for next weekend with focus on precipitation probability",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 2: Location carry-forward with temporal change
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("What's the weather like in San Francisco tonight?"),
+                      MessageUtils.create_assistant_message(
+                          "Tonight in San Francisco, expect partly cloudy skies with temperatures "
+                          "around 13°C. Light winds from the west at 12 km/h."
+                      ),
+                      MessageUtils.create_user_message("What about tomorrow?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get weather forecast for San Francisco for tomorrow",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 3: Location switching
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("How's the weather in Prague?"),
+                      MessageUtils.create_assistant_message(
+                          "The current weather in Prague shows 8°C with rainy conditions. "
+                          "Humidity is at 85% with moderate winds."
+                      ),
+                      MessageUtils.create_user_message("What about in Paris?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get current weather conditions for Paris",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 4: Implicit location reference ("there")
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("What's the current weather in Paris?"),
+                      MessageUtils.create_assistant_message(
+                          "Paris is currently experiencing clear weather at 16°C with "
+                          "light winds and good visibility."
+                      ),
+                      MessageUtils.create_user_message("How about tomorrow there?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get weather forecast for Paris for tomorrow",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 5: Weather-specific comparison (domain knowledge)
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("What's the weather in San Francisco?"),
+                      MessageUtils.create_assistant_message(
+                          "San Francisco currently has clear skies at 18°C with light winds."
+                      ),
+                      MessageUtils.create_user_message("What about Prague?"),
+                      MessageUtils.create_assistant_message(
+                          "Prague is experiencing rainy conditions at 10°C with moderate winds."
+                      ),
+                      MessageUtils.create_user_message("Which one is better for an outdoor walk?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Compare San Francisco and Prague weather conditions to determine which is better for outdoor walking (considering temperature, precipitation, and wind)",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 6: Simple temporal follow-up
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("What's the current weather in Paris?"),
+                      MessageUtils.create_assistant_message(
+                          "The current weather in Paris is 15°C with overcast skies and light rain. "
+                          "Wind speed is 12 km/h from the northwest."
+                      ),
+                      MessageUtils.create_user_message("What was it like 3 hours ago?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get historical weather conditions for Paris from 3 hours ago",
+                      depends_on_chat_history=True,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 7: Conversational query
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("Hi, what weather information can you provide?"),
+                      MessageUtils.create_assistant_message(
+                          "I can help you check current weather conditions and forecasts for various cities! "
+                          "I can tell you about temperature, precipitation, wind, and general conditions."
+                      ),
+                      MessageUtils.create_user_message("Which cities do you cover?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="List the cities available for weather queries",
+                      depends_on_chat_history=False,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+              # Example 8: Fresh request (no conversation context)
+              self.examples.append(TaskExtractionExample(
+                  messages=[
+                      MessageUtils.create_user_message("Can you check the weather in New York?"),
+                  ],
+                  user_memory=UserMemories(entries=[]),
+                  expected_output=ExtractedTask(
+                      task="Get current weather conditions for New York",
+                      depends_on_chat_history=False,
+                      depends_on_user_memory=False
+                  )
+              ))
+
+
+Step 6: Understanding the Registry
 -----------------------------------
 
 The registry system is how the framework discovers and manages your application's components. It uses a simple pattern where your application provides a configuration that tells the framework what capabilities and context classes you've defined.
 
 .. admonition:: Registry Purpose
 
-   The registry enables loose coupling and lazy loading - the framework can discover your components without importing them until needed, improving startup performance and modularity.
+   The registry enables loose coupling and lazy loading - the framework can discover your components without importing them until needed, improving startup performance and modularity. The framework provides ``extend_framework_registry()`` helper that automatically includes all framework components with your custom ones - you only specify what's unique to your application.
 
-.. admonition:: New in v0.7+: Registry Helper Functions
-   :class: version-07plus-change
+**The Registry Pattern**
 
-   The framework now provides ``extend_framework_registry()`` helper that automatically includes all framework components with your custom ones. You only specify what's unique to your application.
-
-**5.1: Understanding the Registry Pattern**
-
-The registry uses a class-based provider pattern. Here's the recommended structure:
+The registry uses a class-based provider pattern. Here's the structure:
 
 .. code-block:: python
 
@@ -708,6 +954,7 @@ The registry uses a class-based provider pattern. Here's the recommended structu
        extend_framework_registry,
        CapabilityRegistration,
        ContextClassRegistration,
+       FrameworkPromptProviderRegistration,
        ExtendedRegistryConfig,
        RegistryConfigProvider
    )
@@ -718,54 +965,11 @@ The registry uses a class-based provider pattern. Here's the recommended structu
        def get_registry_config(self) -> ExtendedRegistryConfig:
            return extend_framework_registry(
                capabilities=[
-                   CapabilityRegistration(
-                       name="current_weather",
-                       module_path="weather_agent.capabilities.current_weather",
-                       class_name="CurrentWeatherCapability",
-                       description="Get current weather conditions",
-                       provides=["CURRENT_WEATHER"],
-                       requires=[]
-                   )
-               ],
-               context_classes=[
-                   ContextClassRegistration(
-                       context_type="CURRENT_WEATHER",
-                       module_path="weather_agent.context_classes",
-                       class_name="CurrentWeatherContext"
-                   )
-               ]
-           )
-
-**Benefits of this pattern (Extend Mode):**
-- Automatically includes all framework capabilities (memory, time parsing, Python, etc.)
-- You only specify your application-specific components
-- Type-safe with proper IDE support
-- Clear, maintainable code
-- Easier framework upgrades (new framework features automatically included)
-
-**5.2: Alternative: Standalone Mode (Advanced)**
-
-For advanced use cases requiring complete control, you can use Standalone mode by returning ``RegistryConfig`` directly. This requires listing ALL framework components:
-
-.. code-block:: python
-
-   from osprey.registry import (
-       CapabilityRegistration,
-       ContextClassRegistration,
-       RegistryConfig,
-       RegistryConfigProvider
-   )
-
-   class WeatherAgentRegistryProvider(RegistryConfigProvider):
-       def get_registry_config(self) -> RegistryConfig:
-           # Standalone mode: Must provide ALL components including framework
-           return RegistryConfig(
-               capabilities=[
                   CapabilityRegistration(
                       name="current_weather",
                       module_path="weather_agent.capabilities.current_weather",
                       class_name="CurrentWeatherCapability",
-                      description="Get current weather conditions for a location",
+                       description="Get current weather conditions",
                       provides=["CURRENT_WEATHER"],
                       requires=[]
                   )
@@ -776,13 +980,22 @@ For advanced use cases requiring complete control, you can use Standalone mode b
                        module_path="weather_agent.context_classes",
                        class_name="CurrentWeatherContext"
                    )
+               ],
+               framework_prompt_providers=[
+                   FrameworkPromptProviderRegistration(
+                       module_path="weather_agent.framework_prompts",
+                       prompt_builders={
+                           "task_extraction": "WeatherTaskExtractionPromptBuilder"
+                       }
+                   )
                ]
            )
 
-**When to use explicit registration:**
-- Learning how the registry system works internally
-- Debugging registry issues
-- Needing fine-grained control over registration details
+
+.. admonition:: Advanced Registry Patterns
+   :class: tip
+
+   For advanced use cases requiring complete control over component registration, see :doc:`Registry and Discovery <../developer-guides/03_core-framework-systems/03_registry-and-discovery>` for alternative patterns including Standalone Mode and :ref:`custom component exclusion <excluding-overriding-components>`.
 
 .. dropdown:: Complete Registry Implementation
 
@@ -794,13 +1007,14 @@ For advanced use cases requiring complete control, you can use Standalone mode b
       Weather Application Registry
 
      Registry configuration using extend_framework_registry() to automatically
-     include framework components and add weather-specific capability.
+      include framework components and add weather-specific components.
      """
 
      from osprey.registry import (
          extend_framework_registry,
          CapabilityRegistration,
          ContextClassRegistration,
+          FrameworkPromptProviderRegistration,
          ExtendedRegistryConfig,
          RegistryConfigProvider
      )
@@ -830,20 +1044,25 @@ For advanced use cases requiring complete control, you can use Standalone mode b
                          module_path="weather_agent.context_classes",
                          class_name="CurrentWeatherContext"
                      )
+                  ],
+
+                  # Add weather-specific prompt customizations
+                  framework_prompt_providers=[
+                      FrameworkPromptProviderRegistration(
+                          module_path="weather_agent.framework_prompts",
+                          prompt_builders={
+                              "task_extraction": "WeatherTaskExtractionPromptBuilder"
+                          }
+                      )
                  ]
               )
 
    This automatically includes all framework capabilities (memory, Python, time parsing, etc.) while adding only your weather-specific components!
 
-Step 6: Application Configuration
+Step 7: Application Configuration
 ----------------------------------
 
-The generated project includes a complete ``config.yml`` file in the project root with all necessary settings pre-configured.
-
-.. admonition:: New in v0.7+: Self-Contained Configuration
-   :class: version-07plus-change
-
-   Projects now include a complete, self-contained ``config.yml`` with all framework settings pre-configured. No need to edit multiple configuration files - everything is in one place.
+The generated project includes a complete, self-contained ``config.yml`` file in the project root with all necessary settings pre-configured. Everything is in one place - no need to edit multiple configuration files.
 
 **Key Configuration Sections:**
 
@@ -875,9 +1094,10 @@ You can customize the configuration by editing ``config.yml``:
 1. **Change model providers** - Update ``provider`` fields under ``models``
 2. **API keys** - Set in ``.env`` file (not in ``config.yml``)
 
+
 .. _hello-world-deploy-test:
 
-Step 7: Run Your Agent
+Step 8: Run Your Agent
 -----------------------
 
 Now that you understand the components, let's run and test your agent!

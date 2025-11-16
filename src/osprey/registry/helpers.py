@@ -546,9 +546,7 @@ def generate_explicit_registry_code(
     # Add framework prompt providers
     for prov in framework.framework_prompt_providers:
         code_lines.append('                FrameworkPromptProviderRegistration(')
-        code_lines.append(f'                    application_name="{prov.application_name}",')
         code_lines.append(f'                    module_path="{prov.module_path}",')
-        code_lines.append(f'                    description="{prov.description}",')
         code_lines.append('                    prompt_builders={')
         for key, value in prov.prompt_builders.items():
             code_lines.append(f'                        "{key}": "{value}",')
@@ -560,9 +558,7 @@ def generate_explicit_registry_code(
         code_lines.append('')
         for prov in framework_prompt_providers:
             code_lines.append('                FrameworkPromptProviderRegistration(')
-            code_lines.append(f'                    application_name="{prov.application_name}",')
             code_lines.append(f'                    module_path="{prov.module_path}",')
-            code_lines.append(f'                    description="{prov.description}",')
             code_lines.append('                    prompt_builders={')
             for key, value in prov.prompt_builders.items():
                 code_lines.append(f'                        "{key}": "{value}",')

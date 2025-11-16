@@ -347,10 +347,7 @@ For automatic discovery, include prompt providers in your application registry:
                # ... other registrations
                framework_prompt_providers=[
                    FrameworkPromptProviderRegistration(
-                       application_name="myapp",
                        module_path="applications.myapp.framework_prompts",
-                       class_name="MyAppPromptProvider",
-                       description="Domain-specific prompt provider",
                        prompt_builders={
                            "orchestrator": "MyOrchestratorPromptBuilder",
                            "classification": "MyClassificationPromptBuilder"

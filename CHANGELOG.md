@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Prompt Customization System**: Flexible inheritance for domain-specific prompt builders
+  - Added `include_default_examples` parameter to `DefaultTaskExtractionPromptBuilder`
+  - Applications can now choose to extend or replace framework examples
+  - Exported `TaskExtractionExample` and `ExtractedTask` from `osprey.prompts.defaults` for custom builders
+  - Weather template includes 8 domain-specific examples for conversational context handling
+  - New `framework_prompts.py.j2` template demonstrating prompt customization patterns
+- **Domain Adaptation Tutorial**: Comprehensive Step 5 in hello-world tutorial
+  - Explains why domain-specific examples improve conversational AI
+  - 8 weather-specific task extraction examples covering location carry-forward, temporal references, etc.
+  - Shows complete implementation with code examples and explanations
+  - Demonstrates multi-turn conversation context synthesis
 - **Conceptual Tutorial**: New comprehensive tutorial introducing Osprey's core concepts and design patterns
   - Explains Osprey's foundation on LangGraph with link to upstream framework
   - Compares ReAct vs Planning agents with clear advantages/disadvantages
@@ -45,6 +56,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New template option in `osprey init` command
   - Interactive menu displays control assistant with description
   - Template validation and configuration support
+
+### Changed
+- **FrameworkPromptProviderRegistration API**: Simplified registration interface
+  - Removed `application_name` parameter (no longer used by framework)
+  - Removed `description` parameter (no longer used by framework)
+  - Framework now uses `module_path` as the provider key
+  - **Backward Compatible**: Old parameters still accepted with deprecation warnings until v0.10
+  - Updated all documentation examples to reflect new simplified API
+
+### Deprecated
+- **FrameworkPromptProviderRegistration fields**: `application_name` and `description` parameters
+  - Will be removed in v0.10
+  - Deprecation warnings emitted when used
+  - Migration: Simply remove these parameters from your `FrameworkPromptProviderRegistration` calls
 
 ### Removed
 - **Migration Guides**: Removed version-specific migration documentation
