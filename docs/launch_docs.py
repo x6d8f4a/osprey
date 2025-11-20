@@ -94,7 +94,7 @@ class DetachedDocServer:
     def _find_pids_with_lsof(self, port):
         """Find PIDs using lsof command."""
         try:
-            result = subprocess.run(['lsof', '-t', f'-i:{port}'], 
+            result = subprocess.run(['lsof', '-t', f'-i:{port}'],
                                   capture_output=True, text=True, timeout=5)
             if result.returncode == 0 and result.stdout.strip():
                 pids = [pid.strip() for pid in result.stdout.strip().split('\n') if pid.strip()]
@@ -106,7 +106,7 @@ class DetachedDocServer:
     def _find_pids_with_netstat(self, port):
         """Find PIDs using netstat command."""
         try:
-            result = subprocess.run(['netstat', '-tlnp'], 
+            result = subprocess.run(['netstat', '-tlnp'],
                                   capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 pids = []
@@ -126,7 +126,7 @@ class DetachedDocServer:
     def _find_pids_with_ss(self, port):
         """Find PIDs using ss command."""
         try:
-            result = subprocess.run(['ss', '-tlnp', f'sport = :{port}'], 
+            result = subprocess.run(['ss', '-tlnp', f'sport = :{port}'],
                                   capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 pids = []
@@ -194,9 +194,9 @@ class DetachedDocServer:
         """Clean the documentation build cache using make clean."""
         print("Cleaning documentation build cache...")
         try:
-            result = subprocess.run(['make', 'clean'], 
-                                 capture_output=True, 
-                                 text=True, 
+            result = subprocess.run(['make', 'clean'],
+                                 capture_output=True,
+                                 text=True,
                                  check=True)
             print("Documentation cache cleaned successfully!")
             return True
@@ -213,9 +213,9 @@ class DetachedDocServer:
 
         print("Building documentation...")
         try:
-            result = subprocess.run(['make', 'html'], 
-                                 capture_output=True, 
-                                 text=True, 
+            result = subprocess.run(['make', 'html'],
+                                 capture_output=True,
+                                 text=True,
                                  check=True)
             print("Documentation built successfully!")
             return True
@@ -231,8 +231,8 @@ class DetachedDocServer:
 
         # Check if act is available
         try:
-            subprocess.run(['act', '--version'], 
-                         capture_output=True, 
+            subprocess.run(['act', '--version'],
+                         capture_output=True,
                          check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             print("❌ Error: 'act' is not installed or not found in PATH")
@@ -251,8 +251,8 @@ class DetachedDocServer:
             print("(This may take a while on first run as Docker images are downloaded)")
 
             # Run act to build the documentation
-            result = subprocess.run(['act', '-j', 'build'], 
-                                 text=True, 
+            result = subprocess.run(['act', '-j', 'build'],
+                                 text=True,
                                  check=True)
 
             print("✅ Documentation built successfully with act!")
@@ -426,7 +426,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Primary documentation launcher - build and serve with cache management")
-    parser.add_argument("--port", "-p", type=int, default=8082, 
+    parser.add_argument("--port", "-p", type=int, default=8082,
                        help="Port to serve on (default: 8082)")
     parser.add_argument("--stop", action="store_true",
                        help="Stop the running server")
@@ -527,4 +527,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

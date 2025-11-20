@@ -35,7 +35,7 @@ Core Models
 Classification uses models defined in the core framework:
 
 .. seealso::
-   
+
    :class:`~osprey.base.CapabilityMatch`
        Classification results for capability selection
 
@@ -61,12 +61,12 @@ Automatically registered as::
     )
 
 .. seealso::
-   
+
    :doc:`../01_core_framework/05_prompt_management`
        Prompt customization system
-   
+
    :doc:`../01_core_framework/03_registry_system`
        Component and capability management
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/03_classification-and-routing`
        Implementation details and usage patterns

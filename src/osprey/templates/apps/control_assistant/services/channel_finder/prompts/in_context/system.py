@@ -22,9 +22,9 @@ facility_description = textwrap.dedent("""
     6. Energy Recovery (Deceleration Section):
     - After the undulator, the electrons travel back up a decelerating tube, returning part of their energy to the accelerator system.
     - The recycled electrons are then recaptured at the top of the machine, improving overall efficiency.
-    
+
     IMPORTANT TERMINOLOGY AND CONVENTIONS:
-    
+
     Channel Naming Patterns:
     - "Motor" channels = Control/command channels (for setting positions or states)
     - "MotorReadBack" or "ReadBack" channels = Status/measurement channels (actual positions or states)
@@ -32,7 +32,7 @@ facility_description = textwrap.dedent("""
     - When query asks for "control" or "motor control", return ONLY Motor/Set channels, NOT readbacks
     - When query asks for "status" or "readback" or "actual", return ONLY ReadBack channels
     - When query asks to "check" or is ambiguous, include both Set and ReadBack
-    
+
     Beamline Classifications:
     - "FEL beamlines" specifically refers to the THREE FEL output beamlines:
       * HFEL (High-power FEL beamline)

@@ -12,7 +12,7 @@ make test-build
 
 That's it! This single command:
 - Installs the exact same dependencies as GitHub Actions
-- Runs the exact same build process  
+- Runs the exact same build process
 - Shows the exact same errors/warnings
 
 ## Alternative Commands

@@ -6,7 +6,7 @@ Infrastructure Architecture: Classification-Orchestration Pipeline
    :icon: book
 
    **Key Concepts:**
-   
+
    - The complete classification-orchestration pipeline from user input to agent response
    - How Task Extraction, Classification, and Orchestration work together
    - The role of the Gateway as a single entry point and the Router for coordination
@@ -14,7 +14,7 @@ Infrastructure Architecture: Classification-Orchestration Pipeline
    - Error handling and retry logic throughout the infrastructure
 
    **Prerequisites:** Basic understanding of LangGraph and agentic frameworks
-   
+
    **Time Investment:** 10-15 minutes for complete understanding
 
 Overview
@@ -68,37 +68,37 @@ The Router serves as the central decision-making authority that determines what 
 
    def router_conditional_edge(state: AgentState) -> str:
        """Central routing logic based on agent state."""
-       
+
        # Check for error conditions first
        if state.get('control_has_error', False):
            return handle_error_routing(state)
-       
+
        # Check for termination
        if state.get('control_is_killed', False):
            return "error"
-       
+
        # Task extraction needed?
        current_task = StateManager.get_current_task(state)
        if not current_task:
            return "task_extraction"
-       
+
        # Classification needed?
        active_capabilities = state.get('planning_active_capabilities')
        if not active_capabilities:
            return "classifier"
-       
+
        # Orchestration needed?
        execution_plan = StateManager.get_execution_plan(state)
        if not execution_plan:
            return "orchestrator"
-       
+
        # Execute next step in plan
        current_index = StateManager.get_current_step_index(state)
        plan_steps = execution_plan.get('steps', [])
-       
+
        if current_index >= len(plan_steps):
            return "END"  # Execution complete
-       
+
        # Route to next capability
        current_step = plan_steps[current_index]
        return current_step['capability']
@@ -114,16 +114,16 @@ Task Extraction converts conversational input into structured, actionable tasks 
    class TaskExtractionNode(BaseInfrastructureNode):
        name = "task_extraction"
        description = "Task Extraction and Processing"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            messages = state["messages"]
-           
+
            # Extract structured task using LLM
            processed_task = await asyncio.to_thread(
                _extract_task, messages, retrieval_result, logger
            )
-           
+
            return {
                "task_current_task": processed_task.task,
                "task_depends_on_chat_history": processed_task.depends_on_chat_history,
@@ -141,15 +141,15 @@ The Classification system analyzes tasks and selects appropriate capabilities us
    class ClassificationNode(BaseInfrastructureNode):
        name = "classifier"
        description = "Task Classification and Capability Selection"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            current_task = state.get("task_current_task")
-           
+
            # Get available capabilities from registry
            registry = get_registry()
            available_capabilities = registry.get_all_capabilities()
-           
+
            # Select capabilities using LLM-based classification
            active_capabilities = await select_capabilities(
                task=current_task,
@@ -157,7 +157,7 @@ The Classification system analyzes tasks and selects appropriate capabilities us
                state=state,
                logger=logger
            )
-           
+
            return {
                "planning_active_capabilities": active_capabilities,
                "planning_execution_plan": None,  # Reset for orchestrator
@@ -175,12 +175,12 @@ The Orchestrator creates complete execution plans before any capability executio
    class OrchestrationNode(BaseInfrastructureNode):
        name = "orchestrator"
        description = "Execution Planning and Orchestration"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            current_task = StateManager.get_current_task(state)
            active_capability_names = state.get('planning_active_capabilities')
-           
+
            # Create execution plan using LLM
            execution_plan = await asyncio.to_thread(
                get_chat_completion,
@@ -188,12 +188,12 @@ The Orchestrator creates complete execution plans before any capability executio
                model_config=model_config,
                output_model=ExecutionPlan
            )
-           
+
            # Validate plan (check capabilities exist, ensure response step)
            validated_plan = _validate_and_fix_execution_plan(
                execution_plan, current_task, logger
            )
-           
+
            return {
                "planning_execution_plan": validated_plan,
                "planning_current_step_index": 0
@@ -259,7 +259,7 @@ The framework includes sophisticated error handling with node-specific retry pol
                user_message="Task extraction failed",
                metadata={"technical_details": str(exc)}
            )
-       
+
        @staticmethod
        def get_retry_policy() -> Dict[str, Any]:
            return {
@@ -332,24 +332,24 @@ Architecture Benefits
 
    :doc:`../03_core-framework-systems/01_state-management-architecture`
        How state flows through the system
-   
+
    :doc:`../03_core-framework-systems/03_registry-and-discovery`
        How components are discovered and registered
-   
+
    :doc:`../02_quick-start-patterns/01_building-your-first-capability`
        Hands-on implementation
-   
+
    :doc:`../04_infrastructure-components/06_error-handling-infrastructure`
        Comprehensive error management
-   
+
    :doc:`../../api_reference/02_infrastructure/01_gateway`
        Complete Gateway API for message processing and state management
-   
+
    :doc:`../../api_reference/02_infrastructure/05_execution-control`
        Router and routing logic for deterministic execution flow
-   
+
    :doc:`../../api_reference/02_infrastructure/02_task-extraction`
        Task extraction methods for conversation analysis
-   
+
    :doc:`../../api_reference/02_infrastructure/03_classification`
        Capability selection API for LLM-based classification

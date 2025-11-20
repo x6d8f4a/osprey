@@ -49,11 +49,11 @@ OrchestrationNode
    Handles replanning when REPLANNING errors are encountered:
 
    - **Plan Creation**: Generate new execution plan based on current task
-   - **Capability Validation**: Ensure all planned capabilities exist  
+   - **Capability Validation**: Ensure all planned capabilities exist
    - **State Updates**: Clear error state and increment plan counter
    - **Limits**: Respect maximum planning attempts to prevent infinite loops
 
-Classifier Reclassification  
+Classifier Reclassification
 ===========================
 
 ClassificationNode
@@ -96,12 +96,12 @@ Classification Node
    Custom retry policy for LLM-based classification operations.
 
 .. seealso::
-   
+
    :doc:`01_classification_system`
        Error classification and severity management
-   
+
    :doc:`02_exception_reference`
        Complete exception hierarchy with inheritance structure
-   
+
    :doc:`../02_infrastructure/05_execution-control`
        **ErrorNode**, **RouterNode**, and complete execution control flow

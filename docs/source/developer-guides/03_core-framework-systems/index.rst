@@ -19,7 +19,7 @@ Core Framework Systems
    :icon: book
 
    **Advanced Framework Internals:**
-   
+
    - LangGraph-native state management with selective persistence strategies
    - Pydantic-based context objects with intelligent caching and serialization
    - Convention-based registry patterns with lazy loading and component discovery
@@ -28,7 +28,7 @@ Core Framework Systems
    - Single-file YAML configuration with flat structure and environment variable resolution
 
    **Prerequisites:** Completion of Quick Start Patterns and understanding of LangGraph concepts
-   
+
    **Target Audience:** Framework developers and advanced capability authors building sophisticated agentic systems
 
 Master the sophisticated internal systems that enable reliable, type-safe agent development. These core systems provide the foundation for building production-ready conversational agents with proper state management, data sharing, and component orchestration.
@@ -47,7 +47,7 @@ The Core Framework Systems implement a **LangGraph-Native, Type-Safe Architectur
       :class-header: bg-primary text-white
       :class-body: text-center
       :shadow: md
-            
+
       Selective persistence strategy with performance optimization and comprehensive lifecycle management.
 
    .. grid-item-card:: 🔄 Context Management
@@ -56,7 +56,7 @@ The Core Framework Systems implement a **LangGraph-Native, Type-Safe Architectur
       :class-header: bg-success text-white
       :class-body: text-center
       :shadow: md
-            
+
       Pydantic-based context objects with automatic serialization and intelligent caching.
 
 .. grid:: 1 1 2 2
@@ -68,7 +68,7 @@ The Core Framework Systems implement a **LangGraph-Native, Type-Safe Architectur
       :class-header: bg-info text-white
       :class-body: text-center
       :shadow: md
-            
+
       Convention-based loading with lazy initialization and type-safe component access.
 
    .. grid-item-card:: 💬 Prompt Customization
@@ -116,15 +116,15 @@ These systems work together to provide a cohesive development experience:
 
          # State provides the foundation
          state = StateManager.create_fresh_state(user_input)
-         
+
          # Context enables data sharing
          context = ContextManager(state)
          pv_data = context.get_context('PV_ADDRESSES', 'beam_current')
-         
+
          # Registry provides component access
          registry = get_registry()
          capability = registry.get_capability('pv_value_retrieval')
-         
+
          # Message flow coordinates execution
          result = await capability.execute(state)
 
@@ -137,10 +137,10 @@ These systems work together to provide a cohesive development experience:
          # State: Only context persists across conversations
          capability_context_data: Dict[str, Dict[str, Dict[str, Any]]]  # Persists
          execution_step_results: Dict[str, Any]                        # Resets
-         
+
          # Context: Object caching and efficient serialization
          context = ContextManager(state)  # Cached object reconstruction
-         
+
          # Registry: Lazy loading and singleton patterns
          initialize_registry()  # One-time component discovery
          registry = get_registry()  # Singleton access
@@ -159,10 +159,10 @@ These systems work together to provide a cohesive development experience:
                  # Context access
                  context = ContextManager(state)
                  data = context.get_context('INPUT_DATA', 'key')
-                 
+
                  # Processing logic
                  result = process_data(data)
-                 
+
                  # Context storage
                  output = OutputData(results=result)
                  return StateManager.store_context(

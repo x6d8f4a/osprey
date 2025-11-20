@@ -18,7 +18,7 @@ git diff
 
 # 3. For each modified public function/class, update:
 #    - Docstrings (see DOCSTRINGS.md)
-#    - Inline comments (see COMMENTS.md) 
+#    - Inline comments (see COMMENTS.md)
 #    - API reference documentation
 #    - Examples in user guides
 #    - CHANGELOG.md
@@ -277,7 +277,7 @@ Follow this order to ensure completeness:
    # Rebuild API docs to see changes
    cd docs
    make clean html
-   
+
    # Check for warnings about missing documentation
    make html 2>&1 | grep -i warning
    ```
@@ -310,21 +310,21 @@ Follow this order to ensure completeness:
 8. **Update CHANGELOG.md**
    ```markdown
    ## [Unreleased]
-   
+
    ### Added
    - New capability: `DataAnalysisCapability` for automated data analysis
    - New parameter `enable_caching` in `RegistryManager.register_provider()`
-   
+
    ### Changed
    - `process_message()` now returns structured response dict instead of string
    - Configuration format updated to support nested capability settings
-   
+
    ### Fixed
    - Fixed race condition in concurrent capability execution
-   
+
    ### Deprecated
    - `old_process_function()` - Use `new_process_function()` instead
-   
+
    ### Removed
    - Support for deprecated `legacy_config_format`
    ```
@@ -401,14 +401,14 @@ For each modified function/class, ask these questions:
 # Public - REQUIRES documentation
 def process_data(input: str) -> dict:
     """Public API function."""
-    
+
 class DataProcessor:
     """Public class."""
-    
+
 # Private - usually NO documentation update needed
 def _internal_helper(data):
     """Internal implementation detail."""
-    
+
 class _PrivateProcessor:
     """Internal use only."""
 ```
@@ -447,7 +447,7 @@ def register_provider(provider_class, name, enable_caching=False):
     """Register a provider with optional caching."""
 ```
 
-**Action**: 
+**Action**:
 - Update docstring with new parameter
 - Update all examples using this function
 - Add to CHANGELOG under "Changed"
@@ -540,7 +540,7 @@ class MyCapability(BaseCapability):
     pass
 ```
 
-**Action**: 
+**Action**:
 - Update all examples showing decorator usage
 - Document new parameter in decorator documentation
 - Add to CHANGELOG
@@ -552,14 +552,14 @@ class MyCapability(BaseCapability):
 # BEFORE
 class MyCapability(BaseCapability):
     name = "my_capability"
-    
+
 # AFTER - New required attribute!
 class MyCapability(BaseCapability):
     name = "my_capability"
     version = "1.0.0"  # Now required
 ```
 
-**Action**: 
+**Action**:
 - Update class docstring
 - Update all examples
 - Update developer guides showing class structure
@@ -577,7 +577,7 @@ MAX_RETRIES = 5
 DEFAULT_TIMEOUT = 60
 ```
 
-**Action**: 
+**Action**:
 - Document in module docstring
 - Update configuration documentation
 - Check all examples that reference these values
@@ -595,7 +595,7 @@ async def execute(state):
     return await process(state)
 ```
 
-**Action**: 
+**Action**:
 - Update function docstring with async behavior
 - Update ALL examples to use `await`
 - Update developer guides about async patterns
@@ -617,7 +617,7 @@ class Config:
         return self._settings
 ```
 
-**Action**: 
+**Action**:
 - Update docstring
 - Search for all `config.settings` and change to `config.get_settings()`
 - Breaking change - add migration guide
@@ -633,7 +633,7 @@ raise ValueError("Invalid configuration")
 raise ValueError("Invalid configuration: missing required field 'api_key'")
 ```
 
-**Action**: 
+**Action**:
 - Update error handling examples if they check message content
 - Update troubleshooting guides with new error messages
 - Update integration tests that assert on error messages
@@ -648,7 +648,7 @@ logger.info("Processing started")
 logger.info(f"Processing started for capability: {capability_name}")
 ```
 
-**Action**: 
+**Action**:
 - Update any documentation that shows log output
 - Update troubleshooting guides
 - If log format changed, document new format
@@ -659,7 +659,7 @@ logger.info(f"Processing started for capability: {capability_name}")
 # Changes to docker-compose.yml.j2 or other templates
 ```
 
-**Action**: 
+**Action**:
 - Update deployment documentation
 - Update getting started guides that reference templates
 - Check if example projects need template updates
@@ -677,7 +677,7 @@ osprey deploy
 > [2025-01-15 10:30:00] Deploying application...
 ```
 
-**Action**: 
+**Action**:
 - Update CLI documentation with new output format
 - Update troubleshooting guides
 - Update any scripts that parse CLI output
@@ -701,7 +701,7 @@ state = {
 }
 ```
 
-**Action**: 
+**Action**:
 - Update state management documentation thoroughly
 - Update ALL examples accessing state
 - Update developer guides
@@ -717,7 +717,7 @@ __all__ = ["RegistryManager", "register_provider"]
 __all__ = ["RegistryManager"]  # register_provider removed
 ```
 
-**Action**: 
+**Action**:
 - Critical breaking change
 - Update all import examples
 - Remove from API reference
@@ -734,7 +734,7 @@ from osprey.utils.helpers import format_data
 from osprey.core.formatting import format_data
 ```
 
-**Action**: 
+**Action**:
 - Update all import examples throughout docs
 - Update API reference structure
 - Add backward compatibility imports if possible
@@ -751,7 +751,7 @@ manager.discover_providers()
 manager = RegistryManager()  # Now auto-discovers
 ```
 
-**Action**: 
+**Action**:
 - Update getting started tutorials
 - Update all initialization examples
 - Document new behavior in class docstring
@@ -1192,7 +1192,7 @@ A feature is **NOT complete** until:
 
 ### **Final Thoughts**
 
-Documentation is not an afterthought—it's an **essential part of professional software development**. 
+Documentation is not an afterthought—it's an **essential part of professional software development**.
 
 **For Users**: Good documentation means they can successfully use your software without asking for help.
 

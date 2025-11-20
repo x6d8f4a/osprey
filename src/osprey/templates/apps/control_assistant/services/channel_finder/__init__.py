@@ -40,22 +40,22 @@ __version__ = "2.0.0"
 __all__ = [
     # Service (high-level interface)
     'ChannelFinderService',
-    
+
     # Pipelines
     'InContextPipeline',
-    
+
     # Database classes
     'TemplateChannelDatabase',
     'LegacyChannelDatabase',
     'HierarchicalChannelDatabase',
-    
+
     # Data models
     'QuerySplitterOutput',
     'ChannelMatchOutput',
     'ChannelCorrectionOutput',
     'ChannelFinderResult',
     'ChannelInfo',
-    
+
     # Exceptions
     'ChannelFinderError',
     'PipelineModeError',

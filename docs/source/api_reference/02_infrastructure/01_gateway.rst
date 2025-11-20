@@ -20,19 +20,19 @@ Gateway Class
    :undoc-members:
    :show-inheritance:
    :special-members: __init__
-   
+
    .. rubric:: Key Methods
-   
+
    .. autosummary::
       :nosignatures:
-      
+
       ~Gateway.process_message
-      
+
    .. rubric:: Private Methods
-   
+
    .. autosummary::
       :nosignatures:
-      
+
       ~Gateway._handle_interrupt_flow
       ~Gateway._handle_new_message_flow
       ~Gateway._has_pending_interrupts

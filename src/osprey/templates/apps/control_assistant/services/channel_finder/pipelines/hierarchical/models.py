@@ -21,17 +21,17 @@ def create_selection_model(
 ) -> type[BaseModel]:
     """
     Dynamically create a Pydantic model for a specific hierarchy level.
-    
+
     This ensures the LLM can only select from valid options or indicate nothing was found.
-    
+
     Args:
         level_name: Name of the hierarchy level (e.g., "system", "family")
         available_options: List of valid option names at this level
         allow_multiple: Whether to allow multiple selections (default: True)
-        
+
     Returns:
         Dynamically created Pydantic model class
-        
+
     Example:
         >>> options = ["BeamDiagnostics", "VacuumSystem"]
         >>> Model = create_selection_model("system", options)
@@ -39,7 +39,7 @@ def create_selection_model(
     """
     # Add NOTHING_FOUND to the options
     all_options = available_options + [NOTHING_FOUND_MARKER]
-    
+
     # Create a dynamic Enum with all valid options
     # Enum values are the option names themselves
     enum_name = f"Option_{level_name}"
@@ -48,7 +48,7 @@ def create_selection_model(
         {opt: opt for opt in all_options},
         type=str
     )
-    
+
     # Create the model
     if allow_multiple:
         # Allow list of selections
@@ -58,7 +58,7 @@ def create_selection_model(
             f"Can be multiple for wildcards or ambiguous queries. "
             f"Use '{NOTHING_FOUND_MARKER}' if no relevant options found."
         )
-        
+
         return create_model(
             model_name,
             selections=(
@@ -73,7 +73,7 @@ def create_selection_model(
             f"Single selected option at the {level_name} level. "
             f"Use '{NOTHING_FOUND_MARKER}' if no relevant option found."
         )
-        
+
         return create_model(
             model_name,
             selection=(

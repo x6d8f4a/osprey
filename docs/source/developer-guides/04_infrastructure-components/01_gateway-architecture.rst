@@ -8,14 +8,14 @@ Gateway Architecture
    :icon: book
 
    **Key Concepts:**
-   
+
    - How Gateway centralizes all message processing logic
    - State lifecycle management and conversation handling
    - Slash command integration and approval workflow coordination
    - Interface implementation patterns
 
    **Prerequisites:** Understanding of :doc:`../03_core-framework-systems/01_state-management-architecture`
-   
+
    **Time Investment:** 15 minutes for complete understanding
 
 Core Concept
@@ -33,11 +33,11 @@ Architecture
 .. code-block:: python
 
    from osprey.infrastructure.gateway import Gateway
-   
+
    # Universal pattern for all interfaces
    gateway = Gateway()
    result = await gateway.process_message(user_input, graph, config)
-   
+
    # Execute based on result type
                    if result.resume_command:
        # Approval flow resumption
@@ -72,13 +72,13 @@ Implementation Patterns
        def __init__(self):
            self.gateway = Gateway()
            self.graph = create_graph()
-           
+
        async def handle_message(self, message: str) -> str:
            result = await self.gateway.process_message(message, self.graph, self.config)
-           
+
            if result.error:
                return f"Error: {result.error}"
-           
+
            # Execute and extract response
            execution_input = result.resume_command or result.agent_state
            response = await self.graph.ainvoke(execution_input, config=self.config)
@@ -90,11 +90,11 @@ Implementation Patterns
 
    async def handle_streaming(self, message: str):
        result = await self.gateway.process_message(message, self.graph, self.config)
-           
+
            if result.error:
            yield {"error": result.error}
                return
-           
+
        # Stream execution
            execution_input = result.resume_command or result.agent_state
            async for chunk in self.graph.astream(execution_input, config=self.config):
@@ -157,7 +157,7 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
          **Human Approval Workflow Example**
 
          .. code-block:: text
-         
+
             👤 You: /planning What's the weather in San Francisco?
             🔄 Processing: /planning What's the weather in San Francisco?
             ✅ Processed commands: ['planning']
@@ -165,17 +165,17 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
             🔄 Analyzing task requirements...
             🔄 Generating execution plan...
             🔄 Requesting plan approval...
-            
+
             ⚠️ **HUMAN APPROVAL REQUIRED** ⚠️
-            
+
             **Planned Steps (2 total):**
             **Step 1:** Retrieve current weather conditions for San Francisco including temperature, weather conditions, and timestamp (current_weather)
             **Step 2:** Present the current weather information for San Francisco to the user in a clear and readable format (respond)
-            
+
             **To proceed, respond with:**
             - **`yes`** to approve and execute the plan
             - **`no`** to cancel this operation
-            
+
             👤 You: yes
             🔄 Processing: yes
             🔄 Resuming from interrupt...
@@ -184,7 +184,7 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
             🔄 Weather retrieved: San Francisco - 18.0°C
             🔄 Executing respond... (10%)
             📊 Execution completed (execution_step_results: 2 records)
-            
+
             🤖 Here is the current weather in San Francisco:
             As of today, the weather in San Francisco is **18.0°C and Partly Cloudy**.
 
@@ -196,8 +196,8 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
          **Bypass Mode Examples for Faster Response Times**
 
          .. code-block:: text
-         
-            
+
+
             # Example 1: Task extraction bypass for context-rich queries
             👤 You: /task:off Analyze the correlation we discussed earlier
             🔄 Processing: /task:off Analyze the correlation we discussed earlier
@@ -206,7 +206,7 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
             🔄 Analyzing task requirements...
             🔄 Classification completed with 3 active capabilities
             🔄 Generating execution plan...
-            
+
             # Example 2: Full bypass for quick status queries
             👤 You: /task:off /caps:off What's the current beam status?
             🔄 Processing: /task:off /caps:off What's the current beam status?
@@ -214,14 +214,14 @@ Commands are parsed from user input and applied to ``agent_control`` state befor
             🔄 Bypassing task extraction - using full conversation context
             🔄 Bypassing capability selection - activating all capabilities
             🔄 Generating execution plan...
-            
+
 
 
          **Performance Comparison:**
-         
+
          - **Normal Mode**: Task Extraction → Classification → Orchestration → Execution (3 LLM calls)
          - **Task Bypass**: Classification → Orchestration → Execution (2 LLM call)
-         - **Caps Bypass**: Task Extraction → Orchestration → Execution (2 LLM call)  
+         - **Caps Bypass**: Task Extraction → Orchestration → Execution (2 LLM call)
          - **Full Bypass**: Orchestration → Execution (1 preprocessing LLM calls)
 
 Approval Workflow Integration
@@ -297,28 +297,28 @@ Complete CLI interface using Gateway:
            self.gateway = Gateway()
            self.graph = create_graph()
            self.config = {"configurable": {"thread_id": "cli_session"}}
-       
+
        async def conversation_loop(self):
            while True:
                user_input = input("You: ").strip()
                if user_input.lower() in ['exit', 'quit']:
                    break
-               
+
                # Process through Gateway
                result = await self.gateway.process_message(
                    user_input, self.graph, self.config
                )
-               
+
                if result.error:
                    print(f"Error: {result.error}")
                    continue
-               
+
                # Execute appropriate flow
                if result.resume_command:
                    response = await self.graph.ainvoke(result.resume_command, self.config)
                else:
                    response = await self.graph.ainvoke(result.agent_state, self.config)
-               
+
                print(f"Agent: {self._extract_message(response)}")
 
 Gateway Architecture provides the foundation for consistent, reliable message processing across all interfaces in the Osprey Framework.
@@ -327,9 +327,9 @@ Gateway Architecture provides the foundation for consistent, reliable message pr
 
    :doc:`../../api_reference/02_infrastructure/01_gateway`
        API reference for Gateway classes and functions
-   
+
    :doc:`../03_core-framework-systems/01_state-management-architecture`
        State lifecycle management and conversation handling
-   
+
    :doc:`../05_production-systems/01_human-approval-workflows`
        Advanced approval workflow integration patterns

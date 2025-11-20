@@ -9,7 +9,7 @@ Memory Storage
    :icon: book
 
    **Key Concepts:**
-   
+
    - Using :class:`MemoryStorageManager` and :func:`get_memory_storage_manager()` for memory operations
    - Implementing :class:`UserMemoryProvider` as a core data source provider
    - Working with :class:`MemoryContent` models for structured memory entries
@@ -17,7 +17,7 @@ Memory Storage
    - Managing persistent user context across sessions with file-based storage
 
    **Prerequisites:** Understanding of :doc:`02_data-source-integration` and basic JSON file operations
-   
+
    **Time Investment:** 15-20 minutes for complete understanding
 
 Overview
@@ -52,7 +52,7 @@ The system consists of three core components:
 **1. MemoryStorageManager**
    Simple file-based persistence backend with JSON storage
 
-**2. UserMemoryProvider**  
+**2. UserMemoryProvider**
    Data source integration for framework-wide memory access
 
 **3. MemoryContent**
@@ -86,7 +86,7 @@ Access memory through the storage manager:
 .. code-block:: python
 
    """Basic Memory Usage in Capabilities"""
-   
+
    from osprey.base import BaseCapability, capability_node
    from osprey.state import AgentState
    from osprey.context import ContextManager
@@ -94,32 +94,32 @@ Access memory through the storage manager:
    from datetime import datetime
    from typing import Dict, Any
    import logging
-   
+
    logger = logging.getLogger(__name__)
-   
+
    @capability_node
    class MemoryAwareCapability(BaseCapability):
        """Capability demonstrating basic memory integration."""
-       
+
        def __init__(self):
            self.memory_manager = get_memory_storage_manager()
-       
+
        async def execute(self, state: AgentState, context: ContextManager) -> Dict[str, Any]:
            """Execute with memory context."""
-           
+
            user_id = state.user_id
            if not user_id:
                logger.warning("No user ID available - memory operations unavailable")
                return {"success": True, "memory_available": False}
-           
+
            try:
                # Retrieve existing memories
                memories = self.memory_manager.get_all_memory_entries(user_id)
                logger.info(f"Retrieved {len(memories)} memories for user {user_id}")
-               
+
                # Process with memory context
                result = self._process_with_memory(memories, context)
-               
+
                # Store new memory if needed
                if result.get("new_insight"):
                    memory_entry = MemoryContent(
@@ -128,18 +128,18 @@ Access memory through the storage manager:
                    )
                    success = self.memory_manager.add_memory_entry(user_id, memory_entry)
                    logger.info(f"Stored new memory: {success}")
-               
+
                return result
-               
+
            except Exception as e:
                logger.error(f"Memory operation failed: {e}")
                return {"success": False, "error": str(e)}
-       
+
        def _process_with_memory(self, memories, context):
            """Process capability logic with memory context."""
            # Extract relevant information from stored memories
            memory_context = [m.content for m in memories]
-           
+
            return {
                "success": True,
                "memory_count": len(memories),
@@ -155,23 +155,23 @@ Memory is automatically available through the data source system:
 .. code-block:: python
 
    """Accessing Memory Through Data Sources"""
-   
+
    from osprey.data_management import get_data_source_manager, create_data_source_request, DataSourceRequester
-   
+
    async def get_user_memory_context(state):
        """Retrieve memory through data source system."""
-       
+
        # Create data source request
        requester = DataSourceRequester("capability", "example_capability")
        request = create_data_source_request(state, requester)
-       
+
        # Get data source manager and retrieve context
        data_manager = get_data_source_manager()
        result = await data_manager.retrieve_all_context(request, timeout_seconds=10.0)
-       
+
        # Extract memory context
        memory_context = result.context_data.get("core_user_memory")
-       
+
        if memory_context:
            user_memories = memory_context.data
            entry_count = memory_context.metadata.get("entry_count", 0)
@@ -191,13 +191,13 @@ MemoryStorageManager
 
    class MemoryStorageManager:
        """Simple file-based memory manager."""
-       
+
        def get_user_memory(self, user_id: str) -> str:
            """Get formatted memory string for user."""
-       
+
        def get_all_memory_entries(self, user_id: str) -> List[MemoryContent]:
            """Get all memory entries as MemoryContent objects."""
-       
+
        def add_memory_entry(self, user_id: str, memory_content: MemoryContent) -> bool:
            """Add new memory entry for user."""
 
@@ -210,7 +210,7 @@ MemoryContent Model
        """Memory entry with timestamp and content."""
        timestamp: datetime
        content: str
-       
+
        def format_for_llm(self) -> str:
            """Format as '[YYYY-MM-DD HH:MM] content'"""
 
@@ -230,34 +230,34 @@ Testing Memory Integration
 .. code-block:: python
 
    """Test Memory Storage Integration"""
-   
+
    from osprey.services.memory_storage import get_memory_storage_manager, MemoryContent
    from datetime import datetime
-   
+
    async def test_memory_operations():
        """Test basic memory operations."""
-       
+
        manager = get_memory_storage_manager()
        test_user_id = "test_user_123"
-       
+
        # Test memory addition
        test_memory = MemoryContent(
            timestamp=datetime.now(),
            content="Test memory entry"
        )
-       
+
        success = manager.add_memory_entry(test_user_id, test_memory)
        assert success, "Memory addition should succeed"
-       
+
        # Test memory retrieval
        memories = manager.get_all_memory_entries(test_user_id)
        assert len(memories) > 0, "Should retrieve stored memories"
        assert any(m.content == test_memory.content for m in memories), "Should find test memory"
-       
+
        # Test formatted output
        formatted = manager.get_user_memory(test_user_id)
        assert test_memory.content in formatted, "Formatted memory should contain test content"
-       
+
        print("✅ Memory storage tests passed")
 
 Configuration Options
@@ -302,12 +302,12 @@ Troubleshooting
    from osprey.services.memory_storage import get_memory_storage_manager
    manager = get_memory_storage_manager()
    print(f"Memory manager available: {manager is not None}")
-   
+
    # Check memory directory
    from osprey.utils.config import get_agent_dir
    memory_dir = get_agent_dir('user_memory_dir')
    print(f"Memory directory: {memory_dir}")
-   
+
    # Test data source registration
    from osprey.data_management import get_data_source_manager
    data_manager = get_data_source_manager()

@@ -43,9 +43,9 @@ def get_version_from_git():
 
         # Fallback to git describe for local builds
         result = subprocess.run(
-            ['git', 'describe', '--tags', '--abbrev=0'], 
-            capture_output=True, 
-            text=True, 
+            ['git', 'describe', '--tags', '--abbrev=0'],
+            capture_output=True,
+            text=True,
             cwd=project_root
         )
         if result.returncode == 0:
@@ -114,7 +114,7 @@ html_theme_options = {
 # Repository information for edit buttons
 html_context = {
     "github_user": "als-apg",
-    "github_repo": "osprey", 
+    "github_repo": "osprey",
     "github_version": "main",
     "doc_path": "docs/source",
 }
@@ -156,7 +156,7 @@ html_js_files = ["js/execution_plan_viewer.js"]
 autodoc_mock_imports = [
     # Heavy API client libraries - interfaces documented, implementations mocked
     'openai',
-    'anthropic', 
+    'anthropic',
     'google',
     'google.generativeai',
     'google.genai',
@@ -165,7 +165,7 @@ autodoc_mock_imports = [
     'pydantic_ai',
     'pydantic_ai.models',
     'pydantic_ai.models.openai',
-    'pydantic_ai.models.gemini', 
+    'pydantic_ai.models.gemini',
     'pydantic_ai.models.anthropic',
     'pydantic_ai.providers',
     'pydantic_ai.providers.openai',
@@ -174,14 +174,14 @@ autodoc_mock_imports = [
 
     # Data science stack - too heavy for docs CI, interfaces documented
     'pandas',
-    'numpy', 
+    'numpy',
     'matplotlib',
     'plotly',
     'seaborn',
     'scikit-learn',
     'scipy',
 
-    # Database clients - connection logic mocked, interfaces documented  
+    # Database clients - connection logic mocked, interfaces documented
     'pymongo',
     'neo4j',
     'qdrant_client',
@@ -192,7 +192,7 @@ autodoc_mock_imports = [
 
     # Specialized infrastructure - interfaces documented, implementations mocked
     'pydantic_ai',
-    'langgraph', 
+    'langgraph',
     'langchain',
 
     # Container and deployment tools - not needed for documentation
@@ -203,14 +203,14 @@ autodoc_mock_imports = [
 
     # EPICS control system - specialized scientific software
     'epics',
-    'pyepics', 
+    'pyepics',
     'p4p',
     'pvaccess',
 
     # Development tools - not needed for static documentation
     'pytest',
     'jupyter',
-    'notebook', 
+    'notebook',
     'ipykernel',
 
     # Network and async libraries - interfaces documented, implementations mocked
@@ -226,7 +226,7 @@ autodoc_mock_imports = [
 
     # Framework modules that fail due to registry/config dependencies
     'framework.infrastructure.task_extraction_node',
-    'framework.infrastructure.orchestration_node', 
+    'framework.infrastructure.orchestration_node',
     'framework.infrastructure.error_node.ErrorType',
     'framework.services.python_executor.PythonExecutorConfig',
 

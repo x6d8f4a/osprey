@@ -30,7 +30,7 @@ This document provides the **definitive workflow** for creating releases that en
 3. **Verify All Tests Pass**
    - **9 failed tests = STOP**: Do not proceed with release
    - **All tests pass = PROCEED**: Continue to Step 1
-   
+
 4. **Fix Any Failing Tests**
    - If tests fail, fix issues first
    - Re-run tests until all pass
@@ -124,7 +124,7 @@ def get_version_from_git():
     github_ref = os.environ.get('GITHUB_REF', '')
     if github_ref.startswith('refs/tags/v'):
         return github_ref.replace('refs/tags/v', '')
-    
+
     # 2. Local builds: Use git describe
     result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], ...)
     return result.stdout.strip().lstrip('v')

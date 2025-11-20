@@ -11,7 +11,7 @@ Create a production-ready capability using the Osprey Framework's core patterns.
    :icon: book
 
    **Key Concepts:**
-   
+
    - Implement BaseCapability with @capability_node decorator
    - Work with AgentState and context storage using StateManager utilities
    - Register capabilities for framework discovery
@@ -19,7 +19,7 @@ Create a production-ready capability using the Osprey Framework's core patterns.
    - Create CapabilityContext classes for data exchange
 
    **Prerequisites:** Python environment with Osprey Framework installed
-   
+
    **Time Investment:** 30-45 minutes for complete implementation
 
 Core Concepts
@@ -43,24 +43,24 @@ Step 1: Create Context Class
    from typing import ClassVar
    from pydantic import Field
    from osprey.context.base import CapabilityContext
-   
+
    class ProcessedDataContext(CapabilityContext):
        """Context for processed user query data."""
-       
+
        CONTEXT_TYPE: ClassVar[str] = "PROCESSED_DATA"
        CONTEXT_CATEGORY: ClassVar[str] = "ANALYSIS_RESULTS"
-       
+
        query: str = Field(..., description="Original user query")
        word_count: int = Field(..., description="Number of words")
        contains_numbers: bool = Field(..., description="Whether query contains numbers")
-       
+
        def get_access_details(self, key: str) -> dict:
            return {
                "summary": f"Processed data for query: '{self.query}'",
                "word_count": self.word_count,
                "key": key
            }
-       
+
        def get_summary(self, key: str) -> dict:
            return {
                "title": "Query Analysis Results",
@@ -80,50 +80,50 @@ Step 2: Implement Capability
    from osprey.utils.logger import get_logger
    from osprey.utils.streaming import get_streamer
    from applications.my_app.context_classes import ProcessedDataContext
-   
+
    logger = get_logger("data_processor")
 
    @capability_node
    class DataProcessorCapability(BaseCapability):
        """Process and analyze user data requests."""
-       
+
        name = "data_processor"
        description = "Process and analyze user data requests"
        provides = ["PROCESSED_DATA"]
        requires = []
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            """Execute the capability's core business logic."""
            current_task = StateManager.get_current_task(state)
            streamer = get_streamer("my_app", "data_processor")
-           
+
            try:
                streamer.status("Processing your request...")
-               
+
                # Process the user query
                user_query = current_task.lower() if current_task else ""
                processed_data = {
                    "word_count": len(user_query.split()) if user_query else 0,
                    "contains_numbers": any(char.isdigit() for char in user_query),
                }
-               
+
                # Create structured context
                context = ProcessedDataContext(
                    query=current_task,
                    word_count=processed_data["word_count"],
                    contains_numbers=processed_data["contains_numbers"]
                )
-               
+
                # Store context and return state updates
                context_key = f"data_processing_{datetime.now().timestamp()}"
                context_updates = StateManager.store_context(
                    state, "PROCESSED_DATA", context_key, context
                )
-               
+
                streamer.status("Processing completed!")
                return context_updates
-               
+
            except Exception as e:
                logger.error(f"Processing error: {e}")
                raise
@@ -135,17 +135,17 @@ Step 3: Register Your Capability
    :caption: applications/my_app/registry.py
 
    from osprey.registry import (
-       RegistryConfigProvider, RegistryConfig, 
+       RegistryConfigProvider, RegistryConfig,
        CapabilityRegistration, ContextClassRegistration
    )
-   
+
    class MyAppRegistryProvider(RegistryConfigProvider):
        def get_registry_config(self) -> RegistryConfig:
            return RegistryConfig(
                capabilities=[
                    CapabilityRegistration(
                        name="data_processor",
-                       module_path="applications.my_app.capabilities.data_processor", 
+                       module_path="applications.my_app.capabilities.data_processor",
                        class_name="DataProcessorCapability",
                        description="Process and analyze user data requests",
                        provides=["PROCESSED_DATA"],
@@ -171,18 +171,18 @@ Step 4: Test Your Capability
    import asyncio
    from osprey.state import StateManager
    from applications.my_app.capabilities.data_processor import DataProcessorCapability
-   
+
    async def test_capability():
        # Create test state
        state = StateManager.create_fresh_state("Hello world, this has 123 numbers!")
-       
+
        # Execute capability
        capability = DataProcessorCapability()
        result = await capability.execute(state)
-       
+
        print("Capability result:", result)
        print("Context data keys:", list(result.get("capability_context_data", {}).keys()))
-   
+
    if __name__ == "__main__":
         asyncio.run(test_capability())
 
@@ -199,14 +199,14 @@ Add custom error classification for domain-specific retry logic:
    @staticmethod
    def classify_error(exc: Exception, context: dict) -> ErrorClassification:
        from osprey.base.errors import ErrorClassification, ErrorSeverity
-       
+
        if isinstance(exc, (ConnectionError, TimeoutError)):
            return ErrorClassification(
                severity=ErrorSeverity.RETRIABLE,
                user_message="Temporary service issue, retrying...",
                metadata={"technical_details": str(exc)}
            )
-       
+
        return ErrorClassification(
            severity=ErrorSeverity.CRITICAL,
            user_message=f"Processing error: {exc}",
@@ -223,16 +223,16 @@ Provide progress feedback during operations:
    @staticmethod
    async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
        streamer = get_streamer("my_app", "my_capability")
-       
+
        streamer.status("Phase 1: Extracting data...")
        raw_data = await extract_data(state)
-       
+
        streamer.status("Phase 2: Processing data...")
        processed_data = await process_data(raw_data)
-       
+
        streamer.status("Phase 3: Storing results...")
        context = create_context(processed_data)
-       
+
        return StateManager.store_context(state, "MY_DATA", "my_key", context)
 
 Common Issues
@@ -246,7 +246,7 @@ Ensure exact name matching in registration:
 
    # In capability class:
    name = "data_processor"
-   
+
    # In registry:
    CapabilityRegistration(name="data_processor", ...)  # Must match exactly
 
@@ -269,7 +269,7 @@ Use only JSON-compatible types:
    # ✅ Correct
    timestamp: str  # Use ISO string
    data: Dict[str, Any]
-   
+
    # ❌ Wrong
    timestamp: datetime  # Not JSON serializable
 

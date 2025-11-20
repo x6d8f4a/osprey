@@ -30,9 +30,9 @@
 
 <!-- List the key changes in this PR -->
 
-- 
-- 
-- 
+-
+-
+-
 
 ## Breaking Changes
 
@@ -54,8 +54,8 @@
 ### Test Cases
 <!-- List specific test cases or scenarios covered -->
 
-- 
-- 
+-
+-
 
 ## Documentation
 
@@ -132,7 +132,7 @@
 
 ---
 
-<!-- 
+<!--
 PR Guidelines:
 - Keep PRs focused on a single concern
 - Link to related issues

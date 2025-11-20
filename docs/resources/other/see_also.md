@@ -11,10 +11,10 @@ The CCLI (Cross-Component Link Index) source section provides navigation links t
 
    :doc:`relative/path/to/document`
        Brief description of what this link provides
-   
+
    :doc:`another/relative/path`
        Description of the second reference
-   
+
    :doc:`third/reference/path`
        Description explaining the relevance
 ```
@@ -47,10 +47,10 @@ From the attached example:
 
    :doc:`../../api_reference/01_core_framework/05_prompt_management`
        API reference for prompt system classes and functions
-   
+
    :doc:`03_registry-and-discovery`
        Component registration and discovery patterns
-   
+
    :doc:`../01_understanding-the-framework/02_convention-over-configuration`
        Framework conventions and patterns
 ```
@@ -62,7 +62,7 @@ From the attached example:
 
 ### Path Navigation
 - `../../` moves up two directory levels
-- `../` moves up one directory level  
+- `../` moves up one directory level
 - Relative paths from current document location
 
 ## Best Practices

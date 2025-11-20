@@ -20,7 +20,7 @@ Core Models
 Orchestration uses models defined in the core framework:
 
 .. seealso::
-   
+
    :class:`~osprey.base.ExecutionPlan`
        Structured execution plan model
 
@@ -54,12 +54,12 @@ Automatically registered as::
     )
 
 .. seealso::
-   
+
    :doc:`../01_core_framework/05_prompt_management`
        Prompt customization system
-   
+
    :doc:`../03_production_systems/01_human-approval`
        Complete approval system architecture
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/04_orchestrator-planning`
        Implementation details and usage patterns

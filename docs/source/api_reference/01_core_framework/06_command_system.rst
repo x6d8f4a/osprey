@@ -70,16 +70,16 @@ Basic Command Execution
 .. code-block:: python
 
    from osprey.commands import get_command_registry, CommandContext
-   
+
    # Get the global registry
    registry = get_command_registry()
-   
+
    # Create execution context
    context = CommandContext(
        interface_type="cli",
        console=console
    )
-   
+
    # Execute a command
    result = await registry.execute("/help", context)
 
@@ -89,11 +89,11 @@ Custom Command Registration
 .. code-block:: python
 
    from osprey.commands import Command, CommandCategory, CommandResult
-   
+
    def my_handler(args: str, context: CommandContext) -> CommandResult:
        context.console.print(f"Custom command executed with args: {args}")
        return CommandResult.HANDLED
-   
+
    # Register custom command
    registry = get_command_registry()
    registry.register(Command(
@@ -115,14 +115,14 @@ Interface Integration
        cli_instance=cli,
        console=rich_console
    )
-   
-   # OpenWebUI interface integration  
+
+   # OpenWebUI interface integration
    context = CommandContext(
        interface_type="openwebui",
        user_id="user123",
        session_id="session456"
    )
-   
+
    # Execute commands with appropriate context
    result = await registry.execute(user_input, context)
 
@@ -130,9 +130,9 @@ Interface Integration
 
    :doc:`../../developer-guides/02_quick-start-patterns/00_cli-reference`
        CLI usage and available slash commands
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/01_gateway-architecture`
        Gateway integration with command system
-   
+
    :doc:`../../developer-guides/03_core-framework-systems/01_state-management-architecture`
        Agent state management for command execution

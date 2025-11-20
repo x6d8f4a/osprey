@@ -40,7 +40,7 @@ FRAMEWORK'S BUILT-IN CAPABILITIES
 When you use extend_framework_registry(), you automatically get these capabilities:
 
 1. routing           - Routes tasks to appropriate capabilities
-2. memory            - Short and long-term memory management  
+2. memory            - Short and long-term memory management
 3. python            - Execute Python code for analysis
 4. time_range_parser - Parse time expressions ("last week", etc.)
 5. classifier        - Classify tasks to determine required capabilities
@@ -71,64 +71,64 @@ from osprey.registry import (
 
 class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
     """Registry provider for {{ app_display_name }} application.
-    
+
     This class is responsible for configuring your application's registry.
     The framework automatically discovers this class and uses it to:
     - Load your custom capabilities
     - Register your context classes
     - Configure data sources
     - Set up the complete component ecosystem
-    
+
     ────────────────────────────────────────────────────────────────────────────
     HOW IT WORKS:
     ────────────────────────────────────────────────────────────────────────────
-    
+
     1. Framework calls get_registry_config() at startup
     2. This method returns a complete RegistryConfig
     3. extend_framework_registry() merges framework + your components
     4. Framework loads and initializes all registered components
     5. Your capabilities are now available to the LLM orchestrator!
-    
+
     ────────────────────────────────────────────────────────────────────────────
     TYPICAL USAGE PATTERNS:
     ────────────────────────────────────────────────────────────────────────────
-    
+
     Pattern A: Simple Addition
       - Add your capabilities
       - Add your context classes
       - Use all framework capabilities
       → Most common pattern (see below)
-    
+
     Pattern B: Exclude Framework Components
       - Add your capabilities
       - Exclude specific framework capabilities you don't need
       - Example: exclude_capabilities=["python"] if you don't want code execution
       → Good for security-sensitive or restricted environments
-    
-    Pattern C: Override Framework Components  
+
+    Pattern C: Override Framework Components
       - Replace framework capability with custom implementation
       - Keep same name but provide your class
       - Example: Custom memory implementation
       → Advanced pattern for specialized needs
     """
-    
+
     def get_registry_config(self) -> RegistryConfig:
         """Get application registry configuration.
-        
+
         This method is called by the framework to build the complete registry.
         It uses extend_framework_registry() to combine framework defaults
         with your application-specific components.
-        
+
         Returns:
             RegistryConfig: Complete registry with all components
         """
-        
+
         # ────────────────────────────────────────────────────────────────────
         # REGISTRY CONFIGURATION
         # ────────────────────────────────────────────────────────────────────
-        
+
         return extend_framework_registry(
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 1. REGISTER YOUR CAPABILITIES                              │
             # └────────────────────────────────────────────────────────────┘
@@ -145,7 +145,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - Import and initialize your capability
             # - Plan execution sequences (based on provides/requires)
             # - Guide the LLM on when to use this capability
-            
+
             capabilities=[
                 # ────────────────────────────────────────────────────────
                 # EXAMPLE CAPABILITY REGISTRATION
@@ -160,7 +160,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 #     provides=["MY_API_RESPONSE"],
                 #     requires=[]
                 # ),
-                
+
                 # ────────────────────────────────────────────────────────
                 # CAPABILITY WITH DEPENDENCIES
                 # ────────────────────────────────────────────────────────
@@ -174,14 +174,14 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 #     provides=["ANALYSIS_RESULTS"],
                 #     requires=["MY_API_RESPONSE"]  # Needs output from above
                 # ),
-                
+
                 # ────────────────────────────────────────────────────────
                 # ADD YOUR CAPABILITIES HERE
                 # ────────────────────────────────────────────────────────
                 # TODO: Register your capabilities
-                
+
             ],
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 2. REGISTER YOUR CONTEXT CLASSES                           │
             # └────────────────────────────────────────────────────────────┘
@@ -195,7 +195,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - Serialize/deserialize context objects
             # - Validate context types in capability provides/requires
             # - Generate access patterns for LLM code generation
-            
+
             context_classes=[
                 # ────────────────────────────────────────────────────────
                 # EXAMPLE CONTEXT CLASS REGISTRATION
@@ -213,14 +213,14 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 #     module_path="{{ package_name }}.context_classes",
                 #     class_name="AnalysisResultsContext"
                 # ),
-                
+
                 # ────────────────────────────────────────────────────────
                 # ADD YOUR CONTEXT CLASSES HERE
                 # ────────────────────────────────────────────────────────
                 # TODO: Register your context classes
-                
+
             ],
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 3. REGISTER DATA SOURCES (Optional)                        │
             # └────────────────────────────────────────────────────────────┘
@@ -237,7 +237,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - module_path: Where to find the data source class
             # - class_name: Name of the data source class
             # - description: What information it provides
-            
+
             data_sources=[
                 # ────────────────────────────────────────────────────────
                 # EXAMPLE DATA SOURCE REGISTRATION
@@ -250,14 +250,14 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 #     class_name="MyKnowledgeProvider",
                 #     description="Provides domain-specific knowledge and documentation"
                 # ),
-                
+
                 # ────────────────────────────────────────────────────────
                 # ADD YOUR DATA SOURCES HERE
                 # ────────────────────────────────────────────────────────
                 # TODO: Register your data sources (if any)
-                
+
             ],
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 4. CUSTOM PROMPT PROVIDERS (Optional, Advanced)            │
             # └────────────────────────────────────────────────────────────┘
@@ -269,7 +269,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - Specialized instructions for LLM
             #
             # Most applications don't need this - only for advanced customization!
-            
+
             framework_prompt_providers=[
                 # ────────────────────────────────────────────────────────
                 # EXAMPLE PROMPT PROVIDER REGISTRATION
@@ -284,14 +284,14 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 #         "response_generation": "CustomResponsePromptBuilder"
                 #     }
                 # ),
-                
+
                 # ────────────────────────────────────────────────────────
                 # ADD CUSTOM PROMPT PROVIDERS HERE
                 # ────────────────────────────────────────────────────────
                 # TODO: Register custom prompt providers (rarely needed)
-                
+
             ],
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 5. EXCLUDE FRAMEWORK CAPABILITIES (Optional)               │
             # └────────────────────────────────────────────────────────────┘
@@ -304,12 +304,12 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - "user_approval": If running without user interaction
             #
             # Most applications should NOT exclude anything!
-            
+
             # exclude_capabilities=[
             #     # Example: Don't include Python execution capability
             #     # "python",
             # ],
-            
+
             # ┌────────────────────────────────────────────────────────────┐
             # │ 6. OVERRIDE FRAMEWORK CAPABILITIES (Optional, Advanced)    │
             # └────────────────────────────────────────────────────────────┘
@@ -323,7 +323,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
             # - Domain-specific Python execution sandbox
             #
             # This is ADVANCED - only use if you really need it!
-            
+
             # override_capabilities=[
             #     # Example: Replace framework memory with custom version
             #     # CapabilityRegistration(
@@ -343,7 +343,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # TYPICAL REGISTRATION SEQUENCE:
-# 
+#
 # 1. Create capability in capabilities/my_capability.py
 # 2. Create context class in context_classes.py
 # 3. Register both in this file (registry.py)
@@ -393,7 +393,7 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
 # ERROR: "Context type X not found in registry"
 # → Add ContextClassRegistration for that context type
 #
-# ERROR: "Capability X not found"  
+# ERROR: "Capability X not found"
 # → Add CapabilityRegistration for that capability
 #
 # ERROR: "Module {{ package_name }}.capabilities.X not found"

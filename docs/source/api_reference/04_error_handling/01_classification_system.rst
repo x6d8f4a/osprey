@@ -35,7 +35,7 @@ ErrorSeverity
           return ErrorClassification(severity=ErrorSeverity.RETRIABLE, ...)
       elif isinstance(exc, AuthenticationError):
           return ErrorClassification(
-              severity=ErrorSeverity.CRITICAL, 
+              severity=ErrorSeverity.CRITICAL,
               metadata={"safety_abort_reason": "Authentication failed"}
           )
       elif isinstance(exc, CapabilityMismatchError):
@@ -163,9 +163,9 @@ Retry Policy Configuration
    Retry policy configuration for failure recovery strategies.
 
    **Default Policy:**
-   
+
    .. code-block:: python
-   
+
       {
           "max_attempts": 3,        # Total attempts including initial
           "delay_seconds": 0.5,     # Base delay before first retry
@@ -177,9 +177,9 @@ Retry Policy Configuration
    Conservative retry policy for infrastructure operations.
 
    **Infrastructure Policy:**
-   
+
    .. code-block:: python
-   
+
       {
           "max_attempts": 2,        # Fast failure for infrastructure
           "delay_seconds": 0.2,     # Quick retry attempt
@@ -199,7 +199,7 @@ Basic Error Handling
    except Exception as exc:
        # Classify error for recovery strategy
        classification = capability.classify_error(exc, context)
-       
+
        if classification.severity == ErrorSeverity.RETRIABLE:
            # Handle with retry policy
            policy = capability.get_retry_policy()
@@ -268,6 +268,6 @@ The ``metadata`` field is the **primary mechanism** for providing structured err
 
    :doc:`02_exception_reference`
        Complete catalog of Osprey exceptions
-   
+
    :doc:`03_recovery_coordination`
        Router coordination and recovery strategies

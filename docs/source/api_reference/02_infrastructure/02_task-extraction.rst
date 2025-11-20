@@ -25,7 +25,7 @@ Core Models
 Task extraction uses models defined in the core framework:
 
 .. seealso::
-   
+
    :class:`~osprey.prompts.defaults.task_extraction.ExtractedTask`
        Structured output model for extracted tasks
 
@@ -45,12 +45,12 @@ Automatically registered as::
     )
 
 .. seealso::
-   
+
    :doc:`../01_core_framework/05_prompt_management`
        Prompt customization system
-   
+
    :doc:`../01_core_framework/03_registry_system`
        Component registration system
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/02_task-extraction-system`
        Implementation details and usage patterns

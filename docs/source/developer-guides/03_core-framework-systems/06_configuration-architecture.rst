@@ -17,7 +17,7 @@ Configuration Architecture
    - Configuration organization and best practices
 
    **Prerequisites:** Basic `YAML <https://yaml.org>`__ knowledge
-   
+
    **Time Investment:** 10 minutes
 
 Self-Contained Configuration
@@ -56,12 +56,12 @@ Project Configuration
    # ============================================================
    # My Project Configuration
    # ============================================================
-   
+
    project_name: "my-agent"
    build_dir: ./build
    project_root: /path/to/my-project
    registry_path: ./src/my_app/registry.py
-   
+
    # Model configuration - 8 specialized models
    models:
      orchestrator:
@@ -71,13 +71,13 @@ Project Configuration
        provider: cborg
        model_id: google/gemini-flash
      # ... other models ...
-   
+
    # Service deployment control
    deployed_services:
      - jupyter
      - open_webui
      - pipelines
-   
+
    # Safety controls
    approval:
      global_mode: "selective"
@@ -85,7 +85,7 @@ Project Configuration
        python_execution:
          enabled: true
          mode: "epics_writes"
-   
+
    execution_control:
      epics:
        writes_enabled: false
@@ -93,14 +93,14 @@ Project Configuration
        max_step_retries: 3
        graph_recursion_limit: 100
        max_concurrent_classifications: 5
-   
+
    # API providers
    api:
      providers:
        cborg:
          api_key: ${CBORG_API_KEY}
          base_url: https://api.cborg.lbl.gov/v1
-   
+
    # And many more sections...
 
 Configuration Template
@@ -166,11 +166,11 @@ Use ``${VAR_NAME}`` syntax with optional defaults:
 
    # Required variable (error if undefined)
    project_root: ${PROJECT_ROOT}
-   
+
    # With default value
    system:
      timezone: ${TZ:-America/Los_Angeles}
-   
+
    # API keys (always use env vars)
    api:
      providers:
@@ -212,13 +212,13 @@ All configuration utility functions accept an optional ``config_path`` parameter
 .. code-block:: python
 
    from osprey.utils.config import get_model_config, get_registry_path
-   
+
    # Load config from specific project
    model_cfg = get_model_config(
-       "orchestrator", 
+       "orchestrator",
        config_path="/path/to/project1/config.yml"
    )
-   
+
    # Get registry path from another project
    registry_path = get_registry_path(
        config_path="/path/to/project2/config.yml"
@@ -232,7 +232,7 @@ When using explicit config paths, all relative paths in the configuration (inclu
 .. code-block:: python
 
    # config.yml contains: registry_path: ./src/my_app/registry.py
-   
+
    # Even if we're in /tmp, registry is resolved from config location
    registry_path = get_registry_path(config_path="~/project/config.yml")
    # Returns: ~/project/src/my_app/registry.py (not /tmp/src/...)
@@ -291,9 +291,9 @@ View complete working configurations in the ``_legacy_applications/`` directory 
 
    :doc:`../../api_reference/01_core_framework/04_configuration_system`
        Complete reference for all configuration sections
-   
+
    :doc:`03_registry-and-discovery`
        How configuration integrates with the registry
-   
+
    :doc:`../05_production-systems/05_container-and-deployment`
        Container deployment patterns

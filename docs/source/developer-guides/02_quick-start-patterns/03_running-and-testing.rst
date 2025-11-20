@@ -11,7 +11,7 @@ Learn essential patterns for running, testing, and debugging capabilities within
    :icon: book
 
    **Key Concepts:**
-   
+
    - Using the Gateway as single entry point for message processing
    - Setting up and running the CLI interface for interactive testing
    - Understanding the complete initialization and execution flow
@@ -19,13 +19,13 @@ Learn essential patterns for running, testing, and debugging capabilities within
    - Programmatic testing with Gateway architecture
 
    **Prerequisites:** Basic capability development knowledge
-   
+
    **Time Investment:** 15-20 minutes for testing workflow understanding
 
 Gateway Architecture
 ====================
 
-The Gateway serves as the single entry point for all message processing. It operates outside the compiled LangGraph to handle meta-operations like state creation, approval detection, and slash command processing before execution begins. 
+The Gateway serves as the single entry point for all message processing. It operates outside the compiled LangGraph to handle meta-operations like state creation, approval detection, and slash command processing before execution begins.
 
 Basic Usage Pattern
 -------------------
@@ -36,7 +36,7 @@ Basic Usage Pattern
    from osprey.graph import create_graph
    from osprey.registry import initialize_registry, get_registry
    from langgraph.checkpoint.memory import MemorySaver
-   
+
    async def process_message_example():
        # Initialize framework components
        initialize_registry()
@@ -44,7 +44,7 @@ Basic Usage Pattern
        checkpointer = MemorySaver()
        graph = create_graph(registry, checkpointer=checkpointer)
        gateway = Gateway()
-       
+
        # Create session configuration
        config = {
            "configurable": {
@@ -53,21 +53,21 @@ Basic Usage Pattern
            },
            "recursion_limit": 50
        }
-       
+
        # Process message through Gateway
        user_input = "Hello, can you help me analyze some data?"
        result: GatewayResult = await gateway.process_message(
            user_input, graph, config
        )
-       
+
        # Handle Gateway result
        if result.error:
            print(f"Error: {result.error}")
            return
-       
+
        if result.slash_commands_processed:
            print(f"Processed commands: {result.slash_commands_processed}")
-       
+
        # Execute the result
        if result.resume_command:
            final_state = await graph.ainvoke(result.resume_command, config=config)
@@ -76,7 +76,7 @@ Basic Usage Pattern
        else:
            print("No action required")
            return
-       
+
        # Access results
        print(f"Response: {final_state.get('ui_final_response', 'No response')}")
        print(f"Context: {list(final_state.get('capability_context_data', {}).keys())}")
@@ -88,18 +88,18 @@ The Gateway returns structured results:
 
 .. code-block:: python
 
-   @dataclass 
+   @dataclass
    class GatewayResult:
        # For normal conversation flow
        agent_state: Optional[Dict[str, Any]] = None
-       
-       # For interrupt/approval flow  
+
+       # For interrupt/approval flow
        resume_command: Optional[Command] = None
-       
+
        # Processing metadata
        slash_commands_processed: List[str] = None
        approval_detected: bool = False
-       
+
        # Error handling
        error: Optional[str] = None
 
@@ -107,7 +107,7 @@ The Gateway returns structured results:
        if result.error:
            print(f"❌ Error: {result.error}")
            return None
-       
+
        if result.resume_command:
            return graph.ainvoke(result.resume_command, config=config)
        elif result.agent_state:
@@ -179,16 +179,16 @@ Create simple test scripts using the Gateway pattern:
    import asyncio
    import sys
    import os
-   
+
    # Add osprey to path
    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-   
+
    from osprey.registry import initialize_registry, get_registry
    from osprey.graph import create_graph
    from osprey.infrastructure.gateway import Gateway
    from langgraph.checkpoint.memory import MemorySaver
    from osprey.utils.config import get_full_configuration
-   
+
    async def test_capability():
        # Initialize framework
        initialize_registry()
@@ -196,7 +196,7 @@ Create simple test scripts using the Gateway pattern:
        checkpointer = MemorySaver()
        graph = create_graph(registry, checkpointer=checkpointer)
        gateway = Gateway()
-       
+
        # Create test configuration
        config = {
            "configurable": get_full_configuration(),
@@ -206,23 +206,23 @@ Create simple test scripts using the Gateway pattern:
            "thread_id": "test_thread",
            "user_id": "test_user"
        })
-       
+
        # Test message processing
        user_input = "What's the current weather?"
        result = await gateway.process_message(user_input, graph, config)
-       
+
        if result.error:
            print(f"❌ Error: {result.error}")
            return False
-       
+
        # Execute the agent
        if result.agent_state:
            final_state = await graph.ainvoke(result.agent_state, config=config)
            print(f"✅ Response: {final_state.get('ui_final_response', 'No response')}")
            return True
-       
+
        return False
-   
+
    if __name__ == "__main__":
        success = asyncio.run(test_capability())
        print(f"Test {'PASSED' if success else 'FAILED'}")
@@ -236,7 +236,7 @@ Debug Logging
 .. code-block:: python
 
    from osprey.utils.logger import get_logger
-   
+
    # Enable debug logging for components
    framework_logger = get_logger("debug")
    capability_logger = get_logger("my_capability")
@@ -248,43 +248,43 @@ Capability Debugging
 
    from osprey.utils.logger import get_logger
    from osprey.utils.streaming import get_streamer
-   
+
    logger = get_logger("debug_capability")
-   
+
    @capability_node
    class DebuggingCapability(BaseCapability):
        name = "debug_capability"
        description = "Capability with debug instrumentation"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            logger.debug("=== Capability Execution Started ===")
            logger.debug(f"State keys: {list(state.keys())}")
-           
+
            streamer = get_streamer("my_app", "debug_capability", state)
-           
+
            try:
                streamer.status("Debug: Starting execution...")
                logger.debug("Business logic starting")
-               
+
                # Your business logic with debug logging
                result_data = {"debug": True, "timestamp": "2024-01-01T00:00:00Z"}
                logger.debug(f"Processed data: {result_data}")
-               
+
                # Store context
                context = DebugContext(
                    debug_info=result_data,
                    execution_path="debug_capability"
                )
-               
+
                step = StateManager.get_current_step(state)
                context_updates = StateManager.store_context(
                    state, "DEBUG_DATA", step.get("context_key"), context
                )
-               
+
                logger.debug("=== Execution Completed ===")
                return context_updates
-               
+
            except Exception as e:
                logger.exception(f"Execution failed: {e}")
                streamer.error(f"Processing failed: {e}")
@@ -298,19 +298,19 @@ Effective Streaming
    @staticmethod
    async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
        streamer = get_streamer("my_app", "my_capability", state)
-       
+
        try:
            streamer.status("Starting data processing...")
            data = await fetch_data()
-           
+
            streamer.status(f"Retrieved {len(data)} records")
            processed = await process_data(data)
-           
+
            streamer.status("Data processing complete")
            context = create_context(processed)
-           
+
            return StateManager.store_context(state, "PROCESSED_DATA", key, context)
-           
+
        except Exception as e:
            streamer.error(f"Processing failed: {e}")
            raise
@@ -327,10 +327,10 @@ Framework Initialization
 
    # ✅ Correct initialization order
    from osprey.registry import initialize_registry, get_registry
-   
+
    initialize_registry()  # Initialize first
    registry = get_registry()  # Then get instance
-   
+
    # Verify registration
    all_nodes = registry.get_all_nodes()
    if not all_nodes:
@@ -343,7 +343,7 @@ Framework Initialization
    # Check for required nodes
    node_names = list(registry.get_all_nodes().keys())
    required_nodes = ["task_extraction", "classification", "orchestration"]
-   
+
    missing = [node for node in required_nodes if node not in node_names]
    if missing:
        print(f"Missing required nodes: {missing}")
@@ -358,7 +358,7 @@ Capability Execution
    # Check capability registration
    capabilities = registry.get_all_capabilities()
    print(f"Registered capabilities: {list(capabilities.keys())}")
-   
+
    # Ensure name matches exactly
    @capability_node
    class MyCapability(BaseCapability):
@@ -381,10 +381,10 @@ Configuration Issues
 
    from osprey.utils.config import get_full_configuration
    import os
-   
+
    # Check environment variables
    print(f"Current application: {os.getenv('CURRENT_APPLICATION', 'Not set')}")
-   
+
    # Check configuration loading
    try:
        config = get_full_configuration()

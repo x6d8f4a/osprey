@@ -37,7 +37,7 @@ Core Models
 Message generation uses models defined in the core framework:
 
 .. seealso::
-   
+
    :class:`~osprey.base.BaseCapability`
        Base class for all capabilities
 
@@ -66,12 +66,12 @@ Registration
     )
 
 .. seealso::
-   
+
    :doc:`../01_core_framework/05_prompt_management`
        Prompt customization system
-   
+
    :doc:`../01_core_framework/03_registry_system`
        Component registration system
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/05_message-generation`
        Implementation details and usage patterns

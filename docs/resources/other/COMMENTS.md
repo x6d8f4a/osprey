@@ -168,10 +168,10 @@ if operation_count % 1000 == 0:
 def process_interrupt_flow(user_input, compiled_graph, config):
     # Step 1: Detect approval or rejection in user input
     approval_data = detect_approval_response(user_input)
-    
+
     # Step 2: Extract business payload from interrupt state
     success, payload = extract_resume_payload(compiled_graph, config)
-    
+
     # Step 3: Merge approval decision with business data for state injection
     if success and approval_data["approved"]:
         resume_command = Command(update={
@@ -208,17 +208,17 @@ async def execute_capability_pipeline(state, capability):
     # Validation and setup phase
     step = StateManager.get_current_step(state)
     start_time = time.time()
-    
+
     # Main execution with streaming support
     from langgraph.config import get_stream_writer
     streaming = get_stream_writer()
     if streaming:
         streaming({"event_type": "status", "message": f"Executing {capability.name}"})
-    
+
     # State management and result processing
     result = await capability.execute(state)
     execution_time = time.time() - start_time
-    
+
     return StateManager.handle_completion(state, result, step, execution_time)
 
 # ================================================================
@@ -310,7 +310,7 @@ resume_command = Command(update={"approval_approved": True})
 @capability_node
 class DataAnalysisCapability(BaseCapability):
     name = "data_analysis"  # Required for auto-discovery
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         # Explicit logger retrieval follows professional patterns
@@ -346,7 +346,7 @@ def create_capability_node(cls):
     # Auto-discovery patterns preserved from original decorator system
     capability_name = getattr(cls, 'name', None)
 
-# BAD: References old system components  
+# BAD: References old system components
 def handle_state_updates(state, result):
     # StateManager replaces Monitor responsibilities
     # Legacy Monitor used to handle step progression
@@ -437,7 +437,7 @@ class Gateway:
         # Check for pending interrupts first (approval flow)
         if self._has_pending_interrupts(compiled_graph, config):
             return await self._handle_interrupt_flow(user_input, compiled_graph, config)
-        
+
         # Process as new conversation turn with fresh state
         return await self._handle_new_message_flow(user_input, compiled_graph, config)
 
@@ -462,7 +462,7 @@ except Exception as exc:
 
 # StateManager provides centralized state operations
 # - Step progression: StateManager.get_current_step()
-# - History management: StateManager.handle_completion()  
+# - History management: StateManager.handle_completion()
 # - Control flow: Router coordinates retry decisions
 ```
 

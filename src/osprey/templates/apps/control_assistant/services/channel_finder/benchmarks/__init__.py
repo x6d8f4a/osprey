@@ -10,7 +10,7 @@ Usage:
     # Via main CLI (recommended)
     channel-finder benchmark
     channel-finder benchmark --example hierarchical --queries 0:10
-    
+
     # Or programmatically
     from channel_finder.benchmarks import BenchmarkRunner
     runner = BenchmarkRunner()
@@ -27,7 +27,7 @@ from .runner import BenchmarkRunner
 
 __all__ = [
     'QueryBenchmarkEntry',
-    'QueryRunResult', 
+    'QueryRunResult',
     'QueryEvaluation',
     'BenchmarkResults',
     'BenchmarkRunner',

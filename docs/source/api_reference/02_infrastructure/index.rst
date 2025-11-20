@@ -5,7 +5,7 @@ Infrastructure
 .. toctree::
    :maxdepth: 1
    :hidden:
-   
+
    01_gateway
    02_task-extraction
    03_classification
@@ -18,7 +18,7 @@ Infrastructure
    :icon: book
 
    **Infrastructure pipeline components for agentic execution:**
-   
+
    - **Gateway** - Single entry point with state lifecycle, slash commands, and approval flow management
    - **TaskExtractionNode** - LLM-powered conversation analysis with ExtractedTask structured output
    - **ClassificationNode** - Parallel capability selection using few-shot examples and CapabilityMatch models
@@ -28,7 +28,7 @@ Infrastructure
    - **RespondCapability & ClarifyCapability** - Context-aware response generation with streaming support
 
    **Prerequisites:** Understanding of LangGraph state management and agentic system architecture
-   
+
    **Target Audience:** Infrastructure developers, system architects, pipeline implementers
 
 The infrastructure layer implements the **Orchestrator-First Architecture** that powers sophisticated agentic behavior with deterministic execution patterns. These components transform user conversations into validated execution plans with complete oversight and approval integration.
@@ -70,7 +70,7 @@ Core Pipeline Components
       :shadow: md
 
       **Universal Entry Point**
-      
+
       Single message processing interface managing state lifecycle, slash commands, and approval workflows.
 
    .. grid-item-card:: 🧠 Task Extraction
@@ -81,7 +81,7 @@ Core Pipeline Components
       :shadow: md
 
       **Context Compression**
-      
+
       Converts chat history into focused, actionable tasks with resolved references and context.
 
    .. grid-item-card:: 🎯 Classification
@@ -92,7 +92,7 @@ Core Pipeline Components
       :shadow: md
 
       **Capability Selection**
-      
+
       LLM-powered analysis selecting appropriate capabilities for extracted tasks.
 
 .. grid:: 1 1 2 3
@@ -106,7 +106,7 @@ Core Pipeline Components
       :shadow: md
 
       **Execution Coordination**
-      
+
       Creates validated execution plans with LangGraph-native approval integration.
 
    .. grid-item-card:: 🔧 Execution Control
@@ -117,7 +117,7 @@ Core Pipeline Components
       :shadow: md
 
       **Routing & Recovery**
-      
+
       Manages flow control, error handling, and agentic decision-making with retry policies.
 
    .. grid-item-card:: 💬 Message Generation
@@ -128,7 +128,7 @@ Core Pipeline Components
       :shadow: md
 
       **Response Generation**
-      
+
       Context-aware response generation with clarification workflows and domain customization.
 
 Pipeline Integration
@@ -148,7 +148,7 @@ The infrastructure components work together in a deterministic processing flow:
          gateway = Gateway()
          result = await gateway.process_message(user_input, compiled_graph, config)
          # Returns: GatewayResult with agent_state or resume_command
-         
+
          # 2. Task Extraction - Context Compression
          task_updates = await TaskExtractionNode.execute(state)
          # Returns: {
@@ -156,7 +156,7 @@ The infrastructure components work together in a deterministic processing flow:
          #     "task_depends_on_chat_history": True,
          #     "task_depends_on_user_memory": False
          # }
-         
+
          # 3. Classification - Capability Selection
          classification_updates = await ClassificationNode.execute(state)
          # Returns: {
@@ -164,22 +164,22 @@ The infrastructure components work together in a deterministic processing flow:
          #     "planning_execution_plan": None,
          #     "planning_current_step_index": 0
          # }
-         
+
          # 4. Orchestration - Plan Creation
          orchestration_updates = await OrchestrationNode.execute(state)
          # Returns: {
          #     "planning_execution_plan": {"steps": [...]},
          #     "planning_current_step_index": 0
          # }
-         
+
          # 5. Execution Control - Flow Management
          routing_decision = router_conditional_edge(state)
          # Returns: str ("task_extraction", "classifier", "orchestrator", etc.)
-         
+
          # 6. Message Generation - Response Creation
          response_updates = await RespondCapability.execute(state)
          # Returns: {"messages": [AIMessage(content="Here are the PV addresses...")]}
-         
+
          # Error Handling
          error_updates = await ErrorNode.execute(state)
          # Returns: {"messages": [AIMessage(content="LLM-generated error explanation")]}
@@ -197,12 +197,12 @@ The infrastructure components work together in a deterministic processing flow:
          elif gateway_result.agent_state:
              # New conversation - fresh state with context persistence
              await compiled_graph.ainvoke(gateway_result.agent_state, config=config)
-         
+
          # Actual state structure from AgentState TypedDict
          state: AgentState = {
              # LangGraph native messages
              "messages": [HumanMessage(content="Find beam current PV addresses")],
-             
+
              # Execution-scoped fields (reset each turn)
              "task_current_task": None,
              "planning_active_capabilities": [],
@@ -210,7 +210,7 @@ The infrastructure components work together in a deterministic processing flow:
              "planning_current_step_index": 0,
              "control_needs_reclassification": False,
              "execution_step_results": {},
-             
+
              # Persistent context data (accumulates across conversations)
              "capability_context_data": {
                  "PV_ADDRESSES": {
@@ -232,12 +232,12 @@ The infrastructure components work together in a deterministic processing flow:
          from osprey.base.decorators import infrastructure_node
          from osprey.base.nodes import BaseInfrastructureNode
          from osprey.base.errors import ErrorClassification, ErrorSeverity
-         
+
          @infrastructure_node
          class CustomInfraNode(BaseInfrastructureNode):
              name = "custom_processor"
              description = "Custom processing logic"
-             
+
              @staticmethod
              def classify_error(exc: Exception, context: dict) -> ErrorClassification:
                  if isinstance(exc, (ConnectionError, TimeoutError)):
@@ -251,7 +251,7 @@ The infrastructure components work together in a deterministic processing flow:
                      user_message=f"Processing error: {exc}",
                      metadata={"technical_details": str(exc)}
                  )
-             
+
              @staticmethod
              async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
                  # Return LangGraph-compatible state updates
@@ -259,19 +259,19 @@ The infrastructure components work together in a deterministic processing flow:
                      "control_routing_timestamp": time.time(),
                      "execution_step_results": {"custom_result": "processed"}
                  }
-         
+
          # Capabilities register as infrastructure capabilities
          from osprey.base.decorators import capability_node
          from osprey.base.capability import BaseCapability
          from langchain_core.messages import AIMessage
-         
+
          @capability_node
          class CustomCapability(BaseCapability):
              name = "custom_analysis"
              description = "Custom analysis capability"
              provides = ["CUSTOM_DATA"]
              requires = ["INPUT_DATA"]
-             
+
              @staticmethod
              async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
                  # Return LangGraph messages pattern
@@ -294,7 +294,7 @@ The infrastructure components work together in a deterministic processing flow:
          :class-header: bg-primary text-white
          :class-body: text-center
          :shadow: md
-         
+
          Universal entry point handling state management, slash commands, and approval workflows
 
       .. grid-item-card:: 🧠 Follow the Pipeline
@@ -303,7 +303,7 @@ The infrastructure components work together in a deterministic processing flow:
          :class-header: bg-success text-white
          :class-body: text-center
          :shadow: md
-         
+
          Task extraction → Classification → Orchestration - the three-pillar processing flow
 
    .. grid:: 1 1 2 2
@@ -315,7 +315,7 @@ The infrastructure components work together in a deterministic processing flow:
          :class-header: bg-danger text-white
          :class-body: text-center
          :shadow: md
-         
+
          Router and error handling for intelligent flow control and recovery
 
       .. grid-item-card:: 💬 Complete with Responses
@@ -324,5 +324,5 @@ The infrastructure components work together in a deterministic processing flow:
          :class-header: bg-secondary text-white
          :class-body: text-center
          :shadow: md
-         
+
          Response generation and clarification capabilities for adaptive communication

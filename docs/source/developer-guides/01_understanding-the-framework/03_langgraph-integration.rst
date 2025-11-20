@@ -6,7 +6,7 @@ LangGraph Integration: Native StateGraph and Workflow Execution
    :icon: book
 
    **Key Concepts:**
-   
+
    - How the framework uses LangGraph's StateGraph for workflow execution
    - Native state management with MessagesState integration
    - Checkpoint-based persistence for conversation continuity
@@ -14,7 +14,7 @@ LangGraph Integration: Native StateGraph and Workflow Execution
    - Real-time streaming implementation
 
    **Prerequisites:** Basic understanding of LangGraph concepts
-   
+
    **Time Investment:** 15-20 minutes for complete understanding
 
 Overview
@@ -46,30 +46,30 @@ The framework creates LangGraph workflows using registry-discovered components:
    # Framework automatically creates StateGraph from registry
    def create_graph(registry: RegistryManager) -> StateGraph:
        """Create LangGraph workflow with all framework components."""
-       
+
        # Use framework's native state structure
        workflow = StateGraph(AgentState)
-       
+
        # Add all nodes from registry (infrastructure + capabilities)
        all_nodes = registry.get_all_nodes().items()
        for name, node_callable in all_nodes:
            workflow.add_node(name, node_callable)
-       
+
        # Router controls all flow via conditional edges
        workflow.add_conditional_edges("router", router_conditional_edge, {
            "task_extraction": "task_extraction",
-           "classifier": "classifier", 
+           "classifier": "classifier",
            "orchestrator": "orchestrator",
            "pv_address_finding": "pv_address_finding",
            "respond": "respond",
            "END": END
        })
-       
+
        # All nodes route back to router for next decision
        for name in node_names:
            if name not in ["router", "respond", "clarify", "error"]:
                workflow.add_edge(name, "router")
-       
+
        return workflow.compile(checkpointer=checkpointer)
 
 **Key integration points:**
@@ -90,15 +90,15 @@ The framework's state extends LangGraph's MessagesState with selective persisten
 
    class AgentState(MessagesState):
        """Framework state extending LangGraph's MessagesState."""
-       
+
        # LangGraph automatically manages 'messages' field
-       
+
        # PERSISTENT: Only this field survives conversation turns
        capability_context_data: Annotated[
-           Dict[str, Dict[str, Dict[str, Any]]], 
+           Dict[str, Dict[str, Dict[str, Any]]],
            merge_capability_context_data  # Custom reducer
        ]
-       
+
        # EXECUTION-SCOPED: Reset automatically each turn
        task_current_task: Optional[str]
        planning_active_capabilities: List[str]
@@ -147,7 +147,7 @@ LangGraph's checkpointer system provides automatic state persistence:
 
    # First conversation
    response1 = await graph.ainvoke(
-       {"messages": [HumanMessage(content="Find beam current PVs")]}, 
+       {"messages": [HumanMessage(content="Find beam current PVs")]},
        config=config
    )
 
@@ -172,7 +172,7 @@ The framework uses LangGraph's native interrupt system for human-in-the-loop ope
    async def analyze_code(state: PythonExecutionState) -> Dict[str, Any]:
        # Analyze code for safety
        safety_analysis = analyze_code_safety(generated_code)
-       
+
        if safety_analysis.requires_approval:
            # Create structured approval interrupt
            approval_data = create_code_approval_interrupt(
@@ -180,10 +180,10 @@ The framework uses LangGraph's native interrupt system for human-in-the-loop ope
                safety_concerns=safety_analysis.concerns,
                execution_environment="container"
            )
-           
+
            # LangGraph interrupt - execution stops here
            interrupt(approval_data)
-           
+
        # Continue if no approval needed
        return {"analysis_complete": True}
 
@@ -200,7 +200,7 @@ The framework uses LangGraph's native interrupt system for human-in-the-loop ope
    if graph_state.interrupts:
        interrupt_data = graph_state.interrupts[0]
        # Show approval UI with interrupt_data
-       
+
    # 3. Human approves/rejects
    approval_response = "approved"  # or "rejected"
 
@@ -220,12 +220,12 @@ The framework handles service calls that may generate interrupts:
    @capability_node
    class PythonExecutorCapability(BaseCapability):
        """Execute Python code with approval workflows."""
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get Python executor service
            service = registry.get_service("python_executor")
-           
+
            # Handle service with interrupt propagation
            try:
                result = await handle_service_with_interrupts(
@@ -236,7 +236,7 @@ The framework handles service calls that may generate interrupts:
                    capability_name="python_executor"
                )
                return {"execution_results": result}
-               
+
            except RuntimeError as e:
                return {"error": f"Service execution failed: {e}"}
 
@@ -249,22 +249,22 @@ The framework provides real-time status updates through LangGraph's streaming:
 
    from osprey.utils.streaming import get_streamer
 
-   @capability_node  
+   @capability_node
    class DataAnalysisCapability(BaseCapability):
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get streaming helper
            streamer = get_streamer("osprey", "data_analysis", state)
-           
+
            # Provide real-time status updates
            streamer.status("Loading data sources...")
            data = await load_data_sources()
-           
+
            streamer.status("Performing analysis...")
            analysis = await perform_analysis(data)
-           
+
            streamer.status("Analysis complete")
-           
+
            return {"analysis_results": analysis}
 
    # Client receives real-time updates
@@ -304,7 +304,7 @@ Checkpointer Options
 
    # Long-term persistence: PostgreSQL (requires database setup)
    # Note: Available but not extensively production-tested
-   persistent_graph = create_graph(registry, use_postgres=True) 
+   persistent_graph = create_graph(registry, use_postgres=True)
 
    # Testing: No persistence for isolated tests
    test_graph = create_graph(registry, checkpointer=None)
@@ -383,24 +383,24 @@ Troubleshooting
 
    :doc:`../02_quick-start-patterns/01_building-your-first-capability`
        Create LangGraph-integrated capabilities
-   
+
    :doc:`../03_core-framework-systems/01_state-management-architecture`
        Deep dive into state patterns
-   
+
    :doc:`../05_production-systems/05_container-and-deployment`
        Deploy with PostgreSQL checkpointing
-   
+
    :doc:`../05_production-systems/01_human-approval-workflows`
        Complex interrupt handling
-   
+
    :doc:`../../api_reference/01_core_framework/02_state_and_context`
        Complete state structure and MessagesState integration
-   
+
    :doc:`../../api_reference/02_infrastructure/01_gateway`
        LangGraph integration entry point for message processing
-   
+
    :doc:`../../api_reference/03_production_systems/01_human-approval`
        Interrupt system API for human-in-the-loop workflows
-   
+
    :doc:`../../api_reference/03_production_systems/05_container-management`
        Production deployment patterns with PostgreSQL checkpointing

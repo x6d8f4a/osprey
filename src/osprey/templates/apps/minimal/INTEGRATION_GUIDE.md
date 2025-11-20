@@ -13,15 +13,15 @@
 class YourDataContext(CapabilityContext):
     CONTEXT_TYPE: ClassVar[str] = "YOUR_DATA"
     CONTEXT_CATEGORY: ClassVar[str] = "COMPUTATIONAL_DATA"
-    
+
     # Your fields here
     field1: str = Field(description="Description for LLM")
     field2: List[float] = Field(description="Description for LLM")
-    
+
     def get_access_details(self, key_name: Optional[str] = None):
         # Tell LLM how to access your data
         return {...}
-    
+
     def get_summary(self, key_name: Optional[str] = None):
         # Provide human-readable summary
         return {...}
@@ -37,21 +37,21 @@ class YourCapability(BaseCapability):
     description = "What it does"
     provides = ["YOUR_DATA"]
     requires = []  # Dependencies
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         # 1. Get current step
         step = StateManager.get_current_step(state)
-        
+
         # 2. YOUR CODE HERE - Call your API/perform logic
         result = await your_api.call()
-        
+
         # 3. Create context object
         output = YourDataContext(
             field1=result['data'],
             field2=result['values']
         )
-        
+
         # 4. Store and return
         return StateManager.store_context(
             state, "YOUR_DATA",
@@ -102,7 +102,7 @@ class APICapability(BaseCapability):
     name = "api_call"
     provides = ["API_RESPONSE"]
     requires = []
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         response = await api_client.get('/endpoint')
@@ -124,7 +124,7 @@ class ProcessorCapability(BaseCapability):
     name = "processor"
     provides = ["PROCESSED_DATA"]
     requires = ["API_RESPONSE"]  # Needs data from above
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         # Extract required input
@@ -135,10 +135,10 @@ class ProcessorCapability(BaseCapability):
             constraint_mode="hard" # Validates output
         )
         api_data = contexts["API_RESPONSE"]
-        
+
         # Process it
         results = process(api_data.data)
-        
+
         # Return processed results
         output = ProcessedDataContext(results=results)
         return StateManager.store_context(...)
@@ -158,14 +158,14 @@ class KnowledgeCapability(BaseCapability):
     name = "knowledge"
     provides = ["KNOWLEDGE"]
     requires = []
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         step = StateManager.get_current_step(state)
         query = step.get("task_objective", "")
-        
+
         docs = await knowledge_base.search(query)
-        
+
         output = KnowledgeContext(documents=docs)
         return StateManager.store_context(...)
 ```

@@ -14,7 +14,7 @@ between capabilities and the framework. Think of them as:
 WHY USE CONTEXT CLASSES?
 
 ✓ Type Safety: Automatic validation via Pydantic
-✓ Self-Documenting: Fields have descriptions for LLM consumption  
+✓ Self-Documenting: Fields have descriptions for LLM consumption
 ✓ Access Patterns: Tell LLM exactly how to access your data in Python code
 ✓ Serialization: Automatic JSON conversion for storage and transmission
 ✓ Summaries: Generate human-readable summaries for UI/debugging
@@ -38,7 +38,7 @@ EXAMPLE DATA FLOWS:
 
 Flow A: External API → Context → LLM
   API Response → WeatherDataContext → LLM reads temperature, conditions
-  
+
 Flow B: User Input → Context → API Call → Context → LLM
   User Query → TimeRangeContext → fetch_data() → DataContext → LLM analyzes
 
@@ -58,17 +58,17 @@ from osprey.context.base import CapabilityContext
 
 class ExampleContext(CapabilityContext):
     """Example context class showing the complete implementation pattern.
-    
+
     This demonstrates how to create context classes that work seamlessly with:
     - The Alpha Berkeley Framework
     - LLM orchestration and planning
     - Python code generation by LLMs
     - Automatic serialization and validation
-    
+
     ────────────────────────────────────────────────────────────────────────────
     HOW TO USE THIS EXAMPLE:
     ────────────────────────────────────────────────────────────────────────────
-    
+
     1. Copy this class structure for your own context
     2. Replace "Example" with your domain name (e.g., WeatherData, APIResponse)
     3. Define your fields using Pydantic Field() with good descriptions
@@ -76,163 +76,163 @@ class ExampleContext(CapabilityContext):
     5. Implement get_summary() to provide human-readable summaries
     6. Set CONTEXT_TYPE to a unique identifier (e.g., "WEATHER_DATA")
     7. Set CONTEXT_CATEGORY appropriately (see options below)
-    
+
     ────────────────────────────────────────────────────────────────────────────
     COMMON USE CASES:
     ────────────────────────────────────────────────────────────────────────────
-    
+
     Use Case A: API Response Data
       - Fields: API response data (lists, dicts, primitives)
       - CONTEXT_CATEGORY: "COMPUTATIONAL_DATA"
       - get_access_details(): Show how to access response fields
-      
+
     Use Case B: Analysis Results
       - Fields: Computed values, statistics, insights
       - CONTEXT_CATEGORY: "COMPUTATIONAL_DATA"
       - get_access_details(): Show available results fields
-      
+
     Use Case C: Knowledge/Documents
       - Fields: Retrieved information, documents, knowledge
       - CONTEXT_CATEGORY: "KNOWLEDGE_DATA"
       - get_access_details(): Show knowledge structure
     """
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # REQUIRED CLASS ATTRIBUTES
     # ────────────────────────────────────────────────────────────────────────
-    
+
     CONTEXT_TYPE: ClassVar[str] = "EXAMPLE_CONTEXT"
     """Unique identifier for this context type.
-    
+
     - Must be UPPERCASE_WITH_UNDERSCORES
     - Must be unique across all context classes
     - Used in capability provides/requires
     - Used for context storage and retrieval
-    
+
     Examples:
         "WEATHER_DATA"
-        "API_RESPONSE" 
+        "API_RESPONSE"
         "ANALYSIS_RESULTS"
         "USER_PROFILE"
     """
-    
+
     CONTEXT_CATEGORY: ClassVar[str] = "COMPUTATIONAL_DATA"
     """Category of this context type.
-    
+
     Example categories:
         - "COMPUTATIONAL_DATA": Data from APIs, computations, or analysis
         - "KNOWLEDGE_DATA": Retrieved knowledge, documents, or reference info
         - "APPROVAL_DATA": User approval requests and responses
         - "DATA": Generic data (use specific categories when possible)
-    
+
     This helps the framework organize and manage context appropriately.
     """
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # DATA FIELDS
     # ────────────────────────────────────────────────────────────────────────
     # Define your data structure here using Pydantic fields
-    # 
+    #
     # IMPORTANT: Field descriptions are shown to the LLM!
     # Write descriptions that help the LLM understand:
     # - What the field contains
     # - What units/format to expect
     # - How to interpret the data
     # ────────────────────────────────────────────────────────────────────────
-    
+
     # Example: Simple primitive fields
     name: str = Field(
         description="Name or identifier for this data"
     )
-    
+
     value: float = Field(
         description="Numeric value in standard units"
     )
-    
+
     timestamp: datetime = Field(
         description="When this data was created or retrieved (ISO format)"
     )
-    
+
     # Example: Optional fields
     metadata: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Additional metadata about this data"
     )
-    
+
     # Example: Lists of data
     measurements: List[float] = Field(
         default_factory=list,
         description="List of measurement values in chronological order"
     )
-    
+
     # Example: Nested structures
     details: Dict[str, Any] = Field(
         default_factory=dict,
         description="Detailed breakdown of results (nested structure allowed)"
     )
-    
+
     # NOTE: For data accessed by LLM-generated Python code, prefer:
     # - Flat structures (easier for LLM to access)
     # - Parallel lists over nested structures
     # - Clear field names over abbreviations
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # REQUIRED METHOD: get_access_details()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     def get_access_details(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         """Provide structured access information for LLM consumption.
-        
+
         This method tells the LLM EXACTLY how to access your data in Python code.
         When the LLM needs to generate Python code to work with your context,
         it uses this information to write correct access patterns.
-        
+
         ────────────────────────────────────────────────────────────────────
         WHAT TO INCLUDE:
         ────────────────────────────────────────────────────────────────────
-        
+
         1. access_pattern: Exact Python code to access this context
            Example: "context.WEATHER_DATA.current_weather.temperature"
-           
+
         2. available_fields: List of field names that can be accessed
            Example: ["temperature", "humidity", "conditions"]
-           
+
         3. example_usage: Show how to use this data in Python
            Example: "temp = context.WEATHER_DATA.current_weather.temperature"
-           
+
         4. data_structure: Explain the structure if complex
            Example: "Parallel lists: timestamps and values have same length"
-           
+
         5. Any important notes about units, formats, or special handling
-        
+
         ────────────────────────────────────────────────────────────────────
-        
+
         Args:
             key_name: Optional context key name for access pattern generation.
                      When a capability stores context with a specific key,
                      this parameter helps generate the correct access path.
-            
+
         Returns:
             Dictionary containing access details and field information
         """
-        
+
         # Generate the access pattern using the context key
         key_ref = key_name if key_name else "key_name"
-        
+
         return {
             # Show exact Python syntax to access this context
             "access_pattern": {% raw %}f"context.{self.CONTEXT_TYPE}.{key_ref}"{% endraw %},
-            
+
             # List all accessible fields
             "available_fields": [
                 "name",
-                "value", 
+                "value",
                 "timestamp",
                 "metadata",
                 "measurements",
                 "details"
             ],
-            
+
             # Show concrete example of accessing data
             "example_usage": {% raw %}f"""# Access the numeric value
 value = context.{self.CONTEXT_TYPE}.{key_ref}.value
@@ -245,13 +245,13 @@ import pandas as pd
 df = pd.DataFrame({{
     'measurement': context.{self.CONTEXT_TYPE}.{key_ref}.measurements
 }})"""{% endraw %},
-            
+
             # Explain data structure if complex
             "data_structure": (
                 "Single object with multiple fields. "
                 "Measurements list contains multiple readings in chronological order."
             ),
-            
+
             # Add any important notes
             "important_notes": [
                 "Timestamp is in ISO format (YYYY-MM-DDTHH:MM:SS)",
@@ -259,65 +259,65 @@ df = pd.DataFrame({{
                 "Measurements list may be empty if no data available"
             ]
         }
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # REQUIRED METHOD: get_summary()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     def get_summary(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         """Generate human-readable summary of context data.
-        
+
         This method creates a summary that:
         - Appears in UI displays
         - Helps with debugging
         - Provides context to users
         - Shows high-level overview of data
-        
+
         ────────────────────────────────────────────────────────────────────
         WHAT TO INCLUDE:
         ────────────────────────────────────────────────────────────────────
-        
+
         1. type: Human-readable type description
         2. Key metrics or statistics
         3. Data ranges (time, values, etc.)
         4. Record counts
         5. Any important highlights
-        
+
         Keep summaries concise but informative!
-        
+
         ────────────────────────────────────────────────────────────────────
-        
+
         Args:
             key_name: Optional context key name (usually not needed for summaries)
-            
+
         Returns:
             Dictionary containing human-readable summary
         """
-        
+
         return {
             # Clear type description
             "type": "Example Data",
-            
+
             # Key identifiers
             "name": self.name,
-            
+
             # Main value
             "current_value": f"{self.value:.2f}",
-            
+
             # Timestamp information
             "data_timestamp": self.timestamp.isoformat() if self.timestamp else "N/A",
-            
+
             # Statistics on collections
             "measurement_count": len(self.measurements),
             "average_measurement": (
                 f"{sum(self.measurements) / len(self.measurements):.2f}"
                 if self.measurements else "N/A"
             ),
-            
+
             # Additional details
             "has_metadata": self.metadata is not None,
             "details_count": len(self.details) if self.details else 0,
-            
+
             # Optional: Add computed insights
             "status": "active" if self.value > 0 else "inactive"
         }
@@ -329,34 +329,34 @@ df = pd.DataFrame({{
 
 class SimpleAPIResponseContext(CapabilityContext):
     """Simpler example for straightforward API response data.
-    
+
     Use this pattern when you have a simple API that returns:
     - A list of records
     - Simple key-value data
     - Structured responses that don't need complex handling
     """
-    
+
     CONTEXT_TYPE: ClassVar[str] = "SIMPLE_API_RESPONSE"
     CONTEXT_CATEGORY: ClassVar[str] = "COMPUTATIONAL_DATA"
-    
+
     # Simple fields matching API response
     records: List[Dict[str, Any]] = Field(
         default_factory=list,
         description="List of records returned by the API"
     )
-    
+
     total_count: int = Field(
         description="Total number of records available"
     )
-    
+
     query_time: datetime = Field(
         description="When this query was executed"
     )
-    
+
     def get_access_details(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         """Simple access details for API response."""
         key_ref = key_name if key_name else "key_name"
-        
+
         return {
             "access_pattern": {% raw %}f"context.{self.CONTEXT_TYPE}.{key_ref}.records"{% endraw %},
             "available_fields": ["records", "total_count", "query_time"],
@@ -369,7 +369,7 @@ import pandas as pd
 df = pd.DataFrame(context.{self.CONTEXT_TYPE}.{key_ref}.records)"""{% endraw %},
             "data_structure": "List of dictionaries, each representing one record"
         }
-    
+
     def get_summary(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         """Simple summary for API response."""
         return {
@@ -378,7 +378,7 @@ df = pd.DataFrame(context.{self.CONTEXT_TYPE}.{key_ref}.records)"""{% endraw %},
             "total_available": self.total_count,
             "query_time": self.query_time.isoformat(),
             "sample_fields": (
-                list(self.records[0].keys()) 
+                list(self.records[0].keys())
                 if self.records else []
             )
         }
@@ -417,7 +417,7 @@ df = pd.DataFrame(context.{self.CONTEXT_TYPE}.{key_ref}.records)"""{% endraw %},
 #
 # 7. Use in your capabilities:
 #    from {{ package_name }}.context_classes import YourContext
-#    
+#
 #    output = YourContext(
 #        field1=api_response['data'],
 #        field2=computed_value

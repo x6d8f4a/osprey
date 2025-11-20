@@ -11,7 +11,7 @@ The Osprey Framework's context management system provides type-safe data sharing
    :icon: book
 
    **Key Concepts:**
-   
+
    - :class:`ContextManager` and :class:`CapabilityContext` fundamentals
    - Creating and registering context classes
    - Storing and retrieving context data in capabilities
@@ -19,7 +19,7 @@ The Osprey Framework's context management system provides type-safe data sharing
    - Best practices for type-safe data sharing
 
    **Prerequisites:** Understanding of Pydantic models and :doc:`01_state-management-architecture` (AgentState structure)
-   
+
    **Time Investment:** 25-30 minutes for complete understanding
 
 Overview
@@ -28,7 +28,7 @@ Overview
 **Core Components:**
 
 - :class:`ContextManager`: Primary interface for context operations with caching
-- :class:`CapabilityContext`: Pydantic base class for all context objects  
+- :class:`CapabilityContext`: Pydantic base class for all context objects
 - :class:`StateManager`: Utilities for storing context data in agent state
 - **Registry Integration**: Automatic context class discovery and validation
 
@@ -62,18 +62,18 @@ Context classes define the structure of data shared between capabilities:
 
    from osprey.context import CapabilityContext
    from typing import List, Optional, ClassVar
-   
+
    class PVAddresses(CapabilityContext):
        """Context class for storing EPICS PV address discovery results."""
-       
+
        # Class constants for registration
        CONTEXT_TYPE: ClassVar[str] = "PV_ADDRESSES"
        CONTEXT_CATEGORY: ClassVar[str] = "METADATA"
-       
+
        # Data fields
        pvs: List[str]  # List of found PV addresses
        description: str  # Description of the PVs
-       
+
        def get_access_details(self, key_name: Optional[str] = None) -> Dict[str, Any]:
            key_ref = key_name if key_name else "key_name"
            return {
@@ -83,7 +83,7 @@ Context classes define the structure of data shared between capabilities:
                "data_structure": "List of PV address strings",
                "access_pattern": f"context.{self.CONTEXT_TYPE}.{key_ref}.pvs",
            }
-       
+
        def get_summary(self, key_name: Optional[str] = None) -> Dict[str, Any]:
            return {
                "type": "PV Addresses",
@@ -111,19 +111,19 @@ Capabilities store context data using ``StateManager.store_context()``:
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            step = StateManager.get_current_step(state)
-           
+
            # Perform capability logic
            found_pvs = await search_for_pvs(step.get('task_objective'))
-           
+
            # Create context object
            pv_context = PVAddresses(
                pvs=found_pvs,
                description="Found PV addresses for beam current monitoring"
            )
-           
+
            # Store context using StateManager
            return StateManager.store_context(
-               state, 
+               state,
                "PV_ADDRESSES",              # context_type
                step.get('context_key'),     # context_key from execution plan
                pv_context                   # CapabilityContext object
@@ -142,7 +142,7 @@ Capabilities retrieve context data through ``ContextManager``:
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            step = StateManager.get_current_step(state)
            context_manager = ContextManager(state)
-           
+
            # Extract required contexts
            contexts = context_manager.extract_from_step(
                step, state,
@@ -150,11 +150,11 @@ Capabilities retrieve context data through ``ContextManager``:
                constraint_mode="hard"
            )
            pv_addresses_context = contexts["PV_ADDRESSES"]
-           
+
            # Use the context data
            pv_list = pv_addresses_context.pvs
            pv_values = await read_pv_values(pv_list)
-           
+
            # Store result context
            result_context = PVValues(pv_values=pv_values)
            return StateManager.store_context(
@@ -166,10 +166,10 @@ Capabilities retrieve context data through ``ContextManager``:
 .. code-block:: python
 
    context_manager = ContextManager(state)
-   
+
    # Direct context access (when you know the exact key)
    pv_data = context_manager.get_context("PV_ADDRESSES", "step_1")
-   
+
    # Get all contexts of a specific type
    all_pv_data = context_manager.get_all_of_type("PV_ADDRESSES")
 
@@ -222,7 +222,7 @@ Common Issues
    # ❌ Incorrect - using non-serializable types
    class BadContext(CapabilityContext):
        complex_object: SomeComplexClass  # Not JSON serializable
-   
+
    # ✅ Correct - using JSON-compatible types
    class GoodContext(CapabilityContext):
        data: Dict[str, Any]  # JSON serializable
@@ -249,7 +249,7 @@ Common Issues
 .. code-block:: python
 
    from osprey.context.context_manager import recursively_summarize_data
-   
+
    def get_summary(self, key_name: Optional[str] = None) -> Dict[str, Any]:
        """Human-readable summary with automatic data truncation."""
        return {

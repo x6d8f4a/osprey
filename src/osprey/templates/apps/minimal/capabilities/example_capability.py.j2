@@ -103,88 +103,88 @@ class APICallError(ExampleCapabilityError):
 @capability_node  # Required decorator - registers this as a capability
 class ExampleCapability(BaseCapability):
     """Example capability showing the complete implementation pattern.
-    
+
     This capability demonstrates:
     - How to accept inputs from other capabilities
     - How to call external APIs or perform operations
     - How to return structured outputs
     - How to handle errors properly
     - How to guide the LLM orchestrator
-    
+
     CUSTOMIZE THIS FOR YOUR USE CASE:
     - Replace "example" with your capability name
     - Update the description with what your capability actually does
     - Modify provides/requires based on your data flow
     """
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # REQUIRED ATTRIBUTES
     # ────────────────────────────────────────────────────────────────────────
-    
+
     name = "example_capability"
     """Unique identifier for this capability. Used in registry and planning."""
-    
+
     description = "Example capability that demonstrates the implementation pattern"
     """Human-readable description. Helps LLM understand when to use this capability."""
-    
+
     provides = [
         # List the context types this capability creates/outputs
         # Must match CONTEXT_TYPE in your context classes
         "EXAMPLE_CONTEXT"
     ]
     """What context types does this capability CREATE and return?"""
-    
+
     requires = [
         # List the context types this capability needs as input
         # These must be provided by other capabilities or user input
         # Example: registry.context_types.TIME_RANGE
     ]
     """What context types does this capability NEED as input?"""
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # REQUIRED METHOD: execute()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
         """Execute the capability's main logic.
-        
+
         This is where your actual work happens:
         - Extract required inputs from state
         - Call your API / perform computations
         - Create output context objects
         - Store results back to state
-        
+
         Args:
             state: Current agent state containing all context and execution plan
             **kwargs: Additional arguments (rarely used)
-            
+
         Returns:
             Dict with updated state modifications
-            
+
         Raises:
             MissingInputError: When required input context is not available
             APICallError: When external API calls fail
         """
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.1: Get current step information
         # ──────────────────────────────────────────────────────────────────
         step = StateManager.get_current_step(state)
         logger.debug(f"Executing {__class__.__name__} for step: {step.get('context_key')}")
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.2: Setup streaming for user feedback (optional but recommended)
         # ──────────────────────────────────────────────────────────────────
         from osprey.utils.streaming import get_streamer
         streamer = get_streamer("example_capability", state)
         streamer.status("Starting example capability execution...")
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.3: Extract required inputs (if any)
         # ──────────────────────────────────────────────────────────────────
         # If your capability has requires=[], extract those contexts here
-        
+
         # Example: Extract a required context
         # try:
         #     context_manager = ContextManager(state)
@@ -196,42 +196,42 @@ class ExampleCapability(BaseCapability):
         #     required_input = contexts[registry.context_types.REQUIRED_CONTEXT_TYPE]
         # except ValueError as e:
         #     raise MissingInputError(f"Missing required input: {e}")
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.4: Perform your main work
         # ──────────────────────────────────────────────────────────────────
         # THIS IS WHERE YOU PUT YOUR API CALLS, COMPUTATIONS, ETC.
-        
+
         try:
             # Example: Call your external API
             # response = await your_api_client.fetch_data(
             #     param1=required_input.some_field,
             #     param2="some_value"
             # )
-            
+
             # Example: Perform computations
             # result = perform_analysis(required_input.data)
-            
+
             # Example: Query a database
             # data = await database.query("SELECT * FROM table")
-            
+
             # For demonstration, we'll create dummy data
             example_data = {
                 "message": "Replace this with your actual implementation",
                 "status": "success"
             }
-            
+
             logger.info("Example capability executed successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to execute capability: {e}")
             raise APICallError(f"Capability execution failed: {str(e)}")
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.5: Create output context object
         # ──────────────────────────────────────────────────────────────────
         # Convert your results into a context object (defined in context_classes.py)
-        
+
         output_context = ExampleContext(
             # Map your API response / computation results to context fields
             # Example:
@@ -239,12 +239,12 @@ class ExampleCapability(BaseCapability):
             # timestamp=datetime.now(),
             # status=response['status']
         )
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.6: Update streaming status
         # ──────────────────────────────────────────────────────────────────
         streamer.status("Example capability completed")
-        
+
         # ──────────────────────────────────────────────────────────────────
         # 3.7: Store output context and return
         # ──────────────────────────────────────────────────────────────────
@@ -254,28 +254,28 @@ class ExampleCapability(BaseCapability):
             step.get("context_key"),  # Storage key from execution plan
             output_context
         )
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # OPTIONAL METHOD: classify_error()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     @staticmethod
     def classify_error(exc: Exception, context: dict) -> ErrorClassification:
         """Classify errors to guide framework recovery behavior.
-        
+
         The framework uses this to decide:
         - Should it retry the operation?
         - Should it replan the execution?
         - Is this a critical failure?
-        
+
         Args:
             exc: The exception that was raised
             context: Additional context about the error
-            
+
         Returns:
             ErrorClassification with severity and user message
         """
-        
+
         if isinstance(exc, MissingInputError):
             # Missing dependencies -> need to replan
             return ErrorClassification(
@@ -283,7 +283,7 @@ class ExampleCapability(BaseCapability):
                 user_message=f"Missing required input: {str(exc)}",
                 metadata={"technical_details": str(exc)}
             )
-        
+
         elif isinstance(exc, APICallError):
             # API failures -> can retry
             return ErrorClassification(
@@ -291,7 +291,7 @@ class ExampleCapability(BaseCapability):
                 user_message=f"API call failed: {str(exc)}",
                 metadata={"technical_details": str(exc)}
             )
-        
+
         else:
             # Unknown errors -> critical
             return ErrorClassification(
@@ -299,32 +299,32 @@ class ExampleCapability(BaseCapability):
                 user_message=f"Unexpected error: {str(exc)}",
                 metadata={"technical_details": str(exc)}
             )
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # OPTIONAL METHOD: _create_orchestrator_guide()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     def _create_orchestrator_guide(self) -> Optional['OrchestratorGuide']:
         """Create guidance for the LLM orchestrator.
-        
+
         This tells the LLM:
         - When to use this capability
         - What inputs it needs
         - What outputs it provides
         - How to structure execution plans
-        
+
         The better this guide, the better the LLM will use your capability!
-        
+
         Returns:
             OrchestratorGuide or None to skip
         """
-        
+
         from osprey.base.examples import (
-            OrchestratorGuide, 
+            OrchestratorGuide,
             OrchestratorExample,
             PlannedStep
         )
-        
+
         # Example 1: The capability step itself
         capability_example = OrchestratorExample(
             step=PlannedStep(
@@ -338,7 +338,7 @@ class ExampleCapability(BaseCapability):
             scenario_description="Example scenario showing capability usage",
             notes="Additional notes about when/how to use this capability"
         )
-        
+
         # Example 2: How respond should consume this capability's output
         # This shows the complete workflow pattern - very important for smaller models!
         respond_example = OrchestratorExample(
@@ -353,23 +353,23 @@ class ExampleCapability(BaseCapability):
             scenario_description="After retrieving data, respond to the user with the information",
             notes="Takes EXAMPLE_CONTEXT from the previous step as input."
         )
-        
+
         return OrchestratorGuide(
             instructions=textwrap.dedent("""
                 **When to plan "example_capability" steps:**
                 - Describe scenarios when the LLM should use this capability
                 - Be specific about use cases
                 - Explain the value this capability provides
-                
+
                 **Required Dependencies:**
                 - List any required context types (from requires=[])
                 - Explain where those dependencies come from
-                
+
                 **Step Structure:**
                 - context_key: Unique identifier for output (e.g., "my_data")
                 - task_objective: Specific goal for this execution
                 - inputs: [] (or list of required context keys)
-                
+
                 **Output: EXAMPLE_CONTEXT**
                 - Describe what data is returned
                 - Pass this output to subsequent steps (like respond) that need the data
@@ -378,29 +378,29 @@ class ExampleCapability(BaseCapability):
             examples=[capability_example, respond_example],  # 2-step example pattern
             priority=10  # Lower values appear first in orchestrator prompt
         )
-    
+
     # ────────────────────────────────────────────────────────────────────────
     # OPTIONAL METHOD: _create_classifier_guide()
     # ────────────────────────────────────────────────────────────────────────
-    
+
     def _create_classifier_guide(self) -> Optional['TaskClassifierGuide']:
         """Create guidance for task classification.
-        
+
         This helps the LLM decide: "Does this user query need my capability?"
-        
+
         Provide examples of queries that DO and DON'T need this capability.
         The more examples, the better the classification accuracy!
-        
+
         Returns:
             TaskClassifierGuide or None to skip
         """
-        
+
         from osprey.base.examples import (
             TaskClassifierGuide,
             ClassifierExample,
             ClassifierActions
         )
-        
+
         return TaskClassifierGuide(
             instructions="Determine if the task requires example capability functionality.",
             examples=[

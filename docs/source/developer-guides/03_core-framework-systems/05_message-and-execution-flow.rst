@@ -11,7 +11,7 @@ The Osprey Framework implements a router-controlled message processing system th
    :icon: book
 
    **Key Concepts:**
-   
+
    - Router-controlled architecture and message processing flow
    - :class:`Gateway` preprocessing and state management
    - Infrastructure component coordination
@@ -19,7 +19,7 @@ The Osprey Framework implements a router-controlled message processing system th
    - Error handling and approval workflow integration
 
    **Prerequisites:** Understanding of :doc:`01_state-management-architecture` (AgentState), :doc:`02_context-management-system` (ContextManager), and :doc:`03_registry-and-discovery` (Registry systems)
-   
+
    **Time Investment:** 45-60 minutes for complete understanding
 
 Architecture Overview
@@ -57,20 +57,20 @@ The Gateway handles all message preprocessing, state management, and routing dec
 
    from osprey.infrastructure.gateway import Gateway
    from osprey.graph import create_graph
-   
+
    async def process_user_message(user_input: str) -> None:
        # Initialize Gateway and graph
        gateway = Gateway()
        graph = create_graph()
        config = {"configurable": {"thread_id": "session_id"}}
-       
+
        # Gateway processes message and returns execution-ready result
        result = await gateway.process_message(user_input, graph, config)
-       
+
        if result.error:
            print(f"Gateway error: {result.error}")
            return
-       
+
        # Execute based on result type
        if result.resume_command:
            # Approval workflow resumption
@@ -83,19 +83,19 @@ The Gateway handles all message preprocessing, state management, and routing dec
 
 .. code-block:: python
 
-   @dataclass 
+   @dataclass
    class GatewayResult:
        # For normal conversation flow
        agent_state: Optional[Dict[str, Any]] = None
-       
-       # For interrupt/approval flow  
+
+       # For interrupt/approval flow
        resume_command: Optional[Command] = None
-       
+
        # Processing metadata
        slash_commands_processed: List[str] = None
        approval_detected: bool = False
        is_interrupt_resume: bool = False
-       
+
        # Error handling
        error: Optional[str] = None
 
@@ -108,31 +108,31 @@ The Gateway handles all message preprocessing, state management, and routing dec
            # Check for pending interrupts (approval workflow)
            if self._has_pending_interrupts(compiled_graph, config):
                return await self._handle_interrupt_flow(user_input, compiled_graph, config)
-           
+
            # Process as new conversation turn
            return await self._handle_new_message_flow(user_input, compiled_graph, config)
-       
+
        async def _handle_new_message_flow(self, user_input: str, compiled_graph, config) -> GatewayResult:
            # Parse slash commands
            slash_commands, cleaned_message = self._parse_slash_commands(user_input)
-           
+
            # Get current state to preserve context
            current_state = None
            if compiled_graph and config:
                graph_state = compiled_graph.get_state(config)
                current_state = graph_state.values if graph_state else None
-           
+
            # Create fresh state with context preservation
            fresh_state = StateManager.create_fresh_state(
                user_input=cleaned_message.strip() if cleaned_message.strip() else user_input,
                current_state=current_state
            )
-           
+
            # Apply slash commands
            if slash_commands:
                agent_control_updates = self._apply_slash_commands(slash_commands)
                fresh_state['agent_control'].update(agent_control_updates)
-           
+
            return GatewayResult(
                agent_state=fresh_state,
                slash_commands_processed=list(slash_commands.keys()) if slash_commands else []
@@ -146,12 +146,12 @@ The RouterNode serves as the central decision-making authority, determining exec
 .. code-block:: python
 
    from osprey.infrastructure.router_node import RouterNode, router_conditional_edge
-   
+
    @infrastructure_node(quiet=True)
    class RouterNode(BaseInfrastructureNode):
        name = "router"
        description = "Central routing decision authority"
-         
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Update routing metadata only
@@ -166,32 +166,32 @@ The RouterNode serves as the central decision-making authority, determining exec
 
    def router_conditional_edge(state: AgentState) -> str:
        """Central routing logic that determines next execution step."""
-       
+
        # Check for errors first
        if state.get('control_has_error'):
            return "error"
-       
+
        # Check if task extraction needed
        if not state.get('task_current_task'):
            return "task_extraction"
-       
+
        # Check if classification needed
        if not state.get('planning_active_capabilities'):
            return "classifier"
-       
+
        # Check if orchestration needed
        if not state.get('planning_execution_plan'):
            return "orchestrator"
-       
+
        # Route to next capability in execution plan
        current_step_index = state.get('planning_current_step_index', 0)
        execution_plan = state.get('planning_execution_plan', {})
        steps = execution_plan.get('steps', [])
-       
+
        if current_step_index < len(steps):
            current_step = steps[current_step_index]
            return current_step.get('capability', 'respond')
-       
+
        # Execution complete - generate response
        return "respond"
 
@@ -204,20 +204,20 @@ TaskExtractionNode converts conversation history into structured, actionable tas
 
    from osprey.infrastructure.task_extraction_node import TaskExtractionNode
    from osprey.prompts.defaults.task_extraction import ExtractedTask
-   
+
    @infrastructure_node
    class TaskExtractionNode(BaseInfrastructureNode):
        name = "task_extraction"
        description = "Task Extraction and Processing"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get conversation messages
            messages = state["messages"]
-           
+
            # Extract task using LLM
            extracted_task = await _extract_task(messages, retrieval_result, logger)
-           
+
            # Update state with task information
            return {
                "task_current_task": extracted_task.task,
@@ -242,21 +242,21 @@ ClassificationNode analyzes tasks and selects appropriate capabilities.
 .. code-block:: python
 
    from osprey.infrastructure.classification_node import ClassificationNode, select_capabilities
-   
+
    @infrastructure_node
    class ClassificationNode(BaseInfrastructureNode):
        name = "classifier"
        description = "Task Classification and Capability Selection"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get current task
            current_task = state.get("task_current_task")
-           
+
            # Get available capabilities from registry
            registry = get_registry()
            available_capabilities = registry.get_all_capabilities()
-           
+
            # Select capabilities using LLM analysis
            active_capabilities = await select_capabilities(
                task=current_task,
@@ -264,7 +264,7 @@ ClassificationNode analyzes tasks and selects appropriate capabilities.
                state=state,
                logger=logger
            )
-           
+
            return {
                "planning_active_capabilities": active_capabilities,
                "planning_execution_plan": None,
@@ -280,30 +280,30 @@ OrchestrationNode creates detailed execution plans with LLM coordination.
 
    from osprey.infrastructure.orchestration_node import OrchestrationNode
    from osprey.base.planning import ExecutionPlan, PlannedStep
-   
+
    @infrastructure_node
    class OrchestrationNode(BaseInfrastructureNode):
        name = "orchestrator"
        description = "Execution Planning and Orchestration"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get planning context
            current_task = state.get('task_current_task')
            active_capabilities = state.get('planning_active_capabilities', [])
-           
+
            # Create execution plan using LLM
            execution_plan = await create_execution_plan(
                task=current_task,
                capabilities=active_capabilities,
                state=state
            )
-           
+
            # Handle planning mode (approval workflow)
            if _is_planning_mode_enabled(state):
                await _handle_planning_mode(execution_plan, current_task, logger, streamer)
                # Execution pauses here until user approval
-           
+
            return {
                "planning_execution_plan": execution_plan,
                "planning_current_step_index": 0
@@ -325,7 +325,7 @@ OrchestrationNode creates detailed execution plans with LLM coordination.
            ),
            PlannedStep(
                context_key="analysis_step",
-               capability="data_analysis", 
+               capability="data_analysis",
                task_objective="Analyze beam current data",
                success_criteria="Analysis completed",
                expected_output="ANALYSIS_RESULTS",
@@ -345,28 +345,28 @@ Capabilities execute business logic according to the orchestrated plan.
    from osprey.decorators import capability_node
    from osprey.state import StateManager
    from osprey.context import ContextManager
-   
+
    @capability_node
    class ExampleCapability(BaseCapability):
        name = "example_capability"
        description = "Example capability implementation"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Get current execution step
            current_step = StateManager.get_current_step(state)
            context = ContextManager(state)
-           
+
            # Access input data from previous steps
            step_inputs = current_step.get('inputs', [])
            for input_spec in step_inputs:
                for context_type, context_key in input_spec.items():
                    input_data = context.get_context(context_type, context_key)
                    # Use input_data for processing
-           
+
            # Execute capability business logic
            result = await perform_business_logic()
-           
+
            # Store results using StateManager
            return StateManager.store_context(
                state, "RESULTS", current_step.get('context_key'), result
@@ -380,7 +380,7 @@ StateManager provides utilities for state creation and context storage.
 .. code-block:: python
 
    from osprey.state import StateManager, AgentState
-   
+
    class StateManager:
        @staticmethod
        def create_fresh_state(
@@ -389,17 +389,17 @@ StateManager provides utilities for state creation and context storage.
        ) -> AgentState:
            """Create fresh state preserving only capability context data."""
            # Implementation creates new state with preserved context
-           
+
        @staticmethod
        def get_current_step(state: AgentState) -> PlannedStep:
            """Get current execution step from orchestration plan."""
            # Implementation extracts current step
-           
+
        @staticmethod
        def store_context(
-           state: AgentState, 
-           context_type: str, 
-           context_key: str, 
+           state: AgentState,
+           context_type: str,
+           context_key: str,
            context_data: Any
        ) -> Dict[str, Any]:
            """Store capability results in context system."""
@@ -413,20 +413,20 @@ ContextManager provides access to capability context data with Pydantic serializ
 .. code-block:: python
 
    from osprey.context.context_manager import ContextManager
-   
+
    class ContextManager:
        def __init__(self, state: AgentState):
            self._data = state['capability_context_data']
            self._object_cache = {}
-       
+
        def get_context(self, context_type: str, key: str) -> Optional[CapabilityContext]:
            """Retrieve context object with automatic Pydantic reconstruction."""
            # Implementation reconstructs context objects
-           
+
        def set_context(self, context_type: str, key: str, value: CapabilityContext) -> None:
            """Store context object with automatic Pydantic serialization."""
            # Implementation stores context data
-           
+
        def get_all_of_type(self, context_type: str) -> Dict[str, CapabilityContext]:
            """Get all context objects of specified type."""
            # Implementation returns all matching contexts
@@ -439,18 +439,18 @@ ErrorNode handles error recovery and response generation.
 .. code-block:: python
 
    from osprey.infrastructure.error_node import ErrorNode
-   
+
    @infrastructure_node
    class ErrorNode(BaseInfrastructureNode):
        name = "error"
        description = "Error Response Generation"
-       
+
        @staticmethod
        async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
            # Generate error response based on error context
            error_info = state.get('control_error_info', {})
            error_response = await generate_error_response(error_info)
-           
+
            return {
                "messages": [AIMessage(content=error_response)]
            }
@@ -463,27 +463,27 @@ Complete Working Example
    from osprey.infrastructure.gateway import Gateway
    from osprey.graph import create_graph
    from osprey.registry import get_registry
-   
+
    async def complete_message_processing():
        # Initialize framework
        registry = get_registry()
        gateway = Gateway()
        graph = create_graph(registry)
        config = {"configurable": {"thread_id": "demo"}}
-       
+
        # Process user message
        user_message = "Find beam current PV addresses"
-       
+
        # Gateway preprocessing
        result = await gateway.process_message(user_message, graph, config)
-       
+
        if result.error:
            print(f"Error: {result.error}")
            return
-       
+
        # Execute through router-controlled flow
        final_state = await graph.ainvoke(result.agent_state, config=config)
-       
+
        # Access results
        messages = final_state.get("messages", [])
        final_response = messages[-1].content if messages else "No response generated"
@@ -498,27 +498,27 @@ The framework uses LangGraph with router-controlled conditional edges.
 
    from osprey.graph import create_graph
    from osprey.registry import get_registry
-   
+
    def create_graph(registry: RegistryManager) -> StateGraph:
        # Get all nodes from registry
        all_nodes = registry.get_all_nodes().items()
-       
+
        # Create StateGraph
        workflow = StateGraph(AgentState)
-       
+
        # Add all nodes
        for name, node_callable in all_nodes:
            workflow.add_node(name, node_callable)
-       
+
        # Set up router-controlled flow
        workflow.set_entry_point("router")
        workflow.add_conditional_edges("router", router_conditional_edge)
-       
+
        # All nodes route back to router
        for name, _ in all_nodes:
            if name != "router":
                workflow.add_edge(name, "router")
-       
+
        return workflow.compile()
 
 .. seealso::

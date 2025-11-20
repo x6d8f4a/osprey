@@ -14,7 +14,7 @@ The hierarchical navigation system handles matching and validation during tree t
 Architecture:
   - Database (hierarchical_database.json): Contains ONLY DATA (tree structure, descriptions)
   - Prompts (hierarchical_context.py): Contains INSTRUCTIONS (hierarchical_context for LLM navigation)
-  
+
 This maintains clean separation: data vs prompts.
 """
 
@@ -23,7 +23,7 @@ from . import query_splitter
 from . import hierarchical_context
 
 __all__ = [
-    'facility_description', 
-    'query_splitter', 
+    'facility_description',
+    'query_splitter',
     'hierarchical_context'
 ]

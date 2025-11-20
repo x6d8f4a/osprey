@@ -6,7 +6,7 @@ Error Handling
    :maxdepth: 2
    :caption: Error Handling Components
    :hidden:
-   
+
    01_classification_system
    02_exception_reference
    03_recovery_coordination
@@ -25,7 +25,7 @@ Error Handling
    **Prerequisites:** Basic understanding of framework capabilities and infrastructure components
 
    **Target Audience:** Framework users, capability developers, scientists running experiments, infrastructure maintainers
-   
+
 Sophisticated error handling and recovery system designed for production-grade agentic systems. The Osprey Framework implements a comprehensive three-layer error management architecture that provides intelligent error classification, automatic recovery coordination, and graceful degradation patterns.
 
 .. currentmodule:: osprey
@@ -63,7 +63,7 @@ The Three Layers
       :shadow: md
 
       **Intelligent Error Analysis**
-      
+
       Severity-based classification with sophisticated recovery strategy selection and context-aware analysis.
 
    .. grid-item-card:: 📋 Exception Hierarchy
@@ -74,7 +74,7 @@ The Three Layers
       :shadow: md
 
       **Comprehensive Error Catalog**
-      
+
       Structured exception classes with domain-specific recovery hints and detailed categorization.
 
    .. grid-item-card:: 🔄 Recovery Coordination
@@ -85,7 +85,7 @@ The Three Layers
       :shadow: md
 
       **Automated Recovery Strategies**
-      
+
       Router-based recovery coordination with retry policies, replanning, and graceful termination.
 
 Recovery Strategy Integration
@@ -139,36 +139,36 @@ The system coordinates recovery through a unified strategy hierarchy:
       .. code-block:: python
 
          import time
-         
+
          # Router coordinates all recovery strategies
          if error_classification.severity == ErrorSeverity.RETRIABLE:
              if retry_count < max_retries:
                  # Calculate delay with backoff for this retry attempt
                  actual_delay = delay_seconds * (backoff_factor ** (retry_count - 1)) if retry_count > 0 else 0
-                 
+
                  # Apply delay if this is a retry (not the first attempt)
                  if retry_count > 0 and actual_delay > 0:
                      time.sleep(actual_delay)  # Simple sleep for now, could be async
-                 
+
                  # Increment retry count in state before routing back
                  state['control_retry_count'] = retry_count + 1
                  return capability_name  # Retry same capability
              else:
                  return "error"  # Retries exhausted → ErrorNode
-         
+
          elif error_classification.severity == ErrorSeverity.REPLANNING:
              # Check how many plans have been created by orchestrator
              current_plans_created = state.get('control_plans_created_count', 0)
-             
+
              # Get max planning attempts from execution limits config
              limits = get_execution_limits()
              max_planning_attempts = limits.get('max_planning_attempts', 2)
-             
+
              if current_plans_created < max_planning_attempts:
                  return "orchestrator"  # Create new execution plan
              else:
                  return "error"  # Planning attempts exhausted → ErrorNode
-         
+
          elif error_classification.severity == ErrorSeverity.CRITICAL:
              return "error"  # Immediate termination → ErrorNode
 
@@ -186,7 +186,7 @@ The system coordinates recovery through a unified strategy hierarchy:
                  "delay_seconds": 2.0,     # Longer initial delay
                  "backoff_factor": 2.0     # Aggressive backoff for rate limiting
              }
-         
+
          # Category-based Python executor error handling
          try:
              result = await executor.execute_code(code)
@@ -219,7 +219,7 @@ The system coordinates recovery through a unified strategy hierarchy:
          :class-header: bg-primary text-white
          :class-body: text-center
          :shadow: md
-         
+
          Error severity levels, classification results, and recovery strategy coordination
 
       .. grid-item-card:: 📋 Explore Exceptions
@@ -228,7 +228,7 @@ The system coordinates recovery through a unified strategy hierarchy:
          :class-header: bg-success text-white
          :class-body: text-center
          :shadow: md
-         
+
          Complete exception hierarchy with usage patterns and domain-specific handling
 
    .. grid:: 1 1 2 2
@@ -241,7 +241,7 @@ The system coordinates recovery through a unified strategy hierarchy:
          :class-header: bg-info text-white
          :class-body: text-center
          :shadow: md
-         
+
          Router coordination, retry policies, replanning triggers, and recovery examples
 
       .. grid-item-card:: 🏗️ Integration Patterns
@@ -250,7 +250,7 @@ The system coordinates recovery through a unified strategy hierarchy:
          :class-header: bg-warning text-white
          :class-body: text-center
          :shadow: md
-         
+
          Implementation examples, custom error handling, and production deployment patterns
 
 .. note::

@@ -44,7 +44,7 @@ Core Models
 Execution control uses models defined in the core framework:
 
 .. seealso::
-   
+
    :class:`~osprey.base.ErrorClassification`
        Error classification system
 
@@ -76,9 +76,9 @@ Registration
     )
 
 .. seealso::
-   
+
    :doc:`../01_core_framework/05_prompt_management`
        Prompt customization system
-   
+
    :doc:`../../developer-guides/04_infrastructure-components/06_error-handling-infrastructure`
        Implementation details and usage patterns

@@ -10,9 +10,9 @@ This template is designed to be **LLM-friendly**, **agent-friendly**, and **huma
 
 This minimal template provides the simplest starting point for integrating **your custom functionality** into the Alpha Berkeley Framework. It includes:
 
-✓ **Complete example files** with inline documentation  
-✓ **Clear guidance** on where to put your API calls, data structures, and logic  
-✓ **Best practices** built into the template structure  
+✓ **Complete example files** with inline documentation
+✓ **Clear guidance** on where to put your API calls, data structures, and logic
+✓ **Best practices** built into the template structure
 
 ---
 
@@ -59,17 +59,17 @@ class MyAPIResponseContext(CapabilityContext):
     """Container for your API response data."""
     CONTEXT_TYPE: ClassVar[str] = "MY_API_RESPONSE"
     CONTEXT_CATEGORY: ClassVar[str] = "COMPUTATIONAL_DATA"
-    
+
     # Define fields matching your API response
     data: List[Dict[str, Any]] = Field(description="Response data from API")
     status: str = Field(description="API response status")
     timestamp: datetime = Field(description="When data was retrieved")
-    
+
     # Implement required methods (see examples in file)
     def get_access_details(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         # Tell LLM how to access this data
         ...
-    
+
     def get_summary(self, key_name: Optional[str] = None) -> Dict[str, Any]:
         # Provide human-readable summary
         ...
@@ -97,19 +97,19 @@ class MyAPICapability(BaseCapability):
     description = "Calls my external API and returns data"
     provides = ["MY_API_RESPONSE"]
     requires = []  # Add dependencies if needed
-    
+
     @staticmethod
     async def execute(state: AgentState, **kwargs):
         # YOUR API CALL GOES HERE
         response = await your_api_client.fetch_data()
-        
+
         # Convert to context object
         output = MyAPIResponseContext(
             data=response['data'],
             status=response['status'],
             timestamp=datetime.now()
         )
-        
+
         # Store and return
         return StateManager.store_context(
             state, "MY_API_RESPONSE",
@@ -137,7 +137,7 @@ return extend_framework_registry(
             requires=[]
         ),
     ],
-    
+
     context_classes=[
         ContextClassRegistration(
             context_type="MY_API_RESPONSE",
@@ -245,7 +245,7 @@ User Query → Knowledge Retrieval → Documents/Data → LLM Answers with Conte
 **Example Flow**:
 ```
 Step 1: Fetch Data → DATA_CONTEXT
-Step 2: Process Data (requires DATA_CONTEXT) → PROCESSED_CONTEXT  
+Step 2: Process Data (requires DATA_CONTEXT) → PROCESSED_CONTEXT
 Step 3: Analyze (requires PROCESSED_CONTEXT) → ANALYSIS_CONTEXT
 Step 4: Generate Report (requires ANALYSIS_CONTEXT) → Final Response
 ```
@@ -318,7 +318,7 @@ vim {{ package_name }}/context_classes.py
 # 2. Implement capability
 vim {{ package_name }}/capabilities/my_capability.py
 
-# 3. Register components  
+# 3. Register components
 vim {{ package_name }}/registry.py
 
 # 4. Test
@@ -345,19 +345,19 @@ python -c "from osprey.registry import get_registry; r = get_registry(); print([
 
 ### Debugging Tips
 
-**Problem**: "Context type X not found in registry"  
+**Problem**: "Context type X not found in registry"
 **Solution**: Add `ContextClassRegistration` for that type in `registry.py`
 
-**Problem**: "Capability X not found"  
+**Problem**: "Capability X not found"
 **Solution**: Add `CapabilityRegistration` for that capability in `registry.py`
 
-**Problem**: "Module {{ package_name }}.capabilities.X not found"  
+**Problem**: "Module {{ package_name }}.capabilities.X not found"
 **Solution**: Check file exists and class name matches exactly
 
-**Problem**: LLM doesn't use your capability  
+**Problem**: LLM doesn't use your capability
 **Solution**: Improve `description` and add `_create_orchestrator_guide()`
 
-**Problem**: LLM generates wrong Python code  
+**Problem**: LLM generates wrong Python code
 **Solution**: Improve `get_access_details()` in your context class
 
 ---
@@ -437,23 +437,23 @@ Use this checklist when integrating your API or workflow:
 
 When you use this template, you automatically get:
 
-✓ **Task Classification**: LLM determines which capabilities to use  
-✓ **Orchestration**: LLM plans multi-step execution  
-✓ **Memory**: Short and long-term context management  
-✓ **Python Execution**: LLM can write and run analysis code  
-✓ **Time Parsing**: Natural language time expressions  
-✓ **Error Recovery**: Automatic retry and replanning  
-✓ **Streaming**: Real-time status updates  
-✓ **State Management**: Persistent agent state  
+✓ **Task Classification**: LLM determines which capabilities to use
+✓ **Orchestration**: LLM plans multi-step execution
+✓ **Memory**: Short and long-term context management
+✓ **Python Execution**: LLM can write and run analysis code
+✓ **Time Parsing**: Natural language time expressions
+✓ **Error Recovery**: Automatic retry and replanning
+✓ **Streaming**: Real-time status updates
+✓ **State Management**: Persistent agent state
 
 ### What You Provide
 
 You focus on **your domain-specific logic**:
 
-✓ Your API integrations  
-✓ Your data structures  
-✓ Your business logic  
-✓ Your domain knowledge  
+✓ Your API integrations
+✓ Your data structures
+✓ Your business logic
+✓ Your domain knowledge
 
 The framework handles the rest!
 

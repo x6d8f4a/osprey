@@ -18,7 +18,7 @@ Infrastructure Components
    :icon: book
 
    **Gateway-First Processing Architecture:**
-   
+
    - Gateway-driven message processing with universal entry point patterns
    - Task extraction system converting conversations into actionable requirements
    - LLM-powered classification and intelligent routing for capability selection
@@ -26,7 +26,7 @@ Infrastructure Components
    - Adaptive response generation and sophisticated error handling with recovery
 
    **Prerequisites:** Understanding of Core Framework Systems and LangGraph StateGraph concepts
-   
+
    **Target Audience:** Infrastructure developers and agentic system architects building reliable, controllable execution pipelines
 
 The Infrastructure Components provide the intelligent processing core that makes sophisticated agentic behavior possible while maintaining the reliability and oversight required for production systems. Master these components, and you'll understand how to build agents that combine LLM intelligence with predictable, controllable execution.
@@ -64,7 +64,7 @@ The Three Pillars
       :shadow: md
 
       **Conversational Context Compression**
-      
+
       Converts chat history into structured, actionable tasks with resolved references and context.
 
    .. grid-item-card:: 🎯 Classification & Routing
@@ -75,7 +75,7 @@ The Three Pillars
       :shadow: md
 
       **Intelligent Capability Selection**
-      
+
       LLM-powered analysis with few-shot examples to select appropriate capabilities for tasks.
 
    .. grid-item-card:: 🎼 Orchestrator Planning
@@ -86,7 +86,7 @@ The Three Pillars
       :shadow: md
 
       **Complete Execution Coordination**
-      
+
       Creates validated execution plans with approval integration before any capability runs.
 
 Supporting Infrastructure
@@ -103,7 +103,7 @@ Supporting Infrastructure
       :shadow: md
 
       **Universal Entry Point**
-      
+
       Single message processing interface with state management and approval integration.
 
    .. grid-item-card:: 💬 Message Generation
@@ -114,7 +114,7 @@ Supporting Infrastructure
       :shadow: md
 
       **Adaptive Response System**
-      
+
       Context-aware response generation with clarification workflows.
 
    .. grid-item-card:: 🔧 Error Handling
@@ -125,7 +125,7 @@ Supporting Infrastructure
       :shadow: md
 
       **AI-Powered Recovery**
-      
+
       Intelligent error classification with LLM-generated user explanations.
 
 .. dropdown:: 🚀 Next Steps
@@ -142,7 +142,7 @@ Supporting Infrastructure
          :class-header: bg-primary text-white
          :class-body: text-center
          :shadow: md
-         
+
          Universal entry point for all message processing with state management and approval integration
 
       .. grid-item-card:: 🧠 Follow the Pipeline
@@ -151,7 +151,7 @@ Supporting Infrastructure
          :class-header: bg-success text-white
          :class-body: text-center
          :shadow: md
-         
+
          Task extraction, classification, orchestration - the three-pillar processing flow
 
    .. grid:: 1 1 2 2
@@ -164,7 +164,7 @@ Supporting Infrastructure
          :class-header: bg-warning text-white
          :class-body: text-center
          :shadow: md
-         
+
          AI-powered error recovery with intelligent retry policies and user communication
 
       .. grid-item-card:: 💬 Master Communication
@@ -173,6 +173,6 @@ Supporting Infrastructure
          :class-header: bg-info text-white
          :class-body: text-center
          :shadow: md
-         
+
          Adaptive response generation with clarification workflows and domain customization
 

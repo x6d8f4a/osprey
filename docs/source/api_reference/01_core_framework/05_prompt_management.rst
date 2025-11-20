@@ -19,7 +19,7 @@ Core Prompt Builder Interface
 
    .. autosummary::
       :nosignatures:
-      
+
       ~FrameworkPromptBuilder.get_role_definition
       ~FrameworkPromptBuilder.get_instructions
 
@@ -27,7 +27,7 @@ Core Prompt Builder Interface
 
    .. autosummary::
       :nosignatures:
-      
+
       ~FrameworkPromptBuilder.get_task_definition
       ~FrameworkPromptBuilder._get_dynamic_context
       ~FrameworkPromptBuilder._get_examples
@@ -36,7 +36,7 @@ Core Prompt Builder Interface
 
    .. autosummary::
       :nosignatures:
-      
+
       ~FrameworkPromptBuilder.get_system_instructions
       ~FrameworkPromptBuilder.debug_print_prompt
       ~FrameworkPromptBuilder._format_examples
@@ -84,6 +84,6 @@ Framework Default Implementations
 
    :doc:`03_registry_system`
        Registry system for component management
-   
+
    :doc:`../../developer-guides/03_core-framework-systems/04_prompt-customization`
        Complete guide for customizing and developing prompts

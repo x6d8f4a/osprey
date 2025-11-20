@@ -57,7 +57,7 @@ ErrorCategory
       :nosignatures:
 
       ~ErrorCategory.INFRASTRUCTURE
-      ~ErrorCategory.CODE_RELATED  
+      ~ErrorCategory.CODE_RELATED
       ~ErrorCategory.WORKFLOW
       ~ErrorCategory.CONFIGURATION
 
@@ -340,6 +340,6 @@ Domain-Specific Error Handling
 
    :doc:`01_classification_system`
        Error classification and severity management
-   
+
    :doc:`03_recovery_coordination`
        Recovery patterns and coordination strategies
