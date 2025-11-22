@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Prompt-Based Capability Generator**: Natural language capability generation
+  - `--from-prompt` CLI option for natural language capability descriptions
+  - LLM-powered capability implementation generation
+  - Automatic domain inference and classification
 - **Test Infrastructure**: Global test utilities for all Osprey tests
   - `create_test_state()` factory for AgentState objects with sensible defaults
   - `PromptTestHelpers` for structural prompt testing
@@ -21,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stanford AI Playground Provider**: Added Stanford AI playground as a built-in API provider
 
 ### Changed
+- **Generator Architecture**: Refactored monolithic generator into modular design
+  - Split MCP capability generator into `BaseGenerator`, `MCPCapabilityGenerator`, and `PromptCapabilityGenerator`
+  - Added generator models for type safety and validation
+  - Improved CLI with lazy imports for better performance
+  - Better separation of concerns and extensibility
 - **Clarification System**: Improved prompt structure and context extraction
   - Enhanced clarification prompt builder with better orchestrator integration
   - Improved `get_system_instructions()` method for cleaner prompt composition

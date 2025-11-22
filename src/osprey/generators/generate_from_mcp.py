@@ -4,16 +4,11 @@ Generates complete, working Osprey capabilities from MCP servers.
 Everything in one file: capability class, guides, context class, error handling.
 """
 
-import asyncio
 import json
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field
-
-from osprey.models.completion import get_chat_completion
-from osprey.utils.config import get_model_config
+from .base_generator import BaseCapabilityGenerator
+from .models import ClassifierAnalysis, OrchestratorAnalysis
 
 # Try MCP client (optional - can work in simulated mode)
 try:
@@ -22,48 +17,6 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
-
-
-# =============================================================================
-# Pydantic Models for LLM Analysis
-# =============================================================================
-
-class ClassifierExampleRaw(BaseModel):
-    """Raw classifier example from LLM."""
-    query: str = Field(description="User query example")
-    reason: str = Field(description="Why this should/shouldn't activate")
-
-
-class ClassifierAnalysis(BaseModel):
-    """LLM analysis for classifier guide generation."""
-    activation_criteria: str = Field(description="When to activate")
-    keywords: List[str] = Field(description="Key indicators")
-    positive_examples: List[ClassifierExampleRaw] = Field(description="Should activate")
-    negative_examples: List[ClassifierExampleRaw] = Field(description="Should not activate")
-    edge_cases: List[str] = Field(description="Tricky scenarios")
-
-
-class ToolPattern(BaseModel):
-    """Tool usage pattern from LLM."""
-    tool_name: str = Field(description="Tool name")
-    typical_scenario: str = Field(description="When to use this tool")
-
-
-class ExampleStepRaw(BaseModel):
-    """Raw example step from LLM."""
-    context_key: str = Field(description="Descriptive identifier for this step (e.g., 'current_weather_sf', 'alerts_boston')")
-    tool_name: str = Field(default="", description="Tool to invoke (can be empty for high-level planning)")
-    task_objective: str = Field(description="What user wants to accomplish")
-    scenario: str = Field(description="Real-world scenario description")
-
-
-class OrchestratorAnalysis(BaseModel):
-    """LLM analysis for orchestrator guide generation."""
-    when_to_use: str = Field(description="General guidance")
-    tool_usage_patterns: List[ToolPattern] = Field(description="Tool patterns")
-    example_steps: List[ExampleStepRaw] = Field(description="Example steps")
-    common_sequences: List[str] = Field(description="Common patterns")
-    important_notes: List[str] = Field(description="Important reminders")
 
 
 # =============================================================================
@@ -148,7 +101,7 @@ SIMULATED_TOOLS = [
 # MCP Capability Generator
 # =============================================================================
 
-class MCPCapabilityGenerator:
+class MCPCapabilityGenerator(BaseCapabilityGenerator):
     """Generate complete MCP capability from MCP server tools."""
 
     def __init__(
@@ -156,8 +109,8 @@ class MCPCapabilityGenerator:
         capability_name: str,
         server_name: str,
         verbose: bool = False,
-        provider: Optional[str] = None,
-        model_id: Optional[str] = None
+        provider: str | None = None,
+        model_id: str | None = None
     ):
         """Initialize generator.
 
@@ -168,15 +121,12 @@ class MCPCapabilityGenerator:
             provider: Optional LLM provider override
             model_id: Optional model ID override
         """
-        self.capability_name = capability_name
+        super().__init__(capability_name, verbose, provider, model_id)
         self.server_name = server_name
-        self.verbose = verbose
-        self.tools: List[Dict[str, Any]] = []
-        self.mcp_url: Optional[str] = None
-        self.provider = provider
-        self.model_id = model_id
+        self.tools: list[dict[str, Any]] = []
+        self.mcp_url: str | None = None
 
-    async def discover_tools(self, mcp_url: Optional[str] = None, simulated: bool = False) -> List[Dict[str, Any]]:
+    async def discover_tools(self, mcp_url: str | None = None, simulated: bool = False) -> list[dict[str, Any]]:
         """Discover tools from MCP server or use simulated tools.
 
         Args:
@@ -270,9 +220,6 @@ class MCPCapabilityGenerator:
         Uses the configured orchestrator model (or overrides if specified)
         to analyze the discovered tools and generate activation guides.
 
-        Implements retry logic (2 attempts) in case the LLM doesn't get the
-        schema right on the first try, especially for complex MCP servers.
-
         Returns:
             Tuple of (classifier_analysis, orchestrator_analysis)
 
@@ -284,37 +231,8 @@ class MCPCapabilityGenerator:
 
         tools_json = json.dumps(self.tools, indent=2)
 
-        # Get model config from registry
-        model_config = get_model_config("orchestrator")
-
-        # Allow explicit provider/model override
-        if self.provider and self.model_id:
-            if self.verbose:
-                print(f"   Using explicit model: {self.provider}/{self.model_id}")
-            model_kwargs = {
-                "provider": self.provider,
-                "model_id": self.model_id,
-                "max_tokens": model_config.get("max_tokens", 4096)
-            }
-        else:
-            # Use orchestrator config from registry
-            if self.verbose:
-                provider = model_config.get("provider", "unknown")
-                model_id = model_config.get("model_id", "unknown")
-                print(f"   Using orchestrator model: {provider}/{model_id}")
-            model_kwargs = {"model_config": model_config}
-
-        # Retry logic for LLM calls (complex MCP servers may need multiple attempts)
-        max_attempts = 2
-        last_error = None
-
-        for attempt in range(1, max_attempts + 1):
-            try:
-                if self.verbose and attempt > 1:
-                    print(f"   Retry attempt {attempt}/{max_attempts}...")
-
-                # Generate classifier analysis
-                classifier_prompt = f"""You are an expert at analyzing tool capabilities and generating task classification rules.
+        # Generate classifier analysis
+        classifier_prompt = f"""You are an expert at analyzing tool capabilities and generating task classification rules.
 
 I have a capability called "{self.capability_name}" that wraps a {self.server_name} MCP server.
 
@@ -335,15 +253,10 @@ Make the examples natural and varied - think about real users.
 Output as JSON matching the ClassifierAnalysis schema.
 """
 
-                classifier_analysis = await asyncio.to_thread(
-                    get_chat_completion,
-                    message=classifier_prompt,
-                    **model_kwargs,
-                    output_model=ClassifierAnalysis
-                )
+        classifier_analysis = await self._call_llm(classifier_prompt, ClassifierAnalysis)
 
-                # Generate orchestrator analysis
-                orchestrator_prompt = f"""You are an expert at high-level task planning without business logic.
+        # Generate orchestrator analysis
+        orchestrator_prompt = f"""You are an expert at high-level task planning without business logic.
 
 I have a capability called "{self.capability_name}" that wraps a {self.server_name} MCP server.
 
@@ -375,38 +288,12 @@ The tool_name field can be empty or contain a generic placeholder.
 Output as JSON matching the OrchestratorAnalysis schema.
 """
 
-                orchestrator_analysis = await asyncio.to_thread(
-                    get_chat_completion,
-                    message=orchestrator_prompt,
-                    **model_kwargs,
-                    output_model=OrchestratorAnalysis
-                )
+        orchestrator_analysis = await self._call_llm(orchestrator_prompt, OrchestratorAnalysis)
 
-                if self.verbose:
-                    print("✓ Guides generated")
+        if self.verbose:
+            print("✓ Guides generated")
 
-                return classifier_analysis, orchestrator_analysis
-
-            except Exception as e:
-                last_error = e
-                if self.verbose:
-                    print(f"   Attempt {attempt} failed: {str(e)[:100]}")
-
-                # If this was the last attempt, raise with helpful message
-                if attempt == max_attempts:
-                    break
-
-        # All attempts failed - provide helpful error message
-        error_msg = (
-            f"\n❌ Failed to generate guides after {max_attempts} attempts.\n\n"
-            f"Last error: {str(last_error)}\n\n"
-            f"Suggestions:\n"
-            f"  1. Verify your MCP server provides valid tool schemas\n"
-            f"  2. Check that tools have clear descriptions\n"
-            f"  3. Try a more capable model (e.g., Claude Sonnet)\n"
-            f"  4. Use --provider and --model flags to override model\n\n"
-        )
-        raise RuntimeError(error_msg) from last_error
+        return classifier_analysis, orchestrator_analysis
 
     def generate_capability_code(
         self,
@@ -422,51 +309,17 @@ Output as JSON matching the OrchestratorAnalysis schema.
         Returns:
             Complete Python source code for the capability
         """
-        timestamp = datetime.now().isoformat()
-        class_name = ''.join(word.title() for word in self.capability_name.split('_')) + 'Capability'
-        context_class_name = ''.join(word.title() for word in self.capability_name.split('_')) + 'ResultsContext'
+        timestamp = self._get_timestamp()
+        class_name = self._to_class_name(self.capability_name)
+        context_class_name = self._to_class_name(self.capability_name, suffix='ResultsContext')
         context_type = f"{self.server_name.upper()}_RESULTS"
 
-        # Build classifier examples
-        classifier_examples = []
-        for ex in classifier_analysis.positive_examples:
-            classifier_examples.append(
-                f"            ClassifierExample(\n"
-                f"                query=\"{ex.query}\",\n"
-                f"                result=True,\n"
-                f"                reason=\"{ex.reason}\"\n"
-                f"            )"
-            )
-        for ex in classifier_analysis.negative_examples:
-            classifier_examples.append(
-                f"            ClassifierExample(\n"
-                f"                query=\"{ex.query}\",\n"
-                f"                result=False,\n"
-                f"                reason=\"{ex.reason}\"\n"
-                f"            )"
-            )
-        classifier_examples_code = ",\n".join(classifier_examples)
-
-        # Build orchestrator examples
-        orchestrator_examples = []
-        for i, ex in enumerate(orchestrator_analysis.example_steps):
-            # Use LLM-generated context_key (descriptive), fallback to generic if missing
-            context_key = ex.context_key if ex.context_key else f"{self.capability_name}_result_{i+1}"
-            orchestrator_examples.append(
-                f"            OrchestratorExample(\n"
-                f"                step=PlannedStep(\n"
-                f"                    context_key=\"{context_key}\",\n"
-                f"                    capability=\"{self.capability_name}\",\n"
-                f"                    task_objective=\"{ex.task_objective}\",\n"
-                f"                    expected_output=\"{context_type}\",\n"
-                f"                    success_criteria=\"Successfully completed {self.server_name} operation\",\n"
-                f"                    inputs=[]\n"
-                f"                ),\n"
-                f"                scenario_description=\"{ex.scenario}\",\n"
-                f"                notes=\"The ReAct agent autonomously selects appropriate MCP tools based on task_objective\"\n"
-                f"            )"
-            )
-        orchestrator_examples_code = ",\n".join(orchestrator_examples)
+        # Build examples using base class methods
+        classifier_examples_code = self._build_classifier_examples_code(classifier_analysis)
+        orchestrator_examples_code = self._build_orchestrator_examples_code(
+            orchestrator_analysis,
+            context_type
+        )
 
         # Build tools list for documentation
         tools_list = "\n".join([f"        - {t['name']}: {t.get('description', 'N/A')}" for t in self.tools])

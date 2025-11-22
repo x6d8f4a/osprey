@@ -24,10 +24,16 @@ def is_project_initialized() -> bool:
     return (Path.cwd() / 'config.yml').exists()
 
 # Lazy imports for heavy dependencies
-def get_generator():
+def get_mcp_generator():
     """Lazy import of MCP generator."""
     from osprey.generators import MCPCapabilityGenerator
     return MCPCapabilityGenerator
+
+
+def get_prompt_generator():
+    """Lazy import of Prompt generator."""
+    from osprey.generators import PromptCapabilityGenerator
+    return PromptCapabilityGenerator
 
 
 def get_server_template():
@@ -95,7 +101,7 @@ def generate():
     Available generators:
 
     \b
-      - capability: Generate Osprey capability from MCP server
+      - capability: Generate Osprey capability from MCP server or natural language prompt
       - mcp-server: Generate demo MCP server for testing
 
     Examples:
@@ -103,6 +109,9 @@ def generate():
     \b
       # Generate capability from MCP server
       $ osprey generate capability --from-mcp http://localhost:3001 --name slack_mcp
+
+      # Generate capability from natural language prompt
+      $ osprey generate capability --from-prompt "This capability fetches weather data" --name weather
 
       # Generate capability in simulated mode (no server needed)
       $ osprey generate capability --from-mcp simulated --name weather_mcp
@@ -117,19 +126,25 @@ def generate():
 @click.option(
     '--from-mcp',
     'mcp_url',
-    required=True,
+    default=None,
     help='MCP server URL (e.g., http://localhost:3001) or "simulated" for demo mode'
+)
+@click.option(
+    '--from-prompt',
+    'prompt',
+    default=None,
+    help='Natural language description of what the capability should do'
 )
 @click.option(
     '--name', '-n',
     'capability_name',
-    required=True,
-    help='Name for the generated capability (e.g., slack_mcp, weather_mcp)'
+    default=None,
+    help='Name for the generated capability (e.g., slack_mcp, weather_mcp). Auto-generated if using --from-prompt.'
 )
 @click.option(
     '--server-name',
     default=None,
-    help='Human-readable server name (default: derived from capability name)'
+    help='Human-readable server name (only for --from-mcp, default: derived from capability name)'
 )
 @click.option(
     '--output', '-o',
@@ -155,6 +170,7 @@ def generate():
 )
 def capability(
     mcp_url: str,
+    prompt: str,
     capability_name: str,
     server_name: str,
     output_file: str,
@@ -162,29 +178,40 @@ def capability(
     model_id: str,
     quiet: bool
 ):
-    """Generate Osprey capability from MCP server.
+    """Generate Osprey capability from MCP server or natural language prompt.
 
-    Creates a complete, production-ready Osprey capability that connects
-    to an MCP (Model Context Protocol) server. The generated capability
-    includes:
+    This command supports two generation modes:
 
     \b
-      - Capability class with ReAct agent execution
+      1. FROM MCP SERVER (--from-mcp):
+         Creates a production-ready capability that connects to an MCP server
+         with ReAct agent execution, complete business logic.
+
+      2. FROM PROMPT (--from-prompt):
+         Creates a capability skeleton with classifier/orchestrator guides
+         but PLACEHOLDER business logic that you must implement.
+
+    Generated components (both modes):
+
+    \b
+      - Capability class structure
       - Classifier guide (when to activate)
       - Orchestrator guide (how to plan steps)
-      - Context class for results
-      - Error handling and logging
+      - Context class structure
+      - Error handling structure
       - Registry registration snippet
-
-    The capability uses a ReAct agent pattern where the orchestrator
-    provides high-level task objectives, and the capability's internal
-    agent autonomously selects and calls the appropriate MCP tools.
 
     Examples:
 
     \b
       # Generate from real MCP server
       $ osprey generate capability --from-mcp http://localhost:3001 -n slack_mcp
+
+      # Generate from natural language prompt (name auto-suggested)
+      $ osprey generate capability --from-prompt "Fetches weather data from an API"
+
+      # Generate from prompt with explicit name
+      $ osprey generate capability --from-prompt "Query database for user info" -n db_query
 
       # Simulated mode (no server needed, uses weather demo tools)
       $ osprey generate capability --from-mcp simulated -n weather_mcp
@@ -194,17 +221,93 @@ def capability(
           -n slack_mcp --output ./my_app/capabilities/slack.py
 
       # Override LLM provider/model for guide generation
-      $ osprey generate capability --from-mcp simulated -n weather_mcp \\
+      $ osprey generate capability --from-prompt "Send emails via SMTP" \\
           --provider anthropic --model claude-sonnet-4-20250514
 
     After generation:
 
     \b
       1. Review and customize the generated code
-      2. Customize the context class based on your data structure
-      3. Add to your project's registry.py
-      4. Test with: osprey chat
+      2. If using --from-prompt: IMPLEMENT the execute() method
+      3. Customize the context class based on your data structure
+      4. Add to your project's registry.py
+      5. Test with: osprey chat
     """
+    # Validate: Must provide exactly one of --from-mcp or --from-prompt
+    if (mcp_url is None) == (prompt is None):
+        console.print(f"\n{Messages.error('Must specify exactly one of --from-mcp or --from-prompt')}")
+        console.print()
+        console.print("  [bold]Examples:[/bold]")
+        console.print("    " + Messages.command('osprey generate capability --from-mcp http://localhost:3001 -n slack'))
+        console.print("    " + Messages.command('osprey generate capability --from-prompt "Fetch weather data"'))
+        console.print()
+        raise click.Abort()
+
+    # Determine generation mode
+    from_prompt_mode = prompt is not None
+
+    # For --from-prompt, name is optional (will be suggested by LLM)
+    if from_prompt_mode:
+        if not capability_name and not quiet:
+            console.print(f"\n[{Styles.DIM}]ℹ️  No --name provided. LLM will suggest a capability name.[/{Styles.DIM}]")
+    else:
+        # For --from-mcp, name is required
+        if not capability_name:
+            console.print(f"\n{Messages.error('--name is required when using --from-mcp')}")
+            console.print()
+            console.print("  [bold]Example:[/bold]")
+            console.print("    " + Messages.command('osprey generate capability --from-mcp http://localhost:3001 -n slack_mcp'))
+            console.print()
+            raise click.Abort()
+
+    # Check if we're in a project directory
+    if not is_project_initialized():
+        console.print(f"\n{Messages.error('Not in an Osprey project directory')}")
+        console.print()
+        console.print("  This command requires an Osprey project with [accent]config.yml[/accent]")
+        console.print()
+        console.print("  [bold]To create a new project:[/bold]")
+        console.print("    " + Messages.command('osprey init my-project'))
+        console.print()
+        console.print("  [bold]Or navigate to an existing project:[/bold]")
+        console.print("    " + Messages.command('cd my-project'))
+        console.print("    " + Messages.command('osprey generate capability ...'))
+        console.print()
+        raise click.Abort()
+
+    if from_prompt_mode:
+        # FROM PROMPT mode
+        _generate_from_prompt(
+            prompt=prompt,
+            capability_name=capability_name,
+            output_file=output_file,
+            provider=provider,
+            model_id=model_id,
+            quiet=quiet
+        )
+    else:
+        # FROM MCP mode
+        _generate_from_mcp(
+            mcp_url=mcp_url,
+            capability_name=capability_name,
+            server_name=server_name,
+            output_file=output_file,
+            provider=provider,
+            model_id=model_id,
+            quiet=quiet
+        )
+
+
+def _generate_from_mcp(
+    mcp_url: str,
+    capability_name: str,
+    server_name: str,
+    output_file: str,
+    provider: str,
+    model_id: str,
+    quiet: bool
+):
+    """Generate capability from MCP server."""
     # Derive server name if not provided
     if not server_name:
         # Convert capability_name to title case (e.g., slack_mcp -> Slack Mcp)
@@ -222,21 +325,6 @@ def capability(
     if simulated:
         mcp_url = None
 
-    # Check if we're in a project directory
-    if not is_project_initialized():
-        console.print(f"\n{Messages.error('Not in an Osprey project directory')}")
-        console.print()
-        console.print("  This command requires an Osprey project with [accent]config.yml[/accent]")
-        console.print()
-        console.print("  [bold]To create a new project:[/bold]")
-        console.print("    " + Messages.command('osprey init my-project'))
-        console.print()
-        console.print("  [bold]Or navigate to an existing project:[/bold]")
-        console.print("    " + Messages.command('cd my-project'))
-        console.print("    " + Messages.command('osprey generate capability ...'))
-        console.print()
-        raise click.Abort()
-
     console.print("\n🎨 [header]Generating MCP Capability[/header]\n")
     console.print(f"  [{Styles.LABEL}]Capability:[/{Styles.LABEL}] [{Styles.VALUE}]{capability_name}[/{Styles.VALUE}]")
     console.print(f"  [{Styles.LABEL}]Server:[/{Styles.LABEL}] [{Styles.VALUE}]{server_name}[/{Styles.VALUE}]")
@@ -253,7 +341,7 @@ def capability(
             initialize_registry()
 
         # Create generator
-        MCPCapabilityGenerator = get_generator()
+        MCPCapabilityGenerator = get_mcp_generator()
         generator = MCPCapabilityGenerator(
             capability_name=capability_name,
             server_name=server_name,
@@ -280,6 +368,151 @@ def capability(
             import traceback
             console.print(f"[dim]{traceback.format_exc()}[/dim]")
         raise click.Abort() from e
+
+
+def _generate_from_prompt(
+    prompt: str,
+    capability_name: str | None,
+    output_file: str,
+    provider: str,
+    model_id: str,
+    quiet: bool
+):
+    """Generate capability from natural language prompt."""
+    console.print("\n🎨 [header]Generating Capability from Prompt[/header]\n")
+    console.print(f"  [{Styles.LABEL}]Prompt:[/{Styles.LABEL}] [{Styles.VALUE}]{prompt[:80]}{'...' if len(prompt) > 80 else ''}[/{Styles.VALUE}]")
+    if capability_name:
+        console.print(f"  [{Styles.LABEL}]Name:[/{Styles.LABEL}] [{Styles.VALUE}]{capability_name}[/{Styles.VALUE}]")
+    else:
+        console.print(f"  [{Styles.LABEL}]Name:[/{Styles.LABEL}] [{Styles.DIM}](will be suggested by LLM)[/{Styles.DIM}]")
+    console.print()
+
+    try:
+        # Initialize registry (required for LLM providers)
+        if not quiet:
+            with console.status("[dim]Initializing registry...[/dim]"):
+                initialize_registry()
+            console.print(f"  {Messages.success('Registry initialized')}")
+        else:
+            initialize_registry()
+
+        # Create generator
+        PromptCapabilityGenerator = get_prompt_generator()
+        generator = PromptCapabilityGenerator(
+            prompt=prompt,
+            capability_name=capability_name,
+            verbose=not quiet,
+            provider=provider,
+            model_id=model_id
+        )
+
+        # Run async generation
+        asyncio.run(_generate_from_prompt_async(
+            generator=generator,
+            output_file=output_file,
+            quiet=quiet
+        ))
+
+    except KeyboardInterrupt:
+        console.print(f"\n{Messages.warning('Generation cancelled by user')}")
+        raise click.Abort() from None
+    except Exception as e:
+        console.print(f"\n{Messages.error(f'Generation failed: {e}')}")
+        if not quiet:
+            import traceback
+            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        raise click.Abort() from e
+
+
+async def _generate_from_prompt_async(
+    generator,
+    output_file: str,
+    quiet: bool
+):
+    """Async helper for prompt-based capability generation."""
+    # Step 1: Generate metadata (name suggestions)
+    if not quiet:
+        console.print(f"\n🧠 [{Styles.HEADER}]Step 1: Analyzing prompt...[/{Styles.HEADER}]")
+
+    with console.status("[dim]Generating metadata with LLM...[/dim]"):
+        metadata = await generator.generate_metadata()
+
+    # Use the suggested name if user didn't provide one
+    capability_name = generator.capability_name or metadata.capability_name_suggestion
+    generator.capability_name = capability_name  # Update generator with final name
+
+    console.print(f"  {Messages.success(f'Capability name: {capability_name}')}")
+    console.print(f"  {Messages.success(f'Context type: {metadata.context_type_suggestion}')}")
+
+    # Determine output path
+    if not output_file:
+        output_path = _determine_capabilities_path(capability_name)
+    else:
+        output_path = Path(output_file)
+
+    console.print(f"  [{Styles.LABEL}]Output:[/{Styles.LABEL}] [{Styles.VALUE}]{output_path}[/{Styles.VALUE}]")
+
+    # Step 2: Generate guides
+    if not quiet:
+        console.print(f"\n🤖 [{Styles.HEADER}]Step 2: Generating classifier and orchestrator guides...[/{Styles.HEADER}]")
+
+    with console.status("[dim]Analyzing requirements and generating examples...[/dim]"):
+        classifier_analysis, orchestrator_analysis = await generator.generate_guides()
+
+    num_examples = len(classifier_analysis.positive_examples) + len(classifier_analysis.negative_examples)
+    console.print("  " + Messages.success(f'Generated {num_examples} classifier examples'))
+    console.print("  " + Messages.success(f'Generated {len(orchestrator_analysis.example_steps)} orchestrator examples'))
+
+    # Step 3: Generate code
+    if not quiet:
+        console.print(f"\n📝 [{Styles.HEADER}]Step 3: Generating capability code...[/{Styles.HEADER}]")
+
+    with console.status("[dim]Creating capability skeleton...[/dim]"):
+        code = generator.generate_capability_code(classifier_analysis, orchestrator_analysis)
+
+    console.print("  " + Messages.success('Code generated'))
+
+    # Step 4: Write file
+    if not quiet:
+        console.print(f"\n💾 [{Styles.HEADER}]Step 4: Writing output file...[/{Styles.HEADER}]")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(code)
+
+    console.print(f"  {Messages.success(f'Written: {output_path} ({len(code):,} bytes)')}")
+
+    # Success summary
+    console.print("\n" + "=" * 70)
+    console.print(f"[{Styles.BOLD_SUCCESS}]✅ SUCCESS! Capability Skeleton Generated[/{Styles.BOLD_SUCCESS}]")
+    console.print("=" * 70 + "\n")
+
+    console.print(f"[{Styles.HEADER}]What was created:[/{Styles.HEADER}]")
+    console.print(f"  ✓ Capability skeleton: {capability_name}")
+    console.print(f"  ✓ Classifier guide with {num_examples} examples")
+    console.print(f"  ✓ Orchestrator guide with {len(orchestrator_analysis.example_steps)} examples")
+    console.print("  ✓ Context class structure")
+    console.print("  ✓ Error handling structure")
+    console.print("  ✓ Registry registration snippet")
+
+    console.print(f"\n[{Styles.WARNING}]⚠️  IMPORTANT: This is a SKELETON with PLACEHOLDER business logic![/{Styles.WARNING}]")
+    console.print()
+
+    console.print(f"[{Styles.HEADER}]Next Steps:[/{Styles.HEADER}]")
+    console.print(f"  1. Review: [{Styles.VALUE}]{output_path}[/{Styles.VALUE}]")
+    console.print("  2. [bold]IMPLEMENT the execute() method[/bold] with actual business logic")
+    console.print("  3. Customize the context class to match your data structure")
+    console.print("  4. Update provides/requires fields based on dependencies")
+    console.print("  5. Add to your registry.py (see snippet at bottom of file)")
+    console.print(f"  6. Test with: [{Styles.ACCENT}]osprey chat[/{Styles.ACCENT}]")
+    console.print()
+
+    # Offer to add to registry automatically
+    if not quiet:
+        await _offer_registry_integration(
+            generator,
+            classifier_analysis,
+            orchestrator_analysis
+        )
 
 
 async def _offer_config_integration(generator):
@@ -377,7 +610,7 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
     """Offer to automatically add capability to registry.
 
     Args:
-        generator: MCPCapabilityGenerator instance
+        generator: BaseCapabilityGenerator instance (MCP or Prompt)
         classifier_analysis: Generated classifier analysis
         orchestrator_analysis: Generated orchestrator analysis
     """
@@ -423,10 +656,24 @@ async def _offer_registry_integration(generator, classifier_analysis, orchestrat
             return
 
         # Generate class name and context type from generator
-        class_name = ''.join(word.title() for word in generator.capability_name.split('_')) + 'Capability'
-        context_class_name = ''.join(word.title() for word in generator.capability_name.split('_')) + 'ResultsContext'
-        context_type = f"{generator.server_name.upper()}_RESULTS"
-        description = f"{generator.server_name} operations via MCP server"
+        # Support both MCP and Prompt generators
+        class_name = generator._to_class_name(generator.capability_name)
+
+        # Determine context class name and type based on generator type
+        if hasattr(generator, 'server_name'):
+            # MCP generator
+            context_class_name = generator._to_class_name(generator.capability_name, suffix='ResultsContext')
+            context_type = f"{generator.server_name.upper()}_RESULTS"
+            description = f"{generator.server_name} operations via MCP server"
+        else:
+            # Prompt generator - use metadata if available
+            context_class_name = generator._to_class_name(generator.capability_name, suffix='Context')
+            if hasattr(generator, 'metadata') and generator.metadata:
+                context_type = generator.metadata.context_type_suggestion
+                description = generator.metadata.description
+            else:
+                context_type = f"{generator.capability_name.upper()}_RESULTS"
+                description = f"{generator.capability_name} capability"
 
         # Add to registry
         new_content, preview = add_to_registry(
