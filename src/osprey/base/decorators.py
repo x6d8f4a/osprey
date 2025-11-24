@@ -564,6 +564,34 @@ def _create_infrastructure_node(cls, quiet=False):
     error_classifier = getattr(cls, 'classify_error', None)
     retry_policy_func = getattr(cls, 'get_retry_policy', None)
 
+    # Detect method type: static (legacy) or instance (new pattern)
+    is_static = isinstance(inspect.getattr_static(cls, 'execute'), staticmethod)
+    
+    # Validate it's either static or regular method (not classmethod or property)
+    if not is_static:
+        execute_attr = inspect.getattr_static(cls, 'execute')
+        if isinstance(execute_attr, classmethod):
+            raise ValueError(
+                f"Infrastructure node {cls.__name__}.execute() cannot be a classmethod. "
+                f"Use either @staticmethod (legacy) or instance method (recommended)."
+            )
+        if isinstance(execute_attr, property):
+            raise ValueError(
+                f"Infrastructure node {cls.__name__}.execute() cannot be a property. "
+                f"Must be a method."
+            )
+        if not callable(execute_attr):
+            raise ValueError(
+                f"Infrastructure node {cls.__name__}.execute must be callable."
+            )
+    
+    # Determine if this node needs _step injection
+    # Only nodes that execute WITHIN a plan context AND directly access step object need _step
+    # Pre-execution nodes (task_extraction, classifier, orchestrator, router) don't have steps yet
+    # Error node uses StateManager.get_current_step_index() instead of direct step access
+    NODES_NEEDING_STEP = {'clarify', 'respond'}
+    inject_step = node_name in NODES_NEEDING_STEP
+
     logger = get_logger(node_name)
 
     # Validate required components
@@ -605,12 +633,39 @@ def _create_infrastructure_node(cls, quiet=False):
             if not quiet:
                 logger.info(f"Starting {description}")
 
-            # Execute main infrastructure logic - nodes use get_config() internally
-            result = await execute_func(
-                state,
-                logger=logger,
-                **kwargs
-            )
+            # Execute based on method type
+            if is_static:
+                # OLD: Static method (backward compatibility)
+                # Note: Nodes use get_logger() internally, logger kwarg is legacy
+                result = await execute_func(
+                    state,
+                    logger=logger,
+                    **kwargs
+                )
+            else:
+                # NEW: Instance method (recommended pattern)
+                # Create instance WITHOUT state (registry-compatible!)
+                instance = cls()
+                
+                # Inject state (always needed)
+                instance._state = state
+                
+                # Inject step if this node type needs it
+                if inject_step:
+                    # Import inside function to avoid circular imports
+                    from osprey.state import StateManager
+                    current_step = StateManager.get_current_step(state)
+                    if current_step is None:
+                        logger.warning(
+                            f"Node {node_name} expects _step but get_current_step() returned None. "
+                            f"This may indicate execution outside plan context."
+                        )
+                    instance._step = current_step
+                
+                # Execute instance method
+                # Note: Nodes get logger via get_logger(), config via get_config(),
+                # streaming via get_streamer() - no kwargs injection needed
+                result = await instance.execute()
 
             execution_time = time.time() - start_time
 
