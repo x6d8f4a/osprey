@@ -1064,7 +1064,7 @@ The ``config.yml`` includes:
 .. admonition:: Model Recommendation
    :class: tip
 
-   **We recommend Claude Haiku 4.5** for the best experience. It provides excellent performance, low latency, and works very well with the framework's structured outputs. However, any OpenAI-compatible provider works - including institutional services like LBNL CBorg or Stanford AI Playground.
+   **We recommend Claude Haiku 4.5** for the best experience. It provides excellent performance, low latency, and works very well with the framework's structured outputs. However, any OpenAI-compatible provider works - including institutional services like LBNL CBorg, Stanford AI Playground, or ANL Argo.
 
 **Customization:**
 
@@ -1094,13 +1094,14 @@ Set up your ``.env`` file with your API key:
    # ANTHROPIC_API_KEY=your-key-here     # If using Anthropic (recommended)
    # CBORG_API_KEY=your-key-here         # If using LBNL CBorg
    # STANFORD_API_KEY=your-key-here      # If using Stanford AI Playground
+   # ARGO_API_KEY=your-key-here          # If using ANL Argo
    # OPENAI_API_KEY=your-key-here        # If using OpenAI
    # GOOGLE_API_KEY=your-key-here        # If using Google
 
 .. admonition:: Model Recommendation
    :class: tip
 
-   **We recommend Claude Haiku 4.5** for the best experience. It provides excellent performance, low latency, and works exceptionally well with the framework's structured outputs. However, the framework works with any provider - including institutional services like LBNL CBorg, Stanford AI Playground, or commercial providers like OpenAI and Google.
+   **We recommend Claude Haiku 4.5** for the best experience. It provides excellent performance, low latency, and works exceptionally well with the framework's structured outputs. However, the framework works with any provider - including institutional services like LBNL CBorg, Stanford AI Playground, ANL Argo, or commercial providers like OpenAI and Google.
 
 .. dropdown:: **Where do I get an API key?**
    :color: info
@@ -1146,6 +1147,13 @@ Set up your ``.env`` file with your API key:
    3. Go to 'Get Started' → 'Request the creation of a new API key'
    4. Log in with your Stanford credentials and complete the form
    5. Once approved, copy the API key from the notification email
+
+   **ANL Argo**
+
+   1. Requires Argonne National Laboratory affiliation
+   2. Argo uses your ANL username (automatically obtained from the $USER environment variable)
+   3. Contact your ANL IT department for access to the Argo proxy service
+   4. Base URL: https://argo-bridge.cels.anl.gov
 
    **Ollama (Local Models)**
 

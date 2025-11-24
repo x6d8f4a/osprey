@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Argo AI Provider** (ANL institutional service)
+  - New provider adapter for Argonne National Laboratory's Argo proxy service
+  - Supports 8 models: Claude (Haiku 4.5, Sonnet 4.5, Sonnet 3.7, Opus 4.1), Gemini (2.5 Flash, 2.5 Pro), GPT-5, GPT-5 Mini
+  - OpenAI-compatible interface with automatic structured output support
+  - Uses `$USER` environment variable for ANL authentication
+  - File: `src/osprey/models/providers/argo.py`
+  - Registered in framework registry
+  - Added `ARGO_API_KEY` to all project templates
+
 ### Changed
 - **Infrastructure Node Instance Method Migration** ✅ **COMPLETE**
   - **All 7 infrastructure nodes** migrated from static method pattern to instance method pattern
