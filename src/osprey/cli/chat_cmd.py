@@ -31,12 +31,22 @@ from osprey.interfaces.cli.direct_conversation import run_cli
     default="config.yml",
     help="Configuration file (default: config.yml in project directory)"
 )
-def chat(project: str, config: str):
-    """Start interactive CLI conversation interface.
+@click.option(
+    "--tui",
+    is_flag=True,
+    default=False,
+    help="Launch Terminal User Interface (TUI) instead of CLI"
+)
+def chat(project: str, config: str, tui: bool):
+    """Start interactive conversation interface (CLI or TUI).
 
     Opens an interactive chat session with the agent. The interface
     provides command history, auto-suggestions, and real-time streaming
     of agent responses.
+
+    Use --tui flag to launch the Terminal User Interface (TUI) instead
+    of the default CLI interface. The TUI provides a full-screen terminal
+    experience with enhanced visual display.
 
     This command wraps the existing direct_conversation interface,
     preserving all its functionality including:
@@ -58,8 +68,11 @@ def chat(project: str, config: str):
     Examples:
 
     \b
-      # Start chat in current directory
+      # Start CLI chat in current directory
       $ osprey chat
+
+      # Start TUI chat
+      $ osprey chat --tui
 
       # Start chat in specific project
       $ osprey chat --project ~/projects/my-agent
@@ -72,11 +85,9 @@ def chat(project: str, config: str):
       $ osprey chat
 
     Note: Ensure services are running first (osprey deploy up)
+    Note: TUI requires textual package: pip install osprey-framework[tui]
     """
     from .project_utils import resolve_config_path
-
-    console.print("Starting Osprey CLI interface...")
-    console.print("   Press Ctrl+C to exit\n")
 
     try:
         # Resolve config path from project and config args
@@ -87,9 +98,29 @@ def chat(project: str, config: str):
         import os
         os.environ['CONFIG_FILE'] = str(config_path)
 
-        # Call the existing run_cli function with config_path
-        # This is the ORIGINAL function from Phase 1.5, behavior unchanged
-        asyncio.run(run_cli(config_path=config_path))
+        if tui:
+            # Launch TUI interface
+            console.print("Starting Osprey TUI interface...")
+            console.print("   Press 'q' or Ctrl+C to exit\n")
+
+            try:
+                from osprey.interfaces.tui import run_tui
+                asyncio.run(run_tui(config_path=config_path))
+            except ImportError as e:
+                console.print(
+                    f"\n❌ TUI not available: {e}\n"
+                    "   Install with: pip install osprey-framework[tui]",
+                    style=Styles.ERROR
+                )
+                raise click.Abort()
+        else:
+            # Launch CLI interface (original behavior)
+            console.print("Starting Osprey CLI interface...")
+            console.print("   Press Ctrl+C to exit\n")
+
+            # Call the existing run_cli function with config_path
+            # This is the ORIGINAL function from Phase 1.5, behavior unchanged
+            asyncio.run(run_cli(config_path=config_path))
 
     except KeyboardInterrupt:
         console.print("\n\n👋 Goodbye!", style=Styles.WARNING)

@@ -1,0 +1,30 @@
+/* Osprey TUI Styles */
+
+Screen {
+    background: $surface;
+}
+
+#welcome {
+    width: 100%;
+    height: auto;
+    padding: 2 4;
+    text-align: center;
+    text-style: bold;
+    color: $success;
+}
+
+#instructions {
+    width: 100%;
+    height: auto;
+    padding: 1 4;
+    text-align: center;
+    color: $text-muted;
+}
+
+Header {
+    dock: top;
+}
+
+Footer {
+    dock: bottom;
+}
