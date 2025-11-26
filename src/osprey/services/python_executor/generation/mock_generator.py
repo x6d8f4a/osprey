@@ -38,7 +38,7 @@ Behaviors:
 
 from typing import Any
 
-from ..models import PythonExecutionRequest
+from ..models import PythonExecutionRequest, ExecutionError
 
 
 class MockCodeGenerator:
@@ -89,7 +89,7 @@ class MockCodeGenerator:
 
         # Call tracking for test assertions
         self.last_request: PythonExecutionRequest | None = None
-        self.last_error_chain: list[str] = []
+        self.last_error_chain: list[ExecutionError] = []
 
         # Initialize with behavior if specified
         if behavior:
@@ -98,7 +98,7 @@ class MockCodeGenerator:
     async def generate_code(
         self,
         request: PythonExecutionRequest,
-        error_chain: list[str]
+        error_chain: list[ExecutionError]
     ) -> str:
         """Generate Python code based on configured behavior.
 
@@ -119,7 +119,7 @@ class MockCodeGenerator:
         # Track call for test assertions
         self.call_count += 1
         self.last_request = request
-        self.last_error_chain = error_chain
+        self.last_error_chain = error_chain  # Store as ExecutionError objects
 
         # Sequence mode: return next code in sequence
         if self.code_sequence:
@@ -164,6 +164,14 @@ class MockCodeGenerator:
         self.call_count = 0
         self.last_request = None
         self.last_error_chain = []
+
+    def get_generation_metadata(self) -> dict[str, Any]:
+        """Get metadata from the last code generation.
+
+        Returns:
+            Empty dict (mock generator provides no metadata)
+        """
+        return {}
 
     def _apply_behavior(self, behavior: str) -> None:
         """Apply a predefined behavior pattern."""
@@ -297,7 +305,7 @@ results = {
     def _generate_error_aware_code(
         self,
         request: PythonExecutionRequest,
-        error_chain: list[str]
+        error_chain: list[ExecutionError]
     ) -> str:
         """Generate code that adapts based on error feedback."""
         # First attempt
@@ -308,8 +316,8 @@ mean_value = sum(results['values']) / len(results['values'])
 results['mean'] = mean_value
 """.strip()
 
-        # Adapt based on error type
-        errors_str = ' '.join(error_chain).lower()
+        # Adapt based on error type - extract error messages from ExecutionError objects
+        errors_str = ' '.join(err.error_message for err in error_chain).lower()
 
         if 'nameerror' in errors_str or 'import' in errors_str:
             return """

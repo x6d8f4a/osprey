@@ -187,8 +187,18 @@ async def test_basic_generator_handles_error_chain(mock_llm_response):
     )
 
     error_chain = [
-        "NameError: name 'undefined_var' is not defined",
-        "SyntaxError: invalid syntax"
+        ExecutionError(
+            error_type="execution",
+            error_message="NameError: name 'undefined_var' is not defined",
+            attempt_number=1,
+            stage="execution"
+        ),
+        ExecutionError(
+            error_type="syntax",
+            error_message="SyntaxError: invalid syntax",
+            attempt_number=2,
+            stage="generation"
+        )
     ]
 
     with mock_llm_response("result = 42"):

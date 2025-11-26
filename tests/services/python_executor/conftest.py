@@ -12,6 +12,7 @@ Note:
 import pytest
 
 from osprey.services.python_executor import PythonExecutionRequest
+from osprey.services.python_executor.models import ExecutionError
 
 
 @pytest.fixture
@@ -98,6 +99,46 @@ value = caget('TEST:PV')
 results = {'operation': 'read', 'value': value}
 """.strip(),
     }
+
+
+@pytest.fixture
+def sample_execution_error():
+    """Create a sample ExecutionError for testing.
+
+    Returns:
+        ExecutionError instance with default test values
+    """
+    return ExecutionError(
+        error_type="execution",
+        error_message="Test error message",
+        attempt_number=1,
+        stage="execution"
+    )
+
+
+@pytest.fixture
+def sample_error_chain():
+    """Create a sample error chain with ExecutionError objects.
+
+    Returns:
+        List of ExecutionError objects for testing error recovery
+    """
+    return [
+        ExecutionError(
+            error_type="execution",
+            error_message="NameError: name 'undefined_var' is not defined",
+            failed_code="x = undefined_var + 1",
+            attempt_number=1,
+            stage="execution"
+        ),
+        ExecutionError(
+            error_type="syntax",
+            error_message="SyntaxError: invalid syntax",
+            failed_code="def broken(\n    print('hi')",
+            attempt_number=2,
+            stage="generation"
+        )
+    ]
 
 
 # Pytest markers for Python executor tests

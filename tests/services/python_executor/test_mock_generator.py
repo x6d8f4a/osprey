@@ -17,7 +17,7 @@ Test Coverage:
 import pytest
 
 from osprey.services.python_executor.generation import CodeGenerator, MockCodeGenerator
-from osprey.services.python_executor.models import PythonExecutionRequest
+from osprey.services.python_executor.models import PythonExecutionRequest, ExecutionError
 
 
 # =============================================================================
@@ -383,7 +383,14 @@ class TestErrorAwareGeneration:
         )
 
         # Second attempt with import error
-        error_chain = ["NameError: name 'statistics' is not defined"]
+        error_chain = [
+            ExecutionError(
+                error_type="execution",
+                error_message="NameError: name 'statistics' is not defined",
+                attempt_number=1,
+                stage="execution"
+            )
+        ]
         code = await generator.generate_code(request, error_chain)
 
         # Should have added imports
@@ -401,7 +408,14 @@ class TestErrorAwareGeneration:
             execution_folder_name="test"
         )
 
-        error_chain = ["ZeroDivisionError: division by zero"]
+        error_chain = [
+            ExecutionError(
+                error_type="execution",
+                error_message="ZeroDivisionError: division by zero",
+                attempt_number=1,
+                stage="execution"
+            )
+        ]
         code = await generator.generate_code(request, error_chain)
 
         # Should have zero check
@@ -418,7 +432,14 @@ class TestErrorAwareGeneration:
             execution_folder_name="test"
         )
 
-        error_chain = ["SyntaxError: invalid syntax"]
+        error_chain = [
+            ExecutionError(
+                error_type="syntax",
+                error_message="SyntaxError: invalid syntax",
+                attempt_number=1,
+                stage="generation"
+            )
+        ]
         code = await generator.generate_code(request, error_chain)
 
         # Should be valid Python now
@@ -435,7 +456,14 @@ class TestErrorAwareGeneration:
             execution_folder_name="test"
         )
 
-        error_chain = ["SomeWeirdError: something went wrong"]
+        error_chain = [
+            ExecutionError(
+                error_type="execution",
+                error_message="SomeWeirdError: something went wrong",
+                attempt_number=1,
+                stage="execution"
+            )
+        ]
         code = await generator.generate_code(request, error_chain)
 
         # Should return simple working code
@@ -509,8 +537,28 @@ class TestCallTracking:
             execution_folder_name="test"
         )
 
-        error_chain1 = ["Error 1"]
-        error_chain2 = ["Error 2", "Error 3"]
+        error_chain1 = [
+            ExecutionError(
+                error_type="execution",
+                error_message="Error 1",
+                attempt_number=1,
+                stage="execution"
+            )
+        ]
+        error_chain2 = [
+            ExecutionError(
+                error_type="execution",
+                error_message="Error 2",
+                attempt_number=1,
+                stage="execution"
+            ),
+            ExecutionError(
+                error_type="execution",
+                error_message="Error 3",
+                attempt_number=2,
+                stage="execution"
+            )
+        ]
 
         await generator.generate_code(request, error_chain1)
         assert generator.last_error_chain == error_chain1
@@ -528,7 +576,14 @@ class TestCallTracking:
             task_objective="Test",
             execution_folder_name="test"
         )
-        generator.last_error_chain = ["error"]
+        generator.last_error_chain = [
+            ExecutionError(
+                error_type="execution",
+                error_message="error",
+                attempt_number=1,
+                stage="execution"
+            )
+        ]
 
         generator.reset()
 
@@ -578,7 +633,14 @@ class TestMockGeneratorIntegration:
             compile(code1, '<string>', 'exec')
 
         # Second call: get fixed code
-        error_chain = ["SyntaxError: invalid syntax"]
+        error_chain = [
+            ExecutionError(
+                error_type="syntax",
+                error_message="SyntaxError: invalid syntax",
+                attempt_number=1,
+                stage="generation"
+            )
+        ]
         code2 = await generator.generate_code(request, error_chain)
         compile(code2, '<string>', 'exec')  # Should work now
 
@@ -601,10 +663,22 @@ class TestMockGeneratorIntegration:
         code1 = await generator.generate_code(request, [])
 
         # Second: with import error
-        code2 = await generator.generate_code(request, ["NameError: name 'x' is not defined"])
+        error1 = ExecutionError(
+            error_type="execution",
+            error_message="NameError: name 'x' is not defined",
+            attempt_number=1,
+            stage="execution"
+        )
+        code2 = await generator.generate_code(request, [error1])
 
         # Third: with division error
-        code3 = await generator.generate_code(request, ["ZeroDivisionError"])
+        error2 = ExecutionError(
+            error_type="execution",
+            error_message="ZeroDivisionError",
+            attempt_number=2,
+            stage="execution"
+        )
+        code3 = await generator.generate_code(request, [error2])
 
         # Each should be valid Python
         compile(code1, '<string>', 'exec')

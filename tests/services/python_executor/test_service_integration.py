@@ -107,7 +107,10 @@ class TestBasicWorkflow:
 
             # Verify mock was called
             assert mock_gen.call_count >= 1
-            assert mock_gen.last_request == request
+            # Compare request fields (excluding execution_folder_path which gets set during execution)
+            assert mock_gen.last_request.user_query == request.user_query
+            assert mock_gen.last_request.task_objective == request.task_objective
+            assert mock_gen.last_request.execution_folder_name == request.execution_folder_name
 
     @pytest.mark.asyncio
     @pytest.mark.integration
