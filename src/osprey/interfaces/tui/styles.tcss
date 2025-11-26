@@ -125,6 +125,19 @@ ExecutionStepBlock {
     border: round $primary;
 }
 
+/* Completed block states - status-specific borders */
+.block-success {
+    border: round $success;
+}
+
+.block-error {
+    border: round $error;
+}
+
+.block-warning {
+    border: round $warning;
+}
+
 /* Block header - title with indicator */
 .block-header {
     width: 100%;
@@ -164,6 +177,7 @@ ExecutionStepBlock {
     background: transparent;
 }
 
+/* Default output colors (success) */
 #block-output > CollapsibleTitle {
     color: $success;
     padding: 0;
@@ -175,6 +189,31 @@ ExecutionStepBlock {
     color: $success-darken-1;
     padding-left: 2;
     margin: 0;
+}
+
+/* Output colors by status */
+.output-success > CollapsibleTitle {
+    color: $success;
+}
+
+.output-success #block-output-content {
+    color: $success-darken-1;
+}
+
+.output-error > CollapsibleTitle {
+    color: $error;
+}
+
+.output-error #block-output-content {
+    color: $error-darken-1;
+}
+
+.output-warning > CollapsibleTitle {
+    color: $warning;
+}
+
+.output-warning #block-output-content {
+    color: $warning-darken-1;
 }
 
 /* SelectionList for capability checkbox list */

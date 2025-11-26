@@ -155,6 +155,7 @@ class ProcessingBlock(Static):
     INDICATOR_ACTIVE = "*"
     INDICATOR_SUCCESS = "✓"
     INDICATOR_ERROR = "✗"
+    INDICATOR_WARNING = "⚠"
 
     # Breathing animation frames - asterisk style
     BREATHING_FRAMES = ["*", "✱", "✳", "✱"]
@@ -174,7 +175,7 @@ class ProcessingBlock(Static):
         self._mounted = False
         # Pending state to apply after mount
         self._pending_input: str | None = None
-        self._pending_output: tuple[str, bool] | None = None
+        self._pending_output: tuple[str, str] | None = None  # (text, status)
         # Breathing animation state
         self._breathing_timer = None
         self._breathing_index = 0
@@ -261,13 +262,23 @@ class ProcessingBlock(Static):
             return first_line + " ..."
         return first_line
 
-    def _apply_output(self, text: str, success: bool) -> None:
-        """Internal: apply output with collapsible preview."""
+    def _apply_output(self, text: str, status: str) -> None:
+        """Internal: apply output with collapsible preview.
+
+        Args:
+            text: The output text to display.
+            status: The completion status ('success', 'error', or 'warning').
+        """
         # Stop breathing animation
         self._stop_breathing()
 
-        # Update header indicator
-        indicator = self.INDICATOR_SUCCESS if success else self.INDICATOR_ERROR
+        # Update header indicator based on status
+        indicators = {
+            "success": self.INDICATOR_SUCCESS,
+            "error": self.INDICATOR_ERROR,
+            "warning": self.INDICATOR_WARNING,
+        }
+        indicator = indicators.get(status, self.INDICATOR_SUCCESS)
         header = self.query_one("#block-header", Static)
         header.update(f"{indicator} {self.title}")
 
@@ -287,7 +298,12 @@ class ProcessingBlock(Static):
         content = self.query_one("#block-output-content", Static)
         content.update(text)
 
+        # Update CSS classes for status-specific styling
         self.remove_class("block-active")
+        self.add_class(f"block-{status}")
+
+        # Add status class to output collapsible for color styling
+        output.add_class(f"output-{status}")
 
     def on_collapsible_expanded(self, event: Collapsible.Expanded) -> None:
         """Show descriptive header when expanded."""
@@ -311,17 +327,17 @@ class ProcessingBlock(Static):
         if self._mounted:
             self._apply_input(text)
 
-    def set_output(self, text: str, success: bool = True) -> None:
+    def set_output(self, text: str, status: str = "success") -> None:
         """Set the output section and mark complete.
 
         Args:
             text: The output text to display.
-            success: Whether the operation succeeded.
+            status: The completion status ('success', 'error', or 'warning').
         """
-        self._status = "success" if success else "error"
-        self._pending_output = (text, success)
+        self._status = status
+        self._pending_output = (text, status)
         if self._mounted:
-            self._apply_output(text, success)
+            self._apply_output(text, status)
 
 
 class TaskExtractionBlock(ProcessingBlock):
@@ -826,14 +842,14 @@ class OspreyTUI(App):
         """
         event_type = chunk.get("event_type", "")
 
-        # DEBUG: Log status and success events to debug block (if enabled)
-        if event_type in ("status", "success"):
+        # DEBUG: Log events to debug block (if enabled)
+        if event_type in ("status", "success", "error", "warning"):
             debug_block = display.get_or_create_debug_block()
             if debug_block:
                 debug_block.add_event(chunk)
 
-        # Accept both status (start/progress) and success (completion) events
-        if event_type not in ("status", "success"):
+        # Accept status, success, error, and warning events
+        if event_type not in ("status", "success", "error", "warning"):
             return
 
         component = chunk.get("component", "")
@@ -844,16 +860,17 @@ class OspreyTUI(App):
         # Dispatch by phase
         if phase == "Task Preparation":
             self._handle_task_preparation_event(
-                chunk, component, is_complete, user_query, display
+                chunk, component, is_complete, event_type, user_query, display
             )
         elif phase == "Execution":
-            self._handle_execution_event(chunk, component, is_complete, display)
+            self._handle_execution_event(chunk, component, is_complete, event_type, display)
 
     def _handle_task_preparation_event(
         self,
         chunk: dict,
         component: str,
         is_complete: bool,
+        event_type: str,
         user_query: str,
         display: ChatDisplay,
     ) -> None:
@@ -863,9 +880,18 @@ class OspreyTUI(App):
             chunk: The streaming event data.
             component: The component name.
             is_complete: Whether this is a completion event.
+            event_type: The event type (status, success, error, warning).
             user_query: The original user query.
             display: The chat display widget.
         """
+        # Handle ERROR/WARNING events - finalize block with error/warning status
+        if event_type in ("error", "warning"):
+            block = display._current_blocks.get(component)
+            if block and block._status == "active":
+                msg = chunk.get("message", f"{component} {event_type}")
+                block.set_output(msg, status=event_type)
+            return
+
         # Handle COMPLETION - also triggers deferred next block creation
         if is_complete:
             block = display._current_blocks.get(component)
@@ -901,7 +927,7 @@ class OspreyTUI(App):
             # Check if previous is complete - if so, create now
             prev_component = self._get_prev_component(component)
             prev = display._current_blocks.get(prev_component)
-            if prev and prev._status in ("success", "error"):
+            if prev and prev._status in ("success", "error", "warning"):
                 self._create_and_activate_block(component, user_query, display)
             # Otherwise: already recorded, will be created when prev completes
 
@@ -910,6 +936,7 @@ class OspreyTUI(App):
         chunk: dict,
         component: str,
         is_complete: bool,
+        event_type: str,
         display: ChatDisplay,
     ) -> None:
         """Handle Execution phase events for capability steps.
@@ -920,6 +947,7 @@ class OspreyTUI(App):
             chunk: The streaming event data.
             component: The capability name being executed.
             is_complete: Whether this is a completion event.
+            event_type: The event type (status, success, error, warning).
             display: The chat display widget.
         """
         # Get step info from streaming event
@@ -930,13 +958,20 @@ class OspreyTUI(App):
         block_key = f"execution_step_{step_index}"
         prev_block_key = f"execution_step_{step_index - 1}" if step_index > 0 else None
 
+        # Handle ERROR/WARNING events - finalize current block with error/warning status
+        if event_type in ("error", "warning"):
+            block = display._current_blocks.get(block_key)
+            if block and block._status == "active":
+                block.set_output(message, status=event_type)
+            return
+
         # When new step starts, mark previous step as complete
         if prev_block_key and prev_block_key in display._current_blocks:
             prev_block = display._current_blocks[prev_block_key]
             if prev_block._status == "active":
                 # Use last captured message as output
                 last_msg = getattr(self, f"_step_{step_index - 1}_last_msg", "Completed")
-                prev_block.set_output(last_msg, success=True)
+                prev_block.set_output(last_msg)
 
         # Create block if not exists (first event for this step)
         if block_key not in display._current_blocks:
@@ -1020,13 +1055,13 @@ class OspreyTUI(App):
                     # Use captured last message as output
                     last_msg = getattr(self, f"_step_{i}_last_msg", None)
                     if last_msg:
-                        block.set_output(last_msg, success=True)
+                        block.set_output(last_msg)
                     else:
                         # Fallback to step_results metadata
                         context_key = step.get("context_key", "")
                         result = step_results.get(context_key, {})
                         success = result.get("success", True)
-                        block.set_output("Completed", success=success)
+                        block.set_output("Completed", status="success" if success else "error")
 
     def _show_final_response(
         self, state: dict, streaming_msg: StreamingMessage
