@@ -47,6 +47,9 @@ class StreamingMessage(Static):
         """Initialize streaming message."""
         super().__init__(**kwargs)
         self.add_class("message-assistant")
+        self._mounted = False
+        self._pending_status: str | None = None
+        self._pending_content: str | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the streaming message with placeholders."""
@@ -54,21 +57,293 @@ class StreamingMessage(Static):
         yield Static("", classes="streaming-status")
         yield Static("assistant", classes="role-label")
 
-    def update_status(self, status: str) -> None:
-        """Update the status line during streaming."""
+    def on_mount(self) -> None:
+        """Apply pending state after widget is mounted."""
+        self._mounted = True
+        if self._pending_status is not None:
+            self._apply_status(self._pending_status)
+        if self._pending_content is not None:
+            self._apply_content(self._pending_content)
+
+    def _apply_status(self, status: str) -> None:
+        """Internal: apply status to widget."""
         status_widget = self.query_one(".streaming-status", Static)
         status_widget.update(f"🔄 {status}")
 
-    def finalize(self, content: str) -> None:
-        """Finalize with the actual response content."""
+    def _apply_content(self, content: str) -> None:
+        """Internal: apply content and clear status."""
         content_widget = self.query_one(".message-content", Static)
         content_widget.update(content)
         status_widget = self.query_one(".streaming-status", Static)
         status_widget.update("")
 
+    def update_status(self, status: str) -> None:
+        """Update the status line during streaming."""
+        self._pending_status = status
+        if self._mounted:
+            self._apply_status(status)
+
+    def finalize(self, content: str) -> None:
+        """Finalize with the actual response content."""
+        self._pending_content = content
+        if self._mounted:
+            self._apply_content(content)
+
+
+class DebugBlock(Static):
+    """Debug block to show streaming events for debugging."""
+
+    def __init__(self, **kwargs):
+        """Initialize debug block."""
+        super().__init__(**kwargs)
+        self.add_class("debug-block")
+        self._events: list[str] = []
+        self._mounted = False
+
+    def compose(self) -> ComposeResult:
+        """Compose the debug block with header and scrollable content."""
+        yield Static("📊 Debug Events:", classes="debug-header")
+        yield ScrollableContainer(
+            Static("", classes="debug-content", id="debug-content"),
+            id="debug-scroll",
+            classes="debug-scroll",
+        )
+
+    def on_mount(self) -> None:
+        """Apply pending state after widget is mounted."""
+        self._mounted = True
+        self._update_display()
+
+    def add_event(self, chunk: dict) -> None:
+        """Add an event to the debug display."""
+        component = chunk.get("component", "?")
+        phase = chunk.get("phase", "?")
+        event_type = chunk.get("event_type", "?")
+        complete = chunk.get("complete", False)
+        msg = chunk.get("message", "")[:40]
+
+        # success event or explicit complete flag = DONE
+        is_done = (event_type == "success") or complete
+        status = "✅ DONE" if is_done else "▶️ START"
+        line = f"[{component}] {status} | {phase} | {msg}"
+        self._events.append(line)
+
+        if self._mounted:
+            self._update_display()
+
+    def _update_display(self) -> None:
+        """Update the display with ALL events (scrollable)."""
+        content = self.query_one("#debug-content", Static)
+        content.update("\n".join(self._events))  # Show ALL events
+        # Auto-scroll to bottom
+        scroll = self.query_one("#debug-scroll", ScrollableContainer)
+        scroll.scroll_end(animate=False)
+
+    def clear(self) -> None:
+        """Clear all events."""
+        self._events = []
+        if self._mounted:
+            self._update_display()
+
+
+class ProcessingBlock(Static):
+    """Base class for processing blocks with indicator, input, and output."""
+
+    INDICATOR_PENDING = "⚪"
+    INDICATOR_ACTIVE = "🔵"
+    INDICATOR_SUCCESS = "🟢"
+    INDICATOR_ERROR = "🔴"
+
+    def __init__(self, title: str, **kwargs):
+        """Initialize a processing block.
+
+        Args:
+            title: The title displayed in the block header.
+        """
+        super().__init__(**kwargs)
+        self.title = title
+        self._status = "pending"
+        self._mounted = False
+        # Pending state to apply after mount
+        self._pending_input: str | None = None
+        self._pending_output: tuple[str, bool] | None = None
+
+    def compose(self) -> ComposeResult:
+        """Compose the block with header, input, and output sections."""
+        header_text = f"{self.INDICATOR_PENDING} {self.title}"
+        yield Static(header_text, classes="block-header")
+        yield Static("", classes="block-input")
+        yield Static("", classes="block-output")
+
+    def on_mount(self) -> None:
+        """Apply pending state after widget is mounted."""
+        self._mounted = True
+        # Apply pending state
+        if self._status == "active":
+            self._apply_active()
+        if self._pending_input is not None:
+            self._apply_input(self._pending_input)
+        if self._pending_output is not None:
+            self._apply_output(*self._pending_output)
+
+    def _apply_active(self) -> None:
+        """Internal: apply active state to header."""
+        header = self.query_one(".block-header", Static)
+        header.update(f"{self.INDICATOR_ACTIVE} {self.title}")
+        self.add_class("block-active")
+
+    def _apply_input(self, text: str) -> None:
+        """Internal: apply input text."""
+        input_widget = self.query_one(".block-input", Static)
+        input_widget.update(f"IN: {text}")
+
+    def _apply_output(self, text: str, success: bool) -> None:
+        """Internal: apply output text and status."""
+        indicator = self.INDICATOR_SUCCESS if success else self.INDICATOR_ERROR
+        header = self.query_one(".block-header", Static)
+        header.update(f"{indicator} {self.title}")
+        output_widget = self.query_one(".block-output", Static)
+        output_widget.update(f"OUT: {text}")
+        self.remove_class("block-active")
+
+    def set_active(self) -> None:
+        """Mark the block as actively processing."""
+        self._status = "active"
+        if self._mounted:
+            self._apply_active()
+
+    def set_input(self, text: str) -> None:
+        """Set the input section text."""
+        self._pending_input = text
+        if self._mounted:
+            self._apply_input(text)
+
+    def set_output(self, text: str, success: bool = True) -> None:
+        """Set the output section and mark complete.
+
+        Args:
+            text: The output text to display.
+            success: Whether the operation succeeded.
+        """
+        self._status = "success" if success else "error"
+        self._pending_output = (text, success)
+        if self._mounted:
+            self._apply_output(text, success)
+
+
+class TaskExtractionBlock(ProcessingBlock):
+    """Block for task extraction phase."""
+
+    def __init__(self, **kwargs):
+        """Initialize task extraction block."""
+        super().__init__("Task Extraction", **kwargs)
+
+
+class ClassificationBlock(ProcessingBlock):
+    """Block for capability classification phase."""
+
+    def __init__(self, **kwargs):
+        """Initialize classification block."""
+        super().__init__("Classification", **kwargs)
+
+    def set_capabilities(
+        self, all_caps: list[str], selected: list[str]
+    ) -> None:
+        """Show capabilities as checklist.
+
+        Args:
+            all_caps: All available capabilities.
+            selected: The selected/active capabilities.
+        """
+        items = []
+        for cap in all_caps:
+            check = "☑" if cap in selected else "☐"
+            items.append(f"{check} {cap}")
+        self.set_output("  ".join(items))
+
+
+class OrchestrationBlock(ProcessingBlock):
+    """Block for orchestration/planning phase."""
+
+    def __init__(self, **kwargs):
+        """Initialize orchestration block."""
+        super().__init__("Orchestration", **kwargs)
+
+    def set_plan(self, steps: list[dict]) -> None:
+        """Show execution plan steps.
+
+        Args:
+            steps: List of execution plan step dicts.
+        """
+        lines = []
+        for i, step in enumerate(steps, 1):
+            objective = step.get("task_objective", "")  # No truncation
+            capability = step.get("capability", "")
+            lines.append(f"{i}. {objective} [{capability}]")
+        self.set_output("\n".join(lines) if lines else "No steps")
+
 
 class ChatDisplay(ScrollableContainer):
-    """Scrollable container for chat messages."""
+    """Scrollable container for chat messages and processing blocks."""
+
+    def __init__(self, **kwargs):
+        """Initialize chat display with block tracking."""
+        super().__init__(**kwargs)
+        self._current_blocks: dict[str, ProcessingBlock] = {}
+        # Track which START events we've seen (for deferred block creation)
+        self._seen_start_events: set[str] = set()
+        # Debug block for showing events (None until first use)
+        self._debug_block: DebugBlock | None = None
+
+    def start_new_query(self, user_query: str) -> None:
+        """Reset blocks for a new query and add user message.
+
+        Args:
+            user_query: The user's input message.
+        """
+        self._current_blocks = {}
+        self._seen_start_events = set()
+        if self._debug_block:
+            self._debug_block.clear()
+        self.add_message(user_query, "user")
+
+    def get_or_create_debug_block(self) -> DebugBlock:
+        """Get or create the debug block for event visualization."""
+        if not self._debug_block:
+            self._debug_block = DebugBlock()
+            self.mount(self._debug_block)
+            self.scroll_end(animate=False)
+        return self._debug_block
+
+    def get_or_create_block(
+        self, block_type: str, **kwargs
+    ) -> ProcessingBlock | None:
+        """Get existing block or create new one.
+
+        Args:
+            block_type: Type of block (task_extraction, classifier, etc.)
+            **kwargs: Additional arguments for block creation.
+
+        Returns:
+            The processing block, or None if invalid type.
+        """
+        if block_type not in self._current_blocks:
+            block_class = {
+                "task_extraction": TaskExtractionBlock,
+                "classifier": ClassificationBlock,
+                "orchestrator": OrchestrationBlock,
+            }.get(block_type)
+
+            if block_class:
+                block = block_class()
+            else:
+                return None
+
+            self._current_blocks[block_type] = block
+            self.mount(block)
+            self.scroll_end(animate=False)
+
+        return self._current_blocks[block_type]
 
     def add_message(self, content: str, role: str = "user") -> None:
         """Add a message to the chat display.
@@ -261,17 +536,16 @@ class OspreyTUI(App):
             self.exit()
             return
 
-        # Add user message to chat
-        chat_display = self.query_one("#chat-display", ChatDisplay)
-        chat_display.add_message(user_input, "user")
-
-        # Process with agent (async worker)
+        # Process with agent (async worker) - start_new_query called inside
         self.process_with_agent(user_input)
 
     @work(exclusive=True)
     async def process_with_agent(self, user_input: str) -> None:
         """Process user input through Gateway and stream response."""
         chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        # Start new query - resets blocks and adds user message
+        chat_display.start_new_query(user_input)
 
         try:
             # Process through Gateway
@@ -293,46 +567,185 @@ class OspreyTUI(App):
             if input_data is None:
                 return
 
-            # Create a streaming message widget
-            streaming_msg = chat_display.add_streaming_message()
-
-            # Stream the response
+            # Stream with block updates (no StreamingMessage yet)
             async for chunk in self.graph.astream(
                 input_data,
                 config=self.base_config,
                 stream_mode="custom",
             ):
-                # Handle status updates
-                if chunk.get("event_type") == "status":
-                    message = chunk.get("message", "Processing...")
-                    streaming_msg.update_status(message)
+                self._handle_block_update(chunk, user_input, chat_display)
 
             # Get final state
             state = self.graph.get_state(config=self.base_config)
             self.current_state = state.values
 
+            # Finalize blocks with state data
+            self._finalize_blocks(state.values, chat_display)
+
+            # NOW create response block (after all processing blocks)
+            streaming_msg = chat_display.add_streaming_message()
+
             # Check for interrupts (approval needed)
             if state.interrupts:
                 interrupt = state.interrupts[0]
-                user_message = interrupt.value.get("user_message", "Approval required")
+                user_msg = interrupt.value.get("user_message", "Approval required")
                 streaming_msg.finalize(
-                    f"⚠️ {user_message}\n\nRespond with 'yes'/'no' or provide feedback."
+                    f"⚠️ {user_msg}\n\nRespond with 'yes'/'no' or feedback."
                 )
                 return
 
-            # Show final result - extract latest AI message
-            messages = state.values.get("messages", [])
-            if messages:
-                for msg in reversed(messages):
-                    if hasattr(msg, "content") and msg.content:
-                        if not hasattr(msg, "type") or msg.type != "human":
-                            streaming_msg.finalize(msg.content)
-                            break
-            else:
-                streaming_msg.finalize("(No response)")
+            # Show final response
+            self._show_final_response(state.values, streaming_msg)
 
         except Exception as e:
             chat_display.add_message(f"Error: {e}", "assistant")
+
+    def _get_next_component(self, component: str) -> str | None:
+        """Get the next component in the task preparation sequence."""
+        sequence = {"task_extraction": "classifier", "classifier": "orchestrator"}
+        return sequence.get(component)
+
+    def _get_prev_component(self, component: str) -> str | None:
+        """Get the previous component in the task preparation sequence."""
+        sequence = {"classifier": "task_extraction", "orchestrator": "classifier"}
+        return sequence.get(component)
+
+    def _create_and_activate_block(
+        self, component: str, user_query: str, display: ChatDisplay
+    ) -> None:
+        """Create and activate a processing block."""
+        block = display.get_or_create_block(component)
+        if not block:
+            return
+
+        block.set_active()
+
+        # Set appropriate input text
+        if component == "task_extraction":
+            block.set_input(user_query)
+        elif component == "classifier":
+            block.set_input("Analyzing extracted task...")
+        elif component == "orchestrator":
+            block.set_input("Creating execution plan...")
+
+    def _handle_block_update(
+        self, chunk: dict, user_query: str, display: ChatDisplay
+    ) -> None:
+        """Route streaming event to appropriate block.
+
+        Handles deferred block creation: START events are recorded, and
+        blocks are created when the previous block completes.
+
+        Args:
+            chunk: The streaming event data.
+            user_query: The original user query.
+            display: The chat display widget.
+        """
+        event_type = chunk.get("event_type", "")
+
+        # DEBUG: Log status and success events to debug block
+        if event_type in ("status", "success"):
+            debug_block = display.get_or_create_debug_block()
+            debug_block.add_event(chunk)
+
+        # Accept both status (start/progress) and success (completion) events
+        if event_type not in ("status", "success"):
+            return
+
+        component = chunk.get("component", "")
+        phase = chunk.get("phase", "")
+        # success event = completion, or explicit complete flag
+        is_complete = (event_type == "success") or chunk.get("complete", False)
+
+        # Task Preparation blocks only (Phase 1)
+        if phase != "Task Preparation":
+            return
+
+        # Handle COMPLETION - also triggers deferred next block creation
+        if is_complete:
+            block = display._current_blocks.get(component)
+            if block:
+                msg = chunk.get("message", f"{component} complete")
+                block.set_output(msg)
+
+            # Check if next block's START was already seen, create it now
+            next_component = self._get_next_component(component)
+            if next_component and next_component in display._seen_start_events:
+                self._create_and_activate_block(
+                    next_component, user_query, display
+                )
+            return
+
+        # Handle START - always record it
+        display._seen_start_events.add(component)
+
+        if component == "task_extraction":
+            # First block - always create immediately
+            self._create_and_activate_block(component, user_query, display)
+        elif component in ("classifier", "orchestrator"):
+            # Check if previous is complete - if so, create now
+            prev_component = self._get_prev_component(component)
+            prev = display._current_blocks.get(prev_component)
+            if prev and prev._status in ("success", "error"):
+                self._create_and_activate_block(component, user_query, display)
+            # Otherwise: already recorded, will be created when prev completes
+
+    def _finalize_blocks(self, state: dict, display: ChatDisplay) -> None:
+        """Update blocks with final state data.
+
+        Args:
+            state: The final agent state.
+            display: The chat display widget.
+        """
+        # Task extraction output - no truncation
+        if "task_extraction" in display._current_blocks:
+            task = state.get("task_current_task", "")
+            display._current_blocks["task_extraction"].set_output(
+                task if task else "No task extracted"
+            )
+
+        # Classification output - no truncation
+        if "classifier" in display._current_blocks:
+            # Set input from task_current_task
+            task = state.get("task_current_task", "")
+            if task:
+                display._current_blocks["classifier"].set_input(task)
+            # Set output from active capabilities
+            caps = state.get("planning_active_capabilities", [])
+            display._current_blocks["classifier"].set_output(
+                ", ".join(caps) if caps else "No capabilities"
+            )
+
+        # Orchestration output - no truncation
+        if "orchestrator" in display._current_blocks:
+            # Set input (task → capabilities)
+            task = state.get("task_current_task", "")
+            caps = state.get("planning_active_capabilities", [])
+            display._current_blocks["orchestrator"].set_input(
+                f"{task} → [{', '.join(caps)}]"
+            )
+            # Set output from execution plan
+            plan = state.get("planning_execution_plan", {})
+            steps = plan.get("steps", []) if plan else []
+            display._current_blocks["orchestrator"].set_plan(steps)
+
+    def _show_final_response(
+        self, state: dict, streaming_msg: StreamingMessage
+    ) -> None:
+        """Show final AI response.
+
+        Args:
+            state: The final agent state.
+            streaming_msg: The streaming message widget to finalize.
+        """
+        messages = state.get("messages", [])
+        if messages:
+            for msg in reversed(messages):
+                if hasattr(msg, "content") and msg.content:
+                    if not hasattr(msg, "type") or msg.type != "human":
+                        streaming_msg.finalize(msg.content)
+                        return
+        streaming_msg.finalize("(No response)")
 
 
 async def run_tui(config_path: str = "config.yml") -> None:
