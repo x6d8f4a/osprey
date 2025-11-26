@@ -216,6 +216,28 @@ ExecutionStepBlock {
     color: $warning-darken-1;
 }
 
+/* LOG section - collapsed by default, muted colors */
+#block-log {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+#block-log > CollapsibleTitle {
+    color: $text-muted;
+    padding: 0;
+    background: transparent;
+}
+
+#block-log-content {
+    width: 100%;
+    color: $text-muted;
+    padding-left: 2;
+    margin: 0;
+}
+
 /* SelectionList for capability checkbox list */
 #capability-list {
     width: 100%;

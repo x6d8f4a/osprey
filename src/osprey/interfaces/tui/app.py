@@ -181,15 +181,19 @@ class ProcessingBlock(Static):
         self._breathing_index = 0
         # Output preview for collapsible toggle
         self._output_preview: str = ""
+        # LOG section - streaming messages for debugging
+        self._log_messages: list[tuple[str, str]] = []  # [(status, message), ...]
+        # Track if IN was populated from streaming (vs placeholder)
+        self._input_set: bool = False
 
     def compose(self) -> ComposeResult:
-        """Compose the block with header, input, separator, and collapsible output."""
+        """Compose the block with header, input, separator, OUT, and LOG sections."""
         header_text = f"{self.INDICATOR_PENDING} {self.title}"
         yield Static(header_text, classes="block-header", id="block-header")
         yield Static("", classes="block-input", id="block-input")
         # Full-width separator (will be truncated by container)
         yield Static("─" * 120, classes="block-separator", id="block-separator")
-        # Official Collapsible widget for OUT section (hide built-in arrows)
+        # OUT section - final outcome only (hide built-in arrows)
         yield Collapsible(
             Static("", id="block-output-content"),
             title="",
@@ -198,6 +202,15 @@ class ProcessingBlock(Static):
             expanded_symbol="",
             id="block-output",
         )
+        # LOG section - all streaming messages (collapsed by default)
+        yield Collapsible(
+            Static("", id="block-log-content"),
+            title="",
+            collapsed=True,
+            collapsed_symbol="",
+            expanded_symbol="",
+            id="block-log",
+        )
 
     def on_mount(self) -> None:
         """Apply pending state after widget is mounted."""
@@ -205,10 +218,14 @@ class ProcessingBlock(Static):
         # Hide separator initially
         separator = self.query_one("#block-separator", Static)
         separator.display = False
-        # Hide output initially (if it exists - subclasses may override)
+        # Hide OUT section initially
         outputs = self.query("#block-output")
         if outputs:
             outputs.first().display = False
+        # Hide LOG section initially
+        logs = self.query("#block-log")
+        if logs:
+            logs.first().display = False
         # Apply pending state
         if self._status == "active":
             self._apply_active()
@@ -248,10 +265,22 @@ class ProcessingBlock(Static):
         self._start_breathing()
 
     def _apply_input(self, text: str) -> None:
-        """Internal: apply input text with bold label."""
+        """Internal: apply input text with hanging indent for wrapped lines."""
         input_widget = self.query_one("#block-input", Static)
-        # Add 2-space prefix to align with Collapsible's inherent padding for OUT
-        input_widget.update(f"  [bold]IN[/bold]    {text}")
+
+        # Prefix: "  IN    " = 8 visible chars (2 spaces + IN + 4 spaces)
+        prefix = "  [bold]IN[/bold]    "
+        indent = "          "  # 10 spaces for continuation (aligns with text after IN)
+
+        # Wrap text with hanging indent
+        wrapped = textwrap.fill(
+            text,
+            width=80,
+            initial_indent="",
+            subsequent_indent=indent,
+        )
+
+        input_widget.update(f"{prefix}{wrapped}")
 
     def _get_preview(self, text: str, max_len: int = 60) -> str:
         """Get one-line preview of output."""
@@ -309,11 +338,16 @@ class ProcessingBlock(Static):
         """Show descriptive header when expanded."""
         if event.collapsible.id == "block-output":
             event.collapsible.title = f"[bold]OUT[/bold]   ▾ {self.EXPANDED_HEADER}"
+        elif event.collapsible.id == "block-log":
+            event.collapsible.title = f"[bold]LOG[/bold]   ▾ Streaming logs"
 
     def on_collapsible_collapsed(self, event: Collapsible.Collapsed) -> None:
         """Show collapsed arrow with preview."""
         if event.collapsible.id == "block-output":
             event.collapsible.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
+        elif event.collapsible.id == "block-log":
+            count = len(self._log_messages)
+            event.collapsible.title = f"[bold]LOG[/bold]   ▸ {count} messages"
 
     def set_active(self) -> None:
         """Mark the block as actively processing."""
@@ -321,9 +355,16 @@ class ProcessingBlock(Static):
         if self._mounted:
             self._apply_active()
 
-    def set_input(self, text: str) -> None:
-        """Set the input section text."""
+    def set_input(self, text: str, mark_set: bool = True) -> None:
+        """Set the input section text.
+
+        Args:
+            text: The input text to display.
+            mark_set: If True, mark _input_set flag (use False for placeholders).
+        """
         self._pending_input = text
+        if mark_set:
+            self._input_set = True
         if self._mounted:
             self._apply_input(text)
 
@@ -338,6 +379,46 @@ class ProcessingBlock(Static):
         self._pending_output = (text, status)
         if self._mounted:
             self._apply_output(text, status)
+
+    def add_log(self, message: str, status: str = "status") -> None:
+        """Add a message to the LOG section.
+
+        Args:
+            message: The message text.
+            status: The message status ('status', 'success', 'error', 'warning').
+        """
+        if message:
+            self._log_messages.append((status, message))
+            self._update_log_display()
+
+    def _format_log_messages(self) -> str:
+        """Format all log messages with status symbols."""
+        if not self._log_messages:
+            return ""
+        lines = []
+        for msg_status, msg in self._log_messages:
+            prefix = {
+                "error": self.INDICATOR_ERROR,
+                "warning": self.INDICATOR_WARNING,
+                "success": self.INDICATOR_SUCCESS,
+                "status": self.INDICATOR_PENDING,
+            }.get(msg_status, self.INDICATOR_PENDING)
+            lines.append(f"{prefix} {msg}")
+        return "\n".join(lines)
+
+    def _update_log_display(self) -> None:
+        """Update the LOG section display with current messages."""
+        if not self._mounted:
+            return
+
+        # Show LOG section
+        log_section = self.query_one("#block-log", Collapsible)
+        log_section.display = True
+        log_section.title = f"[bold]LOG[/bold]   ▸ {len(self._log_messages)} messages"
+
+        # Update content
+        content = self.query_one("#block-log-content", Static)
+        content.update(self._format_log_messages())
 
 
 class TaskExtractionBlock(ProcessingBlock):
@@ -476,6 +557,10 @@ class ChatDisplay(ScrollableContainer):
         self._current_blocks: dict[str, ProcessingBlock] = {}
         # Track which START events we've seen (for deferred block creation)
         self._seen_start_events: set[str] = set()
+        # Track attempt index per component (for retry/reclassification)
+        self._component_attempt_index: dict[str, int] = {}
+        # Track components that need retry (set by WARNING events)
+        self._retry_triggered: set[str] = set()
         # Debug block for showing events (disabled by default)
         self._debug_enabled = False
         self._debug_block: DebugBlock | None = None
@@ -488,6 +573,8 @@ class ChatDisplay(ScrollableContainer):
         """
         self._current_blocks = {}
         self._seen_start_events = set()
+        self._component_attempt_index = {}
+        self._retry_triggered = set()
         if self._debug_block:
             self._debug_block.clear()
         self.add_message(user_query, "user")
@@ -811,11 +898,64 @@ class OspreyTUI(App):
 
     def _create_and_activate_block(
         self, component: str, user_query: str, display: ChatDisplay
-    ) -> None:
-        """Create and activate a processing block."""
-        block = display.get_or_create_block(component)
-        if not block:
-            return
+    ) -> ProcessingBlock | None:
+        """Create and activate a processing block with automatic retry detection.
+
+        Retry detection is handled here: if a completed block exists for this
+        component, we increment the attempt index and create a new block.
+
+        Args:
+            component: The component name (task_extraction, classifier, orchestrator).
+            user_query: The original user query.
+            display: The chat display widget.
+
+        Returns:
+            The created or existing block, or None if invalid component.
+        """
+        # Get current attempt index for this component
+        attempt_idx = display._component_attempt_index.get(component, 0)
+        block_key = f"{component}_{attempt_idx}"
+
+        # Check existing block state
+        existing = display._current_blocks.get(block_key)
+
+        # If block exists and is still active, return it (no new block needed)
+        if existing and existing._status == "active":
+            return existing
+
+        # If block exists and is COMPLETED, check if retry was triggered
+        if existing and existing._status in ("success", "error", "warning"):
+            # Only create new block if retry was explicitly triggered
+            if component in display._retry_triggered:
+                attempt_idx += 1
+                display._component_attempt_index[component] = attempt_idx
+                display._retry_triggered.discard(component)
+                block_key = f"{component}_{attempt_idx}"
+            else:
+                # Block complete, no retry - return existing (don't create new)
+                return existing
+
+        # Determine block class and title
+        block_classes = {
+            "task_extraction": (TaskExtractionBlock, "Task Extraction"),
+            "classifier": (ClassificationBlock, "Classification"),
+            "orchestrator": (OrchestrationBlock, "Orchestration"),
+        }
+
+        if component not in block_classes:
+            return None
+
+        block_class, base_title = block_classes[component]
+
+        # Add retry number to title if not first attempt
+        title = base_title if attempt_idx == 0 else f"{base_title} (retry #{attempt_idx})"
+
+        # Create and mount the block
+        block = block_class()
+        block.title = title  # Override the default title
+        display._current_blocks[block_key] = block
+        display.mount(block)
+        display.scroll_end(animate=False)
 
         block.set_active()
 
@@ -823,9 +963,13 @@ class OspreyTUI(App):
         if component == "task_extraction":
             block.set_input(user_query)
         elif component == "classifier":
-            block.set_input("Analyzing extracted task...")
+            input_text = "Reclassifying task..." if attempt_idx > 0 else "Analyzing extracted task..."
+            block.set_input(input_text)
         elif component == "orchestrator":
-            block.set_input("Creating execution plan...")
+            input_text = "Re-planning execution..." if attempt_idx > 0 else "Creating execution plan..."
+            block.set_input(input_text)
+
+        return block
 
     def _handle_block_update(
         self, chunk: dict, user_query: str, display: ChatDisplay
@@ -865,6 +1009,51 @@ class OspreyTUI(App):
         elif phase == "Execution":
             self._handle_execution_event(chunk, component, is_complete, event_type, display)
 
+    def _get_current_block(
+        self, component: str, display: ChatDisplay
+    ) -> ProcessingBlock | None:
+        """Get the current active block for a component."""
+        attempt_idx = display._component_attempt_index.get(component, 0)
+        block_key = f"{component}_{attempt_idx}"
+        return display._current_blocks.get(block_key)
+
+    def _update_block_input_from_streaming(
+        self,
+        block: ProcessingBlock,
+        component: str,
+        msg: str,
+        chunk: dict,
+    ) -> None:
+        """Update block IN from streaming message when info is available.
+
+        Args:
+            block: The processing block to update.
+            component: The component name.
+            msg: The streaming message.
+            chunk: The full streaming event data.
+        """
+        if component == "classifier":
+            # Look for "Classifying task:" in message
+            if "classifying task:" in msg.lower():
+                # Extract task from message (after the colon)
+                idx = msg.lower().find("classifying task:")
+                task = msg[idx + len("classifying task:"):].strip()
+                if task:
+                    block.set_input(task)
+        elif component == "orchestrator":
+            # Look for task and capabilities info
+            task = chunk.get("task", "")
+            caps = chunk.get("capabilities", [])
+            if task and caps:
+                block.set_input(f"{task} → [{', '.join(caps)}]")
+            elif "planning for task:" in msg.lower():
+                # Extract task from message
+                idx = msg.lower().find("planning for task:")
+                task = msg[idx + len("planning for task:"):].strip()
+                if task:
+                    # Set with placeholder - will be updated when caps arrive
+                    block.set_input(task, mark_set=False)
+
     def _handle_task_preparation_event(
         self,
         chunk: dict,
@@ -874,7 +1063,10 @@ class OspreyTUI(App):
         user_query: str,
         display: ChatDisplay,
     ) -> None:
-        """Handle Task Preparation phase events (task extraction, classification, orchestration).
+        """Handle Task Preparation phase events with LOG/OUT separation.
+
+        Retry detection is handled in _create_and_activate_block(), not here.
+        Status messages go to LOG section, final output goes to OUT section.
 
         Args:
             chunk: The streaming event data.
@@ -884,52 +1076,83 @@ class OspreyTUI(App):
             user_query: The original user query.
             display: The chat display widget.
         """
-        # Handle ERROR/WARNING events - finalize block with error/warning status
-        if event_type in ("error", "warning"):
-            block = display._current_blocks.get(component)
+        msg = chunk.get("message", "")
+
+        # Handle ERROR events - log and finalize block
+        if event_type == "error":
+            block = self._get_current_block(component, display)
             if block and block._status == "active":
-                msg = chunk.get("message", f"{component} {event_type}")
-                block.set_output(msg, status=event_type)
+                if msg:
+                    block.add_log(msg, status="error")
+                block.set_output(msg if msg else f"{component} error", status="error")
             return
 
-        # Handle COMPLETION - also triggers deferred next block creation
-        if is_complete:
-            block = display._current_blocks.get(component)
-            if block:
-                msg = chunk.get("message", f"{component} complete")
+        # Handle WARNING events - log, trigger retry, and finalize block
+        if event_type == "warning":
+            block = self._get_current_block(component, display)
+            if block and block._status == "active":
+                if msg:
+                    block.add_log(msg, status="warning")
+                # Check if this triggers a retry (re-classification/retry keywords)
+                msg_lower = msg.lower()
+                if "re-classification" in msg_lower or "triggering" in msg_lower or "retry" in msg_lower:
+                    display._retry_triggered.add("classifier")
+                    display._retry_triggered.add("orchestrator")
+                    # Also clear seen_start_events so new blocks can be created
+                    display._seen_start_events.discard("classifier")
+                    display._seen_start_events.discard("orchestrator")
+                block.set_output(msg if msg else f"{component} warning", status="warning")
+            return
 
-                # Special handling for classifier - populate checkbox list immediately
+        # Handle COMPLETION - log and set final output
+        if is_complete:
+            block = self._get_current_block(component, display)
+            if block:
+                if msg:
+                    block.add_log(msg, status="success")
+
+                # Special handling for classifier - populate capability list
                 if component == "classifier" and isinstance(block, ClassificationBlock):
                     selected_caps = chunk.get("capability_names", [])
                     if selected_caps:
-                        # Use cached all_capabilities + selected from streaming
                         block.set_capabilities(self.all_capability_names, selected_caps)
                     else:
-                        block.set_output(msg)
+                        block.set_output(msg if msg else "Classification complete")
                 else:
-                    block.set_output(msg)
+                    block.set_output(msg if msg else f"{component} complete")
 
             # Check if next block's START was already seen, create it now
             next_component = self._get_next_component(component)
             if next_component and next_component in display._seen_start_events:
-                self._create_and_activate_block(
-                    next_component, user_query, display
-                )
+                self._create_and_activate_block(next_component, user_query, display)
             return
 
-        # Handle START - always record it
-        display._seen_start_events.add(component)
+        # Only run block creation on FIRST event for this component
+        is_first_event = component not in display._seen_start_events
+        if is_first_event:
+            display._seen_start_events.add(component)
 
-        if component == "task_extraction":
-            # First block - always create immediately
-            self._create_and_activate_block(component, user_query, display)
-        elif component in ("classifier", "orchestrator"):
-            # Check if previous is complete - if so, create now
-            prev_component = self._get_prev_component(component)
-            prev = display._current_blocks.get(prev_component)
-            if prev and prev._status in ("success", "error", "warning"):
+            if component == "task_extraction":
+                # First block - always create immediately
                 self._create_and_activate_block(component, user_query, display)
-            # Otherwise: already recorded, will be created when prev completes
+            elif component in ("classifier", "orchestrator"):
+                # Check if previous is complete - if so, create now
+                prev_component = self._get_prev_component(component)
+                prev_block = self._get_current_block(prev_component, display)
+                if prev_block and prev_block._status in ("success", "error", "warning"):
+                    self._create_and_activate_block(component, user_query, display)
+                # Otherwise: deferred, will be created when prev completes
+
+        # Handle STATUS events - log message to existing block
+        block = self._get_current_block(component, display)
+        if block and msg:
+            block.add_log(msg, status="status")
+
+            # Update IN from streaming when info is available
+            if not block._input_set:
+                self._update_block_input_from_streaming(
+                    block, component, msg, chunk
+                )
 
     def _handle_execution_event(
         self,
@@ -1003,40 +1226,52 @@ class OspreyTUI(App):
     def _finalize_blocks(self, state: dict, display: ChatDisplay) -> None:
         """Update blocks with final state data.
 
+        For retry scenarios, only updates the LATEST block of each type
+        (the one with the highest attempt index).
+
         Args:
             state: The final agent state.
             display: The chat display widget.
         """
+        # Get latest attempt index for each component
+        te_idx = display._component_attempt_index.get("task_extraction", 0)
+        cl_idx = display._component_attempt_index.get("classifier", 0)
+        or_idx = display._component_attempt_index.get("orchestrator", 0)
+
         # Task extraction output - no truncation
-        if "task_extraction" in display._current_blocks:
+        te_key = f"task_extraction_{te_idx}"
+        if te_key in display._current_blocks:
             task = state.get("task_current_task", "")
-            display._current_blocks["task_extraction"].set_output(
+            display._current_blocks[te_key].set_output(
                 task if task else "No task extracted"
             )
 
-        # Classification: update input and set capabilities from state
-        if "classifier" in display._current_blocks:
-            task = state.get("task_current_task", "")
-            if task:
-                display._current_blocks["classifier"].set_input(task)
+        # Classification: update input (if not already set) and capabilities
+        cl_key = f"classifier_{cl_idx}"
+        if cl_key in display._current_blocks:
+            cl_block = display._current_blocks[cl_key]
+            # Only set IN if not already populated from streaming
+            if not cl_block._input_set:
+                task = state.get("task_current_task", "")
+                if task:
+                    cl_block.set_input(task)
             # Use cached all_capabilities (fast) + selected from state
             selected_caps = state.get("planning_active_capabilities", [])
-            display._current_blocks["classifier"].set_capabilities(
-                self.all_capability_names, selected_caps
-            )
+            cl_block.set_capabilities(self.all_capability_names, selected_caps)
 
-        # Orchestration output - no truncation
-        if "orchestrator" in display._current_blocks:
-            # Set input (task → capabilities)
-            task = state.get("task_current_task", "")
-            caps = state.get("planning_active_capabilities", [])
-            display._current_blocks["orchestrator"].set_input(
-                f"{task} → [{', '.join(caps)}]"
-            )
+        # Orchestration: update input (if not set) and output
+        or_key = f"orchestrator_{or_idx}"
+        if or_key in display._current_blocks:
+            or_block = display._current_blocks[or_key]
+            # Only set IN if not already populated from streaming
+            if not or_block._input_set:
+                task = state.get("task_current_task", "")
+                caps = state.get("planning_active_capabilities", [])
+                or_block.set_input(f"{task} → [{', '.join(caps)}]")
             # Set output from execution plan
             plan = state.get("planning_execution_plan", {})
             steps = plan.get("steps", []) if plan else []
-            display._current_blocks["orchestrator"].set_plan(steps)
+            or_block.set_plan(steps)
 
             # Cache execution plan for step block creation during execution phase
             self._cached_plan = plan
