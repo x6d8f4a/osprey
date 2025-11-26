@@ -138,11 +138,27 @@ OrchestrationBlock {
     margin: 0;
 }
 
-/* Block output section */
+/* Block output section (legacy) */
 .block-output {
     width: 100%;
     color: $success;
     margin: 0;
+}
+
+/* Separator between IN and OUT */
+.block-separator {
+    width: 100%;
+    color: $surface-lighten-2;
+    margin: 0;
+}
+
+/* Collapsible OUT section - custom widget */
+.block-output-collapsible,
+CollapsibleOutput {
+    width: 100%;
+    color: $success;
+    margin: 0;
+    padding: 0;
 }
 
 /* Debug block for event visualization */

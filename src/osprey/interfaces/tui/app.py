@@ -146,13 +146,48 @@ class DebugBlock(Static):
             self._update_display()
 
 
-class ProcessingBlock(Static):
-    """Base class for processing blocks with indicator, input, and output."""
+class CollapsibleOutput(Static):
+    """A clickable output section that toggles between preview and full content."""
 
-    INDICATOR_PENDING = "⚪"
-    INDICATOR_ACTIVE = "🔵"
-    INDICATOR_SUCCESS = "🟢"
-    INDICATOR_ERROR = "🔴"
+    def __init__(self, **kwargs):
+        """Initialize collapsible output."""
+        super().__init__(**kwargs)
+        self._collapsed = True
+        self._preview = ""
+        self._full_content = ""
+
+    def on_click(self) -> None:
+        """Toggle between collapsed and expanded view."""
+        self._collapsed = not self._collapsed
+        self._update_display()
+
+    def set_content(self, preview: str, full_content: str) -> None:
+        """Set the preview and full content."""
+        self._preview = preview
+        self._full_content = full_content
+        self._update_display()
+
+    def _update_display(self) -> None:
+        """Update the displayed content based on collapsed state."""
+        if self._collapsed:
+            symbol = "▸"
+            self.update(f"{symbol} OUT: {self._preview}")
+        else:
+            symbol = "▾"
+            self.update(f"{symbol} OUT: {self._preview}\n{self._full_content}")
+
+
+class ProcessingBlock(Static):
+    """Base class for processing blocks with indicator, input, and collapsible output."""
+
+    # Text-based indicators (professional look)
+    INDICATOR_PENDING = "·"
+    INDICATOR_ACTIVE = "*"
+    INDICATOR_SUCCESS = "✓"
+    INDICATOR_ERROR = "✗"
+
+    # Breathing animation frames - asterisk style
+    BREATHING_FRAMES = ["*", "✱", "✳", "✱"]
 
     def __init__(self, title: str, **kwargs):
         """Initialize a processing block.
@@ -167,17 +202,28 @@ class ProcessingBlock(Static):
         # Pending state to apply after mount
         self._pending_input: str | None = None
         self._pending_output: tuple[str, bool] | None = None
+        # Breathing animation state
+        self._breathing_timer = None
+        self._breathing_index = 0
 
     def compose(self) -> ComposeResult:
-        """Compose the block with header, input, and output sections."""
+        """Compose the block with header, input, separator, and collapsible output."""
         header_text = f"{self.INDICATOR_PENDING} {self.title}"
-        yield Static(header_text, classes="block-header")
-        yield Static("", classes="block-input")
-        yield Static("", classes="block-output")
+        yield Static(header_text, classes="block-header", id="block-header")
+        yield Static("", classes="block-input", id="block-input")
+        yield Static("─" * 40, classes="block-separator", id="block-separator")
+        # Custom collapsible OUT section
+        yield CollapsibleOutput(classes="block-output-collapsible", id="block-output")
 
     def on_mount(self) -> None:
         """Apply pending state after widget is mounted."""
         self._mounted = True
+        # Hide separator initially
+        separator = self.query_one("#block-separator", Static)
+        separator.display = False
+        # Hide output initially
+        output = self.query_one("#block-output", CollapsibleOutput)
+        output.display = False
         # Apply pending state
         if self._status == "active":
             self._apply_active()
@@ -186,24 +232,72 @@ class ProcessingBlock(Static):
         if self._pending_output is not None:
             self._apply_output(*self._pending_output)
 
+    def _start_breathing(self) -> None:
+        """Start the breathing animation timer."""
+        if self._breathing_timer is None:
+            self._breathing_timer = self.set_interval(0.4, self._breathing_tick)
+
+    def _breathing_tick(self) -> None:
+        """Update breathing animation frame."""
+        if self._status != "active":
+            self._stop_breathing()
+            return
+
+        self._breathing_index = (self._breathing_index + 1) % len(self.BREATHING_FRAMES)
+        indicator = self.BREATHING_FRAMES[self._breathing_index]
+        header = self.query_one("#block-header", Static)
+        header.update(f"{indicator} {self.title}")
+
+    def _stop_breathing(self) -> None:
+        """Stop the breathing animation."""
+        if self._breathing_timer:
+            self._breathing_timer.stop()
+            self._breathing_timer = None
+
     def _apply_active(self) -> None:
-        """Internal: apply active state to header."""
-        header = self.query_one(".block-header", Static)
+        """Internal: apply active state to header and start breathing."""
+        header = self.query_one("#block-header", Static)
         header.update(f"{self.INDICATOR_ACTIVE} {self.title}")
         self.add_class("block-active")
+        # Start breathing animation
+        self._start_breathing()
 
     def _apply_input(self, text: str) -> None:
         """Internal: apply input text."""
-        input_widget = self.query_one(".block-input", Static)
+        input_widget = self.query_one("#block-input", Static)
         input_widget.update(f"IN: {text}")
 
+    def _get_preview(self, text: str, max_len: int = 60) -> str:
+        """Get one-line preview of output."""
+        first_line = text.split("\n")[0] if text else ""
+        if len(first_line) > max_len:
+            return first_line[:max_len] + "..."
+        elif "\n" in text:
+            return first_line + " ..."
+        return first_line
+
     def _apply_output(self, text: str, success: bool) -> None:
-        """Internal: apply output text and status."""
+        """Internal: apply output with collapsible preview."""
+        # Stop breathing animation
+        self._stop_breathing()
+
+        # Update header indicator
         indicator = self.INDICATOR_SUCCESS if success else self.INDICATOR_ERROR
-        header = self.query_one(".block-header", Static)
+        header = self.query_one("#block-header", Static)
         header.update(f"{indicator} {self.title}")
-        output_widget = self.query_one(".block-output", Static)
-        output_widget.update(f"OUT: {text}")
+
+        # Show separator
+        separator = self.query_one("#block-separator", Static)
+        separator.display = True
+
+        # Create one-line preview
+        preview = self._get_preview(text)
+
+        # Show and update collapsible output
+        output = self.query_one("#block-output", CollapsibleOutput)
+        output.display = True
+        output.set_content(preview, text)
+
         self.remove_class("block-active")
 
     def set_active(self) -> None:
@@ -292,7 +386,8 @@ class ChatDisplay(ScrollableContainer):
         self._current_blocks: dict[str, ProcessingBlock] = {}
         # Track which START events we've seen (for deferred block creation)
         self._seen_start_events: set[str] = set()
-        # Debug block for showing events (None until first use)
+        # Debug block for showing events (disabled by default)
+        self._debug_enabled = False
         self._debug_block: DebugBlock | None = None
 
     def start_new_query(self, user_query: str) -> None:
@@ -307,8 +402,13 @@ class ChatDisplay(ScrollableContainer):
             self._debug_block.clear()
         self.add_message(user_query, "user")
 
-    def get_or_create_debug_block(self) -> DebugBlock:
-        """Get or create the debug block for event visualization."""
+    def get_or_create_debug_block(self) -> DebugBlock | None:
+        """Get or create the debug block for event visualization.
+
+        Returns None if debug is disabled.
+        """
+        if not self._debug_enabled:
+            return None
         if not self._debug_block:
             self._debug_block = DebugBlock()
             self.mount(self._debug_block)
@@ -643,10 +743,11 @@ class OspreyTUI(App):
         """
         event_type = chunk.get("event_type", "")
 
-        # DEBUG: Log status and success events to debug block
+        # DEBUG: Log status and success events to debug block (if enabled)
         if event_type in ("status", "success"):
             debug_block = display.get_or_create_debug_block()
-            debug_block.add_event(chunk)
+            if debug_block:
+                debug_block.add_event(chunk)
 
         # Accept both status (start/progress) and success (completion) events
         if event_type not in ("status", "success"):
