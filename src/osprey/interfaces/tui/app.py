@@ -561,6 +561,9 @@ class ChatDisplay(ScrollableContainer):
         self._component_attempt_index: dict[str, int] = {}
         # Track components that need retry (set by WARNING events)
         self._retry_triggered: set[str] = set()
+        # Queue for messages that arrive before block is created
+        # Format: {component: [(event_type, message, chunk), ...]}
+        self._pending_messages: dict[str, list[tuple[str, str, dict]]] = {}
         # Debug block for showing events (disabled by default)
         self._debug_enabled = False
         self._debug_block: DebugBlock | None = None
@@ -575,6 +578,7 @@ class ChatDisplay(ScrollableContainer):
         self._seen_start_events = set()
         self._component_attempt_index = {}
         self._retry_triggered = set()
+        self._pending_messages = {}
         if self._debug_block:
             self._debug_block.clear()
         self.add_message(user_query, "user")
@@ -959,15 +963,19 @@ class OspreyTUI(App):
 
         block.set_active()
 
-        # Set appropriate input text
-        if component == "task_extraction":
-            block.set_input(user_query)
-        elif component == "classifier":
-            input_text = "Reclassifying task..." if attempt_idx > 0 else "Analyzing extracted task..."
-            block.set_input(input_text)
-        elif component == "orchestrator":
-            input_text = "Re-planning execution..." if attempt_idx > 0 else "Creating execution plan..."
-            block.set_input(input_text)
+        # Apply any pending messages that arrived before block existed
+        self._apply_pending_messages(block, component, display)
+
+        # Set appropriate input text (only if not already set from pending messages)
+        if not block._input_set:
+            if component == "task_extraction":
+                block.set_input(user_query)
+            elif component == "classifier":
+                input_text = "Reclassifying..." if attempt_idx > 0 else "Analyzing task..."
+                block.set_input(input_text, mark_set=False)
+            elif component == "orchestrator":
+                input_text = "Re-planning..." if attempt_idx > 0 else "Creating plan..."
+                block.set_input(input_text, mark_set=False)
 
         return block
 
@@ -1016,6 +1024,51 @@ class OspreyTUI(App):
         attempt_idx = display._component_attempt_index.get(component, 0)
         block_key = f"{component}_{attempt_idx}"
         return display._current_blocks.get(block_key)
+
+    def _queue_pending_message(
+        self,
+        display: ChatDisplay,
+        component: str,
+        event_type: str,
+        msg: str,
+        chunk: dict,
+    ) -> None:
+        """Queue a message for a component whose block doesn't exist yet.
+
+        Args:
+            display: The chat display widget.
+            component: The component name.
+            event_type: The event type (status, success, error, warning).
+            msg: The message text.
+            chunk: The full streaming event data.
+        """
+        if component not in display._pending_messages:
+            display._pending_messages[component] = []
+        display._pending_messages[component].append((event_type, msg, chunk))
+
+    def _apply_pending_messages(
+        self,
+        block: ProcessingBlock,
+        component: str,
+        display: ChatDisplay,
+    ) -> None:
+        """Apply queued messages to a newly created block.
+
+        Args:
+            block: The processing block to apply messages to.
+            component: The component name.
+            display: The chat display widget.
+        """
+        if component not in display._pending_messages:
+            return
+        for event_type, msg, chunk in display._pending_messages[component]:
+            if msg:
+                block.add_log(msg, status=event_type)
+                # Also try to update IN from these messages
+                if not block._input_set:
+                    self._update_block_input_from_streaming(block, component, msg, chunk)
+        # Clear the queue
+        del display._pending_messages[component]
 
     def _update_block_input_from_streaming(
         self,
@@ -1143,16 +1196,16 @@ class OspreyTUI(App):
                     self._create_and_activate_block(component, user_query, display)
                 # Otherwise: deferred, will be created when prev completes
 
-        # Handle STATUS events - log message to existing block
+        # Handle STATUS events - log message to existing block OR queue it
         block = self._get_current_block(component, display)
         if block and msg:
             block.add_log(msg, status="status")
-
             # Update IN from streaming when info is available
             if not block._input_set:
-                self._update_block_input_from_streaming(
-                    block, component, msg, chunk
-                )
+                self._update_block_input_from_streaming(block, component, msg, chunk)
+        elif msg:
+            # Block doesn't exist yet - queue the message for later
+            self._queue_pending_message(display, component, "status", msg, chunk)
 
     def _handle_execution_event(
         self,
