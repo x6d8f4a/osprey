@@ -424,6 +424,33 @@ class OrchestrationBlock(ProcessingBlock):
         self.set_output("\n".join(lines) if lines else "No steps")
 
 
+class ExecutionStepBlock(ProcessingBlock):
+    """Block for a single execution step in the plan."""
+
+    # Expanded header text (overrides base class)
+    EXPANDED_HEADER = "Execution result"
+
+    def __init__(self, step_number: int, capability: str, objective: str, **kwargs):
+        """Initialize execution step block.
+
+        Args:
+            step_number: The 1-based step number.
+            capability: The capability being executed.
+            objective: The task objective for this step.
+        """
+        super().__init__(f"Step {step_number}: {capability}", **kwargs)
+        self.step_number = step_number
+        self.capability = capability
+        self.objective = objective
+
+    def on_mount(self) -> None:
+        """Apply pending state and show objective as input."""
+        super().on_mount()
+        # Show objective as input when mounted
+        if self.objective:
+            self.set_input(self.objective)
+
+
 class ChatDisplay(ScrollableContainer):
     """Scrollable container for chat messages and processing blocks."""
 
@@ -697,6 +724,12 @@ class OspreyTUI(App):
         # Start new query - resets blocks and adds user message
         chat_display.start_new_query(user_input)
 
+        # Clear cached plan and step messages from previous query
+        self._cached_plan = None
+        for attr in list(vars(self)):
+            if attr.startswith("_step_") and attr.endswith("_msg"):
+                delattr(self, attr)
+
         try:
             # Process through Gateway
             result = await self.gateway.process_message(
@@ -808,10 +841,31 @@ class OspreyTUI(App):
         # success event = completion, or explicit complete flag
         is_complete = (event_type == "success") or chunk.get("complete", False)
 
-        # Task Preparation blocks only (Phase 1)
-        if phase != "Task Preparation":
-            return
+        # Dispatch by phase
+        if phase == "Task Preparation":
+            self._handle_task_preparation_event(
+                chunk, component, is_complete, user_query, display
+            )
+        elif phase == "Execution":
+            self._handle_execution_event(chunk, component, is_complete, display)
 
+    def _handle_task_preparation_event(
+        self,
+        chunk: dict,
+        component: str,
+        is_complete: bool,
+        user_query: str,
+        display: ChatDisplay,
+    ) -> None:
+        """Handle Task Preparation phase events (task extraction, classification, orchestration).
+
+        Args:
+            chunk: The streaming event data.
+            component: The component name.
+            is_complete: Whether this is a completion event.
+            user_query: The original user query.
+            display: The chat display widget.
+        """
         # Handle COMPLETION - also triggers deferred next block creation
         if is_complete:
             block = display._current_blocks.get(component)
@@ -851,6 +905,66 @@ class OspreyTUI(App):
                 self._create_and_activate_block(component, user_query, display)
             # Otherwise: already recorded, will be created when prev completes
 
+    def _handle_execution_event(
+        self,
+        chunk: dict,
+        component: str,
+        is_complete: bool,
+        display: ChatDisplay,
+    ) -> None:
+        """Handle Execution phase events for capability steps.
+
+        Captures status messages for both IN (first message) and OUT (last message).
+
+        Args:
+            chunk: The streaming event data.
+            component: The capability name being executed.
+            is_complete: Whether this is a completion event.
+            display: The chat display widget.
+        """
+        # Get step info from streaming event
+        step_num = chunk.get("step", 1)  # 1-based step number from streaming
+        step_index = step_num - 1  # Convert to 0-based for internal use
+        message = chunk.get("message", "")
+
+        block_key = f"execution_step_{step_index}"
+        prev_block_key = f"execution_step_{step_index - 1}" if step_index > 0 else None
+
+        # When new step starts, mark previous step as complete
+        if prev_block_key and prev_block_key in display._current_blocks:
+            prev_block = display._current_blocks[prev_block_key]
+            if prev_block._status == "active":
+                # Use last captured message as output
+                last_msg = getattr(self, f"_step_{step_index - 1}_last_msg", "Completed")
+                prev_block.set_output(last_msg, success=True)
+
+        # Create block if not exists (first event for this step)
+        if block_key not in display._current_blocks:
+            # Get objective from cached plan if available, otherwise use message
+            objective = ""
+            if hasattr(self, "_cached_plan") and self._cached_plan:
+                steps = self._cached_plan.get("steps", [])
+                if 0 <= step_index < len(steps):
+                    objective = steps[step_index].get("task_objective", "")
+
+            block = ExecutionStepBlock(
+                step_number=step_num,
+                capability=component,
+                objective=objective if objective else message,
+            )
+            display._current_blocks[block_key] = block
+            display.mount(block)
+            block.set_active()
+            display.scroll_end(animate=True)
+
+            # Store first message as potential input (if not using plan objective)
+            if not objective and message:
+                setattr(self, f"_step_{step_index}_first_msg", message)
+
+        # Always capture message for potential output (last message wins)
+        if message:
+            setattr(self, f"_step_{step_index}_last_msg", message)
+
     def _finalize_blocks(self, state: dict, display: ChatDisplay) -> None:
         """Update blocks with final state data.
 
@@ -888,6 +1002,31 @@ class OspreyTUI(App):
             plan = state.get("planning_execution_plan", {})
             steps = plan.get("steps", []) if plan else []
             display._current_blocks["orchestrator"].set_plan(steps)
+
+            # Cache execution plan for step block creation during execution phase
+            self._cached_plan = plan
+
+        # Finalize execution step blocks using captured status messages
+        plan = state.get("planning_execution_plan", {})
+        steps = plan.get("steps", []) if plan else []
+        step_results = state.get("execution_step_results", {})
+
+        for i, step in enumerate(steps):
+            block_key = f"execution_step_{i}"
+            block = display._current_blocks.get(block_key)
+            if block and isinstance(block, ExecutionStepBlock):
+                # Only finalize if still active (not already completed)
+                if block._status == "active":
+                    # Use captured last message as output
+                    last_msg = getattr(self, f"_step_{i}_last_msg", None)
+                    if last_msg:
+                        block.set_output(last_msg, success=True)
+                    else:
+                        # Fallback to step_results metadata
+                        context_key = step.get("context_key", "")
+                        result = step_results.get(context_key, {})
+                        success = result.get("success", True)
+                        block.set_output("Completed", success=success)
 
     def _show_final_response(
         self, state: dict, streaming_msg: StreamingMessage
