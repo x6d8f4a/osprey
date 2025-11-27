@@ -955,6 +955,45 @@ development.prompts
        show_all: false
        print_all: false
 
+development.api_calls
+---------------------
+
+**Type:** Object
+
+**Location:** Root ``config.yml``
+
+**Purpose:** LLM API call logging configuration for debugging.
+
+.. code-block:: yaml
+
+   development:
+     api_calls:
+       save_all: false
+       latest_only: true
+       include_stack_trace: false
+
+**Fields:**
+
+``save_all`` (boolean)
+   Log all LLM API calls with complete input/output and metadata
+
+   - ``true`` - Save to ``_agent_data/api_calls/``
+   - ``false`` - No API call logging (default)
+
+``latest_only`` (boolean)
+   File naming strategy
+
+   - ``true`` - Overwrite with latest per function
+   - ``false`` - Timestamp each API call
+
+``include_stack_trace`` (boolean)
+   Include full Python stack trace in log metadata
+
+   - ``true`` - Full call stack for deep debugging
+   - ``false`` - Show only immediate caller (default)
+
+**See also:** :doc:`../../developer-guides/03_core-framework-systems/04_prompt-customization`
+
 Logging Configuration
 =====================
 

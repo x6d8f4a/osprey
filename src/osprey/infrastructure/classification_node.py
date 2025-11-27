@@ -384,6 +384,17 @@ class CapabilityClassifier:
 
         # Execute classification
         try:
+            # Set caller context for API call logging (propagates through asyncio.to_thread)
+            from osprey.models import set_api_call_context
+
+            set_api_call_context(
+                function="_perform_classification",
+                module="classification_node",
+                class_name="CapabilityClassifier",
+                line=387,
+                extra={"capability_name": capability.name}
+            )
+
             response_data = await asyncio.to_thread(
                 get_chat_completion,
                 model_config=get_model_config("classifier"),

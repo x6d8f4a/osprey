@@ -173,6 +173,7 @@ file_paths:
   user_memory_dir: user_memory
   registry_exports_dir: registry_exports
   prompts_dir: prompts
+  api_calls_dir: api_calls
   checkpoints: checkpoints
 
 {% if template_name != 'hello_world_weather' %}
@@ -270,6 +271,13 @@ development:
     show_all: false      # Print prompts to console
     print_all: true      # Save prompts to files
     latest_only: true    # Keep only latest prompt version
+
+  # LLM API call logging configuration
+  # Captures raw inputs/outputs to get_chat_completion with caller metadata
+  api_calls:
+    save_all: false            # Save all API inputs/outputs to files
+    latest_only: true          # Keep only latest call per function (false = timestamped files)
+    include_stack_trace: false # Include full Python stack trace in metadata
 
 # ============================================================
 # LOGGING

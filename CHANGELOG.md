@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **LLM API Call Logging** - Comprehensive logging of all LLM API interactions for debugging and transparency
+  - New `development.api_calls` configuration section with `save_all`, `latest_only`, and `include_stack_trace` options
+  - Automatic capture of complete input/output pairs with rich metadata (caller function, module, class, line number, model config)
+  - Context variable propagation through async/thread boundaries using Python's `contextvars` for accurate caller detection
+  - Intelligent caller detection that skips thread pool and asyncio internals to find actual business logic
+  - Integration with classifier and orchestrator nodes via `set_api_call_context()` helper function
+  - Capability-aware logging: classifier logs include capability name in filename for parallel classification tasks
+  - Files saved to `_agent_data/api_calls/` with descriptive naming: `{module}_{class}_{function}_{capability}_latest.txt`
+  - Documentation added to prompt customization guide and configuration reference
+  - Complements existing prompt debugging (`development.prompts`) for complete LLM interaction transparency
 - **End-to-End Test Infrastructure** - Complete LLM-based testing system for workflow validation
   - New `tests/e2e/` directory with comprehensive e2e test framework
   - **LLM Judge System** (`judge.py`) - AI-powered test evaluation with structured scoring

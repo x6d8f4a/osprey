@@ -369,5 +369,19 @@ def get_chat_completion(
         **completion_kwargs
     )
 
+    # Log API call for transparency and debugging
+    from osprey.models.logging import log_api_call
+    log_api_call(
+        message=message,
+        result=result,
+        provider=provider,
+        model_id=model_id,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        enable_thinking=enable_thinking,
+        budget_tokens=budget_tokens,
+        output_model=output_model,
+    )
+
     # Result is already handled by provider (TypedDict conversion if needed)
     return result
