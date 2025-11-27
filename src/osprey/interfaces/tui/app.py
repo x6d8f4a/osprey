@@ -888,6 +888,9 @@ class OspreyTUI(App):
         current_component: str | None = None
         current_block: ProcessingBlock | None = None
 
+        # Buffer for logs that arrive before their block is created
+        pending_logs: dict[str, list[tuple[str, str]]] = {}  # component -> [(msg, level), ...]
+
         while True:
             try:
                 chunk = await chat_display._event_queue.get()
@@ -898,11 +901,19 @@ class OspreyTUI(App):
                 msg = chunk.get("message", "")
 
                 # Handle Python log events (from QueueLogHandler)
+                # Only log events go to LOG section (streaming events don't)
                 if event_type == "log":
-                    # Route to current active block's LOG section
-                    if current_block and msg:
-                        level = chunk.get("level", "info")
+                    log_component = chunk.get("component", "")
+                    level = chunk.get("level", "info")
+
+                    if log_component == current_component and current_block and msg:
+                        # Matches current active block - add directly
                         current_block.add_log(msg, status=level)
+                    elif msg:
+                        # Buffer for later - block may not exist yet
+                        if log_component not in pending_logs:
+                            pending_logs[log_component] = []
+                        pending_logs[log_component].append((msg, level))
                     chat_display._event_queue.task_done()
                     continue
 
@@ -927,6 +938,7 @@ class OspreyTUI(App):
                         chat_display,
                         current_component,
                         current_block,
+                        pending_logs,
                     )
                 elif phase == "Execution":
                     # Close last Task Prep block when Execution starts
@@ -956,6 +968,7 @@ class OspreyTUI(App):
         display: ChatDisplay,
         current_component: str | None,
         current_block: ProcessingBlock | None,
+        pending_logs: dict[str, list[tuple[str, str]]],
     ) -> tuple[str | None, ProcessingBlock | None]:
         """Handle Task Preparation events in the consumer.
 
@@ -972,6 +985,7 @@ class OspreyTUI(App):
             display: The chat display widget.
             current_component: Currently active component (or None).
             current_block: Currently active block (or None).
+            pending_logs: Buffer of logs waiting for their blocks.
 
         Returns:
             Tuple of (new_current_component, new_current_block).
@@ -1011,6 +1025,12 @@ class OspreyTUI(App):
                     block.set_input(user_query)
                     block._data["user_query"] = user_query
 
+                # Flush any pending logs for this component
+                if component in pending_logs:
+                    for log_msg, log_level in pending_logs[component]:
+                        block.add_log(log_msg, status=log_level)
+                    del pending_logs[component]
+
         if not current_block:
             return current_component, current_block
 
@@ -1019,9 +1039,8 @@ class OspreyTUI(App):
             if key in chunk:
                 current_block._data[key] = chunk[key]
 
-        # 5. Log to LOG section
-        if msg:
-            current_block.add_log(msg, status=event_type)
+        # 5. Log to LOG section - REMOVED
+        # Streaming events don't go to LOG (only pure log events do, handled in consumer)
 
         # 6. Real-time IN update (when data becomes available)
         self._update_input_from_data(current_block, component)
