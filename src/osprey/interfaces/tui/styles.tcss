@@ -233,7 +233,7 @@ ExecutionStepBlock {
 
 #block-log-content {
     width: 100%;
-    color: $text-muted;
+    /* No color set - allows Rich markup colors to work */
     padding-left: 2;
     margin: 0;
 }

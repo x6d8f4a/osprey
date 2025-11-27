@@ -468,26 +468,26 @@ class ProcessingBlock(Static):
     def _format_log_messages(self) -> str:
         """Format all log messages with status symbols.
 
-        Uses minimal coloring with indicators for status differentiation.
-        Colors are chosen to be visible in both light and dark themes.
+        Uses Textual CSS theme variables for colors that adapt with theme changes.
+        See: https://textual.textualize.io/guide/content/
         """
         if not self._log_messages:
             return ""
         lines = []
         for msg_status, msg in self._log_messages:
-            # Map log_type to colors visible in both light/dark themes
-            # Using "bright_" prefix for better visibility
+            # Map log_type to Textual CSS theme variables
+            # These adapt automatically when theme changes
             color_map = {
-                "error": "bright_red",
-                "warning": "bright_yellow",
-                "success": "bright_green",
-                "key_info": "bold",  # Uses default text color
-                "info": "",  # Default text color
-                "debug": "dim",
-                "timing": "bright_cyan",
-                "status": "",  # Default text color
-                "approval": "bright_yellow",
-                "resume": "bright_green",
+                "error": "$error",
+                "warning": "$warning",
+                "success": "$success",
+                "key_info": "$text",
+                "info": "",  # No color, uses inherited
+                "debug": "$text-muted",
+                "timing": "$accent",
+                "status": "",
+                "approval": "$warning",
+                "resume": "$success",
             }
             color = color_map.get(msg_status, "")
             prefix = {
