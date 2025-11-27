@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `--judge-provider` and `--judge-model` - Configurable judge AI model
   - **Comprehensive Documentation** (`tests/e2e/README.md`) - Complete testing guide with examples
   - **Belt and Suspenders Validation** - LLM judge + hard assertions for reliable testing
+- **CLI Provider/Model Configuration** - Added `--provider` and `--model` flags to `osprey init` command for configuring AI provider during project creation
 - **Unified Logging with Automatic Streaming**
   - Added `BaseCapability.get_logger()` method providing single API for logging and streaming
   - Enhanced `ComponentLogger` with automatic LangGraph streaming support

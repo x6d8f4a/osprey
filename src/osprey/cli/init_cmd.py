@@ -18,7 +18,7 @@ from .templates import TemplateManager
 @click.option(
     "--template", "-t",
     default="minimal",
-    help="Application template to use (minimal, hello_world_weather, wind_turbine)"
+    help="Application template to use (minimal, hello_world_weather, control_assistant)"
 )
 @click.option(
     "--registry-style", "-r",
@@ -37,7 +37,18 @@ from .templates import TemplateManager
     is_flag=True,
     help="Force overwrite if project directory already exists"
 )
-def init(project_name: str, template: str, registry_style: str, output_dir: str, force: bool):
+@click.option(
+    "--provider",
+    type=click.Choice(["anthropic", "openai", "google", "cborg", "ollama"], case_sensitive=False),
+    default=None,
+    help="AI provider to configure (anthropic, openai, google, cborg, ollama)"
+)
+@click.option(
+    "--model",
+    default=None,
+    help="Model identifier (e.g., claude-3-sonnet, gpt-4, anthropic/claude-haiku)"
+)
+def init(project_name: str, template: str, registry_style: str, output_dir: str, force: bool, provider: str, model: str):
     """Create a new Osprey project.
 
     Creates a complete self-contained project with application code,
@@ -50,8 +61,8 @@ def init(project_name: str, template: str, registry_style: str, output_dir: str,
 
     \b
       - minimal: Bare-bones project with TODO placeholders
-      - hello_world_weather: Simple weather query example
-      - wind_turbine: Complex multi-capability example
+      - hello_world_weather: Simple weather query example (tutorial)
+      - control_assistant: Control system integration with channel finder (production-grade)
 
     Registry styles:
 
@@ -81,11 +92,20 @@ def init(project_name: str, template: str, registry_style: str, output_dir: str,
       # Create from specific template
       $ osprey init my-assistant --template hello_world_weather
 
+      # Create control system project
+      $ osprey init my-control-assistant --template control_assistant
+
       # Create in specific location
       $ osprey init my-assistant --output-dir /projects
 
       # Force overwrite if directory exists
       $ osprey init my-assistant --force
+
+      # Create with specific AI provider and model
+      $ osprey init my-assistant --provider cborg --model anthropic/claude-haiku
+
+      # Create with OpenAI
+      $ osprey init my-assistant --provider openai --model gpt-4
     """
     console.print(f"🚀 Creating project: [header]{project_name}[/header]")
 
@@ -132,12 +152,19 @@ def init(project_name: str, template: str, registry_style: str, output_dir: str,
                 )
                 raise click.Abort()
 
-        # Create project
+        # Create project with provider/model context
+        context = {}
+        if provider:
+            context['default_provider'] = provider
+        if model:
+            context['default_model'] = model
+
         project_path = manager.create_project(
             project_name=project_name,
             output_dir=output_path,
             template_name=template,
-            registry_style=registry_style
+            registry_style=registry_style,
+            context=context if context else None
         )
 
         console.print("  ✓ Creating application code...", style=Styles.SUCCESS)
@@ -155,6 +182,13 @@ def init(project_name: str, template: str, registry_style: str, output_dir: str,
             f"\n✅ Project created successfully at: [bold]{project_path}[/bold]"
         )
 
+        # Show provider/model configuration status
+        if provider or model:
+            if provider:
+                console.print(f"  ✓ Configured AI provider: [accent]{provider}[/accent]", style=Styles.SUCCESS)
+            if model:
+                console.print(f"  ✓ Configured model: [accent]{model}[/accent]", style=Styles.SUCCESS)
+
         # Show next steps
         console.print("\n📋 [bold]Next steps:[/bold]")
         console.print(f"  1. {Messages.command(f'cd {project_name}')}")
@@ -171,12 +205,12 @@ def init(project_name: str, template: str, registry_style: str, output_dir: str,
 
     except ValueError as e:
         console.print(f"❌ Error: {e}", style=Styles.ERROR)
-        raise click.Abort()
+        raise click.Abort() from e
     except Exception as e:
         console.print(f"❌ Unexpected error: {e}", style=Styles.ERROR)
         import traceback
         console.print(traceback.format_exc(), style=Styles.DIM)
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 if __name__ == "__main__":
