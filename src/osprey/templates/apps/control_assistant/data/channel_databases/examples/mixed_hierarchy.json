@@ -1,39 +1,14 @@
 {
-  "_comment": "Example: Mixed Hierarchy Pattern - Complex facility with variable subtree structures",
-  "_structure": "SECTOR[instances] → BUILDING[tree] → FLOOR[instances] → ROOM[instances] → EQUIPMENT[tree]",
-  "_key_feature": "Different buildings have different numbers of floors/rooms - demonstrates flexible subtree structures",
-
-  "hierarchy_definition": ["sector", "building", "floor", "room", "equipment"],
-  "naming_pattern": "S{sector}:{building}:F{floor}:R{room}:{equipment}",
-
-  "hierarchy_config": {
-    "levels": {
-      "sector": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "building": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "floor": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "room": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "equipment": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      }
-    }
+  "_comment": "Example: Mixed Hierarchy Pattern - Complex facility with variable subtree structures. Pattern: SECTOR[instances] → BUILDING[tree] → FLOOR[instances] → ROOM[instances] → EQUIPMENT[tree]. Key feature: Different buildings have different numbers of floors/rooms - demonstrates flexible subtree structures.",
+  "hierarchy": {
+    "levels": [
+      {"name": "sector", "type": "instances"},
+      {"name": "building", "type": "tree"},
+      {"name": "floor", "type": "instances"},
+      {"name": "room", "type": "instances"},
+      {"name": "equipment", "type": "tree"}
+    ],
+    "naming_pattern": "S{sector}:{building}:F{floor}:R{room}:{equipment}"
   },
 
   "tree": {

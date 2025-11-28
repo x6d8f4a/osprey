@@ -1,43 +1,14 @@
 {
-  "_comment": "Example: Consecutive Instances Pattern - Multiple instance levels in sequence",
-  "_use_case": "Accelerator naming (CEBAF pattern), distributed systems with region+number, any case with nested instance expansions",
-  "_structure": "SYSTEM[tree] → FAMILY[tree] → SECTOR[instances] → DEVICE[instances] → PROPERTY[tree]",
-  "_naming_example": "MQB0L07.S = Magnet(M) Quadrupole(QB) Injector(0L) #7(07) CurrentSetpoint(.S)",
-  "_key_feature": "Two consecutive instance levels (SECTOR + DEVICE) demonstrate that multiple expansions can follow each other",
-
-  "hierarchy_definition": ["system", "family", "sector", "device", "property"],
-  "naming_pattern": "{system}{family}{sector}{device}{property}",
-
-  "hierarchy_config": {
-    "levels": {
-      "system": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "family": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "sector": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false,
-        "_comment": "Accelerator sectors where magnets are located (0L=injector, 1A=first arc, etc.)"
-      },
-      "device": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false,
-        "_comment": "Sequential numbering of magnets within each sector"
-      },
-      "property": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      }
-    }
+  "_comment": "Example: Consecutive Instances Pattern - Multiple instance levels in sequence. Use case: Accelerator naming (CEBAF pattern), distributed systems with region+number, any case with nested instance expansions. Example channel: MQB0L07.S = Magnet(M) Quadrupole(QB) Injector(0L) #7(07) CurrentSetpoint(.S). Key feature: Two consecutive instance levels (SECTOR + DEVICE) demonstrate that multiple expansions can follow each other.",
+  "hierarchy": {
+    "levels": [
+      {"name": "system", "type": "tree"},
+      {"name": "family", "type": "tree"},
+      {"name": "sector", "type": "instances"},
+      {"name": "device", "type": "instances"},
+      {"name": "property", "type": "tree"}
+    ],
+    "naming_pattern": "{system}{family}{sector}{device}{property}"
   },
 
   "tree": {

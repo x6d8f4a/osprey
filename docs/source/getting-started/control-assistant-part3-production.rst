@@ -1153,21 +1153,27 @@ The structure of your control system determines your approach:
       .. code-block:: json
 
          {
-           "hierarchy_definition": ["system", "family", "device", "field", "subfield"],
-           "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
+           "hierarchy": {
+             "levels": [
+               {"name": "system", "type": "tree"},
+               {"name": "family", "type": "tree"},
+               {"name": "device", "type": "instances"},
+               {"name": "field", "type": "tree"},
+               {"name": "subfield", "type": "tree"}
+             ],
+             "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}"
+           },
            "tree": {
              "MAGNETS": {
                "_description": "Magnet System: Your facility description...",
                "DIPOLE": {
                  "_description": "Dipole Magnets: Bend beam trajectory...",
-                 "devices": {"_type": "range", "_pattern": "D{:02d}", "_range": [1, 16]},
-                 "fields": {
+                 "DEVICE": {
+                   "_expansion": {"_type": "range", "_pattern": "D{:02d}", "_range": [1, 16]},
                    "CURRENT": {
                      "_description": "Magnet current in Amperes...",
-                     "subfields": {
-                       "SP": {"_description": "Setpoint (read-write)"},
-                       "RB": {"_description": "Readback (read-only)"}
-                     }
+                     "SP": {"_description": "Setpoint (read-write)"},
+                     "RB": {"_description": "Readback (read-only)"}
                    }
                  }
                }

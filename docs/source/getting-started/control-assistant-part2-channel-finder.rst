@@ -658,7 +658,7 @@ That's it—no code changes required. The template includes complete implementat
       .. admonition:: Database Format (v0.9.4+)
          :class: tip
 
-         Hierarchical databases now support **flexible hierarchy configuration** - you can arbitrarily mix tree navigation and instance expansion at any level. Want instances at the root? Consecutive instance levels? Instance → tree → instance patterns? The ``hierarchy_config`` section lets you define any hierarchy structure. This also provides clear semantics and better validation. Legacy format (implicit configuration with ``devices``, ``fields``, ``subfields`` containers) is still supported via automatic inference—see ``examples/hierarchical_legacy.json`` for reference.
+         Hierarchical databases use a **flexible schema** that lets you define any hierarchy structure to match your control system. See the **Database Format** tab below for schema details and **Building Your Own Database** for a step-by-step guide.
 
       **How It Works:**
 
@@ -716,36 +716,16 @@ That's it—no code changes required. The template includes complete implementat
             .. code-block:: json
 
                {
-                 "hierarchy_definition": ["system", "family", "device", "field", "subfield"],
-                 "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
-                 "hierarchy_config": {
-                   "levels": {
-                     "system": {
-                       "type": "category",
-                       "structure": "tree",
-                       "allow_branching": true
-                     },
-                     "family": {
-                       "type": "category",
-                       "structure": "tree",
-                       "allow_branching": true
-                     },
-                     "device": {
-                       "type": "instance",
-                       "structure": "expand_here",
-                       "allow_branching": false
-                     },
-                     "field": {
-                       "type": "category",
-                       "structure": "tree",
-                       "allow_branching": true
-                     },
-                     "subfield": {
-                       "type": "category",
-                       "structure": "tree",
-                       "allow_branching": true
-                     }
-                   }
+                 "_comment": "Accelerator Control System - Hierarchical Channel Database",
+                 "hierarchy": {
+                   "levels": [
+                     {"name": "system", "type": "tree"},
+                     {"name": "family", "type": "tree"},
+                     {"name": "device", "type": "instances"},
+                     {"name": "field", "type": "tree"},
+                     {"name": "subfield", "type": "tree"}
+                   ],
+                   "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}"
                  },
                  "tree": {
                    "MAG": {
@@ -791,21 +771,22 @@ That's it—no code changes required. The template includes complete implementat
 
             **Key features:**
 
-            - **Explicit configuration**: ``hierarchy_config`` defines level types (``tree`` for navigation, ``expand_here`` for instances)
+            - **Clean schema**: Single ``hierarchy`` section combines level definitions and naming pattern with built-in validation
+            - **Flexible structure**: Each level specifies its ``name`` and ``type`` (``tree`` for semantic categories, ``instances`` for numbered/patterned expansions)
             - **Deep descriptions**: Rich domain knowledge at every level guides LLM navigation
-            - **Device expansion**: Define device families once (e.g., QF01-QF16) using ``_expansion`` with ranges or lists
+            - **Instance expansion**: Define device families once (e.g., QF01-QF16) using ``_expansion`` with ranges or lists
             - **Physical organization**: Hierarchy mirrors actual control system structure
-            - **Naming pattern**: Automatic assembly of full channel names from navigation paths
+            - **Automatic validation**: System ensures naming pattern references match level names, catching errors at load time
 
-            .. dropdown:: Understanding Hierarchy Levels: Tree vs Expand Here
+            .. dropdown:: Understanding Hierarchy Levels: Tree vs Instances
                :color: info
 
-               The ``hierarchy_config`` defines how each level behaves during navigation. Understanding the two structure types is key to building effective hierarchical databases.
+               Each level in the ``hierarchy.levels`` array specifies its behavior during navigation. Understanding the two level types is key to building effective hierarchical databases.
 
-               **Tree Structure (``"structure": "tree"``):**
+               **Tree Levels (``"type": "tree"``):**
 
-               - **Purpose**: Navigate through named semantic choices
-               - **Behavior**: LLM selects from explicitly defined options at this level
+               - **Purpose**: Navigate through named semantic categories
+               - **Behavior**: LLM selects from explicitly defined options at this level; multiple selections trigger branching
                - **When to use**: For categorical decisions where each option has different meaning
                - **Examples**:
                   - Systems: MAG (magnets), VAC (vacuum), RF (radio frequency), DIAG (diagnostics)
@@ -813,9 +794,9 @@ That's it—no code changes required. The template includes complete implementat
                   - Fields: CURRENT, STATUS, POSITION, VOLTAGE
                   - Subfields: SP (setpoint), RB (readback), GOLDEN (reference)
 
-               **Expand Here Structure (``"structure": "expand_here"``):**
+               **Instance Levels (``"type": "instances"``):**
 
-               - **Purpose**: Expand across numbered or named instances
+               - **Purpose**: Expand across numbered or named instances that share the same structure
                - **Behavior**: Instances are generated from ``_expansion`` definition (range or list)
                - **When to use**: For device families where all instances have identical structure
                - **Examples**:
@@ -856,34 +837,34 @@ That's it—no code changes required. The template includes complete implementat
 
             **Step 1: Understand the Schema**
 
-            The hierarchical database format in OSPREY uses four top-level keys to define a hierarchy of any depth:
+            The hierarchical database format in OSPREY uses a clean, flexible schema with two top-level keys:
 
             .. code-block:: json
 
                {
-                 "hierarchy_definition": ["system", "family", "device", "field", "subfield"],
-                 "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
-                 "hierarchy_config": {
-                   "levels": {
-                     "system": {"type": "category", "structure": "tree", "allow_branching": true},
-                     "family": {"type": "category", "structure": "tree", "allow_branching": true},
-                     "device": {"type": "instance", "structure": "expand_here", "allow_branching": false},
-                     "field": {"type": "category", "structure": "tree", "allow_branching": true},
-                     "subfield": {"type": "category", "structure": "tree", "allow_branching": true}
-                   }
+                 "hierarchy": {
+                   "levels": [
+                     {"name": "system", "type": "tree"},
+                     {"name": "family", "type": "tree"},
+                     {"name": "device", "type": "instances"},
+                     {"name": "field", "type": "tree"},
+                     {"name": "subfield", "type": "tree"}
+                   ],
+                   "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}"
                  },
                  "tree": { /* nested structure */ }
                }
 
-            **hierarchy_definition**: An ordered list of level names. The LLM navigates these levels in sequence. Define as many or as few levels as your system needs—three levels for simple systems, five for typical accelerators, ten or more for complex facilities.
+            **hierarchy**: Configuration combining level definitions and naming pattern. This section includes:
 
-            **naming_pattern**: A template showing how to assemble complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders.
+            - **levels**: Ordered array defining each hierarchy level. Each level specifies:
 
-            **hierarchy_config**: Defines the behavior of each hierarchy level. For each level defined in ``hierarchy_definition``, you must specify:
+              - ``name``: Level identifier used in navigation and naming pattern
+              - ``type``: Either ``"tree"`` (navigate through named semantic categories like MAG, VAC, RF) or ``"instances"`` (expand numbered/patterned instances like QF01, QF02 that share the same structure)
 
-            - ``structure``: Either ``"tree"`` (navigate through named options like MAG, VAC, RF) or ``"expand_here"`` (expand numbered/named instances like QF01, QF02)
-            - ``type``: Either ``"category"`` (semantic choices) or ``"instance"`` (numbered copies)
-            - ``allow_branching``: Whether selecting multiple options at this level causes parallel exploration paths
+              Define as many or as few levels as your system needs—three levels for simple systems, five for typical accelerators, ten or more for complex facilities. The system validates that all level names appear exactly once in the naming pattern.
+
+            - **naming_pattern**: Template for assembling complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders (e.g., ``{system}:{device}:{field}``). Must reference all and only the level names defined in the levels array.
 
             **tree**: The nested hierarchy structure with descriptions at every level (details below).
 
@@ -1019,8 +1000,10 @@ That's it—no code changes required. The template includes complete implementat
 
             For hierarchical databases, validation checks:
 
-            - ✅ **JSON Structure**: Valid syntax, required top-level keys (hierarchy_definition, naming_pattern, tree)
-            - ✅ **Hierarchy Consistency**: All levels properly nested, device definitions valid
+            - ✅ **JSON Structure**: Valid syntax, required top-level keys (hierarchy, tree)
+            - ✅ **Schema Validation**: Naming pattern references exactly match level names (prevents typos and out-of-sync errors)
+            - ✅ **Level Configuration**: All levels have valid types (tree or instances), properly configured
+            - ✅ **Hierarchy Consistency**: All levels properly nested, instance expansion definitions valid
             - ✅ **Database Loading**: Can be successfully loaded by ``HierarchicalChannelDatabase`` class
             - ✅ **Channel Expansion**: Tree structure expands correctly to generate channel names
 

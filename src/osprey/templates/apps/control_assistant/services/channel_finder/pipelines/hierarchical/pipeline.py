@@ -8,16 +8,17 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from ...core.base_pipeline import BasePipeline
-from ...core.models import ChannelFinderResult, ChannelInfo, QuerySplitterOutput
-from ...core.exceptions import HierarchicalNavigationError
-from ...llm import get_chat_completion
-from ...utils.prompt_loader import load_prompts
-from .models import create_selection_model, NOTHING_FOUND_MARKER
+from typing import Any, Optional
 
 # Use Osprey's config system
 from osprey.utils.config import _get_config
+
+from ...core.base_pipeline import BasePipeline
+from ...core.exceptions import HierarchicalNavigationError
+from ...core.models import ChannelFinderResult, ChannelInfo, QuerySplitterOutput
+from ...llm import get_chat_completion
+from ...utils.prompt_loader import load_prompts
+from .models import NOTHING_FOUND_MARKER, create_selection_model
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ class HierarchicalPipeline(BasePipeline):
         # Build result (detailed display happens in capability layer)
         return self._build_result(query, unique_channels)
 
-    async def _split_query(self, query: str) -> List[str]:
+    async def _split_query(self, query: str) -> list[str]:
         """Split query into atomic sub-queries (reuse from in-context)."""
         prompt = self.query_splitter.get_prompt(facility_name=self.facility_name)
         message = f"{prompt}\n\nQuery to process: {query}"
@@ -196,7 +197,7 @@ class HierarchicalPipeline(BasePipeline):
         return response.queries
 
 
-    async def _navigate_hierarchy(self, query: str) -> List[str]:
+    async def _navigate_hierarchy(self, query: str) -> list[str]:
         """
         Navigate through hierarchy levels for a single atomic query.
 
@@ -230,12 +231,12 @@ class HierarchicalPipeline(BasePipeline):
     async def _navigate_recursive(
         self,
         query: str,
-        remaining_levels: List[str],
-        selections: Dict,
-        branch_path: List[str],
+        remaining_levels: list[str],
+        selections: dict,
+        branch_path: list[str],
         branch_num: int,
         total_branches: int
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Recursively navigate hierarchy with automatic branching.
 
@@ -285,13 +286,14 @@ class HierarchicalPipeline(BasePipeline):
 
         logger.info(f"{indent}  → Selected: {selected[:3] if len(selected) > 3 else selected}{'...' if len(selected) > 3 else ''}")
 
-        # Determine if we should branch - now dynamic based on config
+        # Determine if we should branch based on level type
         level_config = self.database.hierarchy_config["levels"][level]
-        allow_branching = level_config.get("allow_branching", True)
+        # Tree levels allow branching, instance levels don't
+        allow_branching = (level_config["type"] == "tree")
 
         should_branch = (
             len(selected) > 1 and
-            allow_branching  # Now configurable!
+            allow_branching
         )
 
         if should_branch:
@@ -348,9 +350,9 @@ class HierarchicalPipeline(BasePipeline):
         self,
         query: str,
         level: str,
-        options: List[Dict],
-        previous_selections: Dict
-    ) -> List[str]:
+        options: list[dict],
+        previous_selections: dict
+    ) -> list[str]:
         """
         Use LLM to select option(s) at current hierarchy level.
 
@@ -399,8 +401,8 @@ class HierarchicalPipeline(BasePipeline):
         self,
         query: str,
         level: str,
-        options: List[Dict],
-        previous_selections: Dict
+        options: list[dict],
+        previous_selections: dict
     ) -> str:
         """Build prompt for hierarchical level selection with path-aware domain context."""
         # Format options (limit to reasonable number for prompt)
@@ -447,7 +449,7 @@ class HierarchicalPipeline(BasePipeline):
         else:
             # Fallback guidance based on level type for arbitrary hierarchies
             level_config = self.database.hierarchy_config["levels"][level]
-            if level_config["type"] == "instance":
+            if level_config["type"] == "instances":
                 level_instruction = f"""
 Select specific instance(s) of {level} based on the query.
 
@@ -457,7 +459,7 @@ Guidelines:
 - Range mentioned → select instances in that range
 - Multiple instances can be selected - they share the same structure
 """
-            elif level_config.get("allow_branching", True):
+            elif level_config["type"] == "tree":
                 level_instruction = f"""
 Select the {level} category/categories that match the query.
 
@@ -468,6 +470,7 @@ have different structures or children.
 Select multiple when the query spans multiple categories or is ambiguous.
 """
             else:
+                # Fallback for legacy container mode
                 level_instruction = f"""
 Select the {level} option that best matches the query context.
 """
@@ -504,14 +507,14 @@ If no options are relevant, use '{NOTHING_FOUND_MARKER}'."""
 
         return prompt
 
-    def _get_single_selection(self, selections: Dict, key: str) -> Optional[str]:
+    def _get_single_selection(self, selections: dict, key: str) -> Optional[str]:
         """Get single selection value (handle lists by taking first element)."""
         value = selections.get(key)
         if isinstance(value, list):
             return value[0] if value else None
         return value
 
-    def _build_result(self, query: str, channels: List[str]) -> ChannelFinderResult:
+    def _build_result(self, query: str, channels: list[str]) -> ChannelFinderResult:
         """Build final result object."""
         channel_infos = []
 
@@ -537,7 +540,7 @@ If no options are relevant, use '{NOTHING_FOUND_MARKER}'."""
             processing_notes=notes
         )
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Return pipeline statistics."""
         db_stats = self.database.get_statistics()
         return {

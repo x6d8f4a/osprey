@@ -1,29 +1,12 @@
 {
-  "_comment": "Example: Instance-First Pattern - Instance level at root of hierarchy",
-  "_use_case": "Production lines, numbered facilities, lettered sections - any case where numbered/lettered divisions come first",
-  "_structure": "LINE[instances] → STATION[tree] → PARAMETER[tree]",
-
-  "hierarchy_definition": ["line", "station", "parameter"],
-  "naming_pattern": "LINE{line}:{station}:{parameter}",
-
-  "hierarchy_config": {
-    "levels": {
-      "line": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "station": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "parameter": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      }
-    }
+  "_comment": "Example: Instance-First Pattern - Instance level at root of hierarchy. Use case: Production lines, numbered facilities, lettered sections - any case where numbered/lettered divisions come first. Pattern: LINE[instances] → STATION[tree] → PARAMETER[tree]",
+  "hierarchy": {
+    "levels": [
+      {"name": "line", "type": "instances"},
+      {"name": "station", "type": "tree"},
+      {"name": "parameter", "type": "tree"}
+    ],
+    "naming_pattern": "LINE{line}:{station}:{parameter}"
   },
 
   "tree": {

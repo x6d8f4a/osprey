@@ -1,42 +1,14 @@
 {
-  "_comment": "Accelerator Control System - Hierarchical Channel Database (New Format)",
-  "_structure": "SYSTEM[tree] → FAMILY[tree] → DEVICE[expand_here] → FIELD[tree] → SUBFIELD[tree]",
-  "hierarchy_definition": [
-    "system",
-    "family",
-    "device",
-    "field",
-    "subfield"
-  ],
-  "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
-  "hierarchy_config": {
-    "levels": {
-      "system": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "family": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "device": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "field": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "subfield": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      }
-    }
+  "_comment": "Accelerator Control System - Hierarchical Channel Database. This database demonstrates the unified hierarchy schema where SYSTEM and FAMILY are semantic tree categories, DEVICE is an instance expansion level, and FIELD/SUBFIELD are tree categories describing the physical properties and access modes.",
+  "hierarchy": {
+    "levels": [
+      {"name": "system", "type": "tree"},
+      {"name": "family", "type": "tree"},
+      {"name": "device", "type": "instances"},
+      {"name": "field", "type": "tree"},
+      {"name": "subfield", "type": "tree"}
+    ],
+    "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}"
   },
   "tree": {
     "MAG": {
