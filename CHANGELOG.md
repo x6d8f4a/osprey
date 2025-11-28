@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All existing hierarchical databases continue to work unchanged
 
 ### Fixed
+- Fixed in-context pipeline documentation to correctly state that LLM only sees `channel` + `description` (not `address`) during semantic matching
 - **Channel Finder CLI Documentation**
   - Fixed documentation bug where CLI commands used module import syntax (`python -m my_control_assistant.services.channel_finder.cli`) which failed because generated projects are not installed packages
   - Converted `cli.py` and `benchmarks/cli.py` to Jinja2 templates (`.j2`) to enable proper package name substitution

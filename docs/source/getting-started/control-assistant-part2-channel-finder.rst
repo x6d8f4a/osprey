@@ -61,67 +61,60 @@ That's it—no code changes required. The template includes complete implementat
       .. dropdown:: Channel Names vs Addresses: Optimizing LLM Token Matching
          :color: info
 
-         The in-context pipeline supports a **two-layer naming architecture** that dramatically improves semantic matching consistency:
+         **The Challenge:** Control systems use cryptic addresses (``TMVST``, ``Acc_I``, ``IP41Pressure``), but users query with natural language ("terminal voltage setpoint", "grading resistor current"). The LLM needs to bridge this gap during semantic matching.
 
-         - **`channel`**: Descriptive semantic name aligned with description (e.g., ``"TerminalVoltageSetPoint"``)
-         - **`address`**: Actual control system PV/address (e.g., ``"TMVST"``)
+         **The Solution:** When building your channel database, you choose how to create the searchable channel names:
 
-         **Why this helps (but isn't strictly required):**
+         .. code-block:: bash
 
-         The LLM sees the full channel entry (name, address, description). While it can match queries against descriptions alone, having the channel **name** itself semantically aligned with the description makes matching much, much more consistent and reliable.
+            # Default: use raw addresses as channel names
+            python build_channel_database.py
 
-         **Example - what the LLM sees:**
+            # LLM-powered: generate descriptive channel names (recommended)
+            python build_channel_database.py --use-llm --config config.yml
 
-         .. code-block:: json
+         **How It Works:**
 
-            {
-              "channel": "TMVST",  // or "TerminalVoltageSetPoint"
-              "address": "TMVST",
-              "description": "Set value of the terminal where electron gun and collector are located"
-            }
+         Your database stores three fields, but the LLM only sees two during semantic matching:
 
-         **Query:** *"terminal voltage setpoint"*
+         +---------------------------------------+------------------+---------------+
+         | ``channel`` (shown to LLM)            | ``address``      | ``description``|
+         |                                       | (hidden from LLM)| (shown to LLM)|
+         +=======================================+==================+===============+
+         | Default: ``TMVST``                    | ``TMVST``        | "Set value... |
+         +---------------------------------------+------------------+---------------+
+         | With ``--use-llm``: ``TerminalVoltage | ``TMVST``        | "Set value... |
+         | SetPoint``                            |                  |               |
+         +---------------------------------------+------------------+---------------+
 
-         - **With cryptic name** (``TMVST``): LLM matches on description, but returns inconsistent token ``TMVST``
-         - **With descriptive name** (``TerminalVoltageSetPoint``): LLM matches on description AND name, returns consistent token ``TerminalVoltageSetPoint``
+         The LLM sees only: ``channel`` + ``description`` (formatted as ``"ChannelName: Description"``)
 
-         The descriptive name **reinforces** the semantic signal from the description, creating stronger, more consistent matches.
+         **Why Descriptive Names Dramatically Improve Matching:**
 
-         **How it works:**
+         When a user queries *"terminal voltage setpoint"*:
 
-         .. code-block:: text
+         - **Default mode** (``TMVST``): LLM matches on description alone → returns cryptic token ``TMVST``
+         - **LLM-powered mode** (``TerminalVoltageSetPoint``): LLM matches on both name and description → returns semantically aligned token ``TerminalVoltageSetPoint``
 
-            User Query: "terminal voltage setpoint"
-               ↓
-            LLM sees both name and description:
-               With "TMVST": Description matches, but name doesn't align → weaker signal
-               With "TerminalVoltageSetPoint": Both name and description align → stronger, consistent signal ✓
-               ↓
-            System returns:
-               - channel: "TerminalVoltageSetPoint"  (semantically consistent with what was matched)
-               - address: "TMVST"                    (what connects to control system)
+         The descriptive channel name reinforces the semantic signal from the description, creating stronger, more consistent matches. The channel name becomes a searchable index aligned with how users think and query.
 
-         **Database builder integration:**
+         **What the ``--use-llm`` flag does:**
 
-         The ``build_channel_database.py`` tool with ``--use-llm`` flag automatically generates these semantically consistent channel names from your addresses and descriptions:
+         - Extracts semantic tokens from descriptions (location, device type, property)
+         - Generates unique PascalCase names that align with description content
+         - Preserves original addresses for control system connections
 
-         - Extracts key semantic tokens from descriptions (location, device type, property, read/write)
-         - Assembles them into channel names that align with and reinforce the description content
-         - Preserves original addresses for actual control system connections
-
-         **Result structure:**
-
-         Results include both for complete information flow:
+         Example results:
 
          +---------------------------------------+---------------------------------+
-         | Channel (reinforces description)      | Address (for EPICS/LabView/etc.)|
+         | Channel (shown to LLM, searchable)    | Address (for EPICS/LabView/etc.)|
          +=======================================+=================================+
          | ``TerminalVoltageSetPoint``           | ``TMVST``                       |
          +---------------------------------------+---------------------------------+
          | ``AcceleratingTubeEndIonPumpPressure``| ``IP41Pressure``                |
          +---------------------------------------+---------------------------------+
 
-         The descriptive names **reinforce** the semantic signal from descriptions, making matching much more consistent and reliable, while addresses remain correct for control system connections.
+         **Note:** You can manually edit channel names in the database JSON file at any time to customize them for your facility's terminology and conventions.
 
 
 
@@ -213,7 +206,8 @@ That's it—no code changes required. The template includes complete implementat
             - **Flat structure**: All channels at the same level, no nested hierarchy
             - **Rich descriptions**: Natural language descriptions enable semantic matching
             - **Template support**: Device families (like BPM01-BPM10) defined once and expanded automatically
-            - **Separate naming**: ``channel`` (searchable name) vs. ``address`` (actual PV address)
+            - **Separate naming**: ``channel`` (searchable name shown to LLM) vs. ``address`` (actual PV address, not shown to LLM)
+            - **LLM sees**: Only ``channel`` + ``description`` during semantic matching
 
             **Minimal setup:** Just list your channels with descriptions. The pipeline handles the rest.
 
@@ -305,6 +299,8 @@ That's it—no code changes required. The template includes complete implementat
 
             **LLM Name Generation Example:**
 
+            The database stores three fields per channel, but the in-context pipeline only presents ``channel`` and ``description`` to the LLM during semantic matching. The ``address`` is preserved for control system connections but never shown to the LLM.
+
             Without LLM (uses raw addresses):
 
             .. code-block:: json
@@ -315,6 +311,8 @@ That's it—no code changes required. The template includes complete implementat
                  "description": "Diagnostic current through grading resistor chain in accelerating tube"
                }
 
+            LLM sees: ``"Acc_I: Diagnostic current through grading resistor chain in accelerating tube"``
+
             With LLM (descriptive, searchable names):
 
             .. code-block:: json
@@ -324,6 +322,8 @@ That's it—no code changes required. The template includes complete implementat
                  "address": "Acc_I",
                  "description": "Diagnostic current through grading resistor chain in accelerating tube"
                }
+
+            LLM sees: ``"AcceleratingTubeGradingResistorDiagnosticCurrent: Diagnostic current through grading resistor chain in accelerating tube"``
 
             The LLM uses facility-specific prompts to generate names that:
 
@@ -655,7 +655,7 @@ That's it—no code changes required. The template includes complete implementat
 
          **Live Example**: Hierarchical pipeline processing "whats the beam current?" through 5 navigation levels (system → family → device → field → subfield) to find ``DIAG:DCCT[MAIN]:CURRENT:RB`` from 1,050 channels. Shows the recursive branching at each level.
 
-      .. admonition:: Database Format (v0.9.3+)
+      .. admonition:: Database Format (v0.9.4+)
          :class: tip
 
          Hierarchical databases now support **flexible hierarchy configuration** - you can arbitrarily mix tree navigation and instance expansion at any level. Want instances at the root? Consecutive instance levels? Instance → tree → instance patterns? The ``hierarchy_config`` section lets you define any hierarchy structure. This also provides clear semantics and better validation. Legacy format (implicit configuration with ``devices``, ``fields``, ``subfields`` containers) is still supported via automatic inference—see ``examples/hierarchical_legacy.json`` for reference.
