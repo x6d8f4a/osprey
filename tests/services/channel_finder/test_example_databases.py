@@ -86,10 +86,10 @@ class TestExampleDatabases:
         assert db.hierarchy_levels == ["line", "station", "parameter"]
         assert hasattr(db, 'hierarchy_config')
 
-        # Verify instance-first configuration
-        assert db.hierarchy_config["levels"]["line"]["structure"] == "expand_here"
-        assert db.hierarchy_config["levels"]["station"]["structure"] == "tree"
-        assert db.hierarchy_config["levels"]["parameter"]["structure"] == "tree"
+        # Verify instance-first configuration (new unified schema uses "type" not "structure")
+        assert db.hierarchy_config["levels"]["line"]["type"] == "instances"
+        assert db.hierarchy_config["levels"]["station"]["type"] == "tree"
+        assert db.hierarchy_config["levels"]["parameter"]["type"] == "tree"
 
         # Verify channels: 5 lines × 4 stations × various parameters
         # ASSEMBLY: 4 params, INSPECTION: 5 params, PACKAGING: 4 params, CONVEYOR: 4 params
@@ -134,10 +134,10 @@ class TestExampleDatabases:
         assert db.hierarchy_levels == ["system", "family", "sector", "device", "property"]
         assert hasattr(db, 'hierarchy_config')
 
-        # Verify consecutive instance configuration
-        assert db.hierarchy_config["levels"]["sector"]["structure"] == "expand_here"
-        assert db.hierarchy_config["levels"]["device"]["structure"] == "expand_here"
-        assert db.hierarchy_config["levels"]["property"]["structure"] == "tree"
+        # Verify consecutive instance configuration (new unified schema uses "type" not "structure")
+        assert db.hierarchy_config["levels"]["sector"]["type"] == "instances"
+        assert db.hierarchy_config["levels"]["device"]["type"] == "instances"
+        assert db.hierarchy_config["levels"]["property"]["type"] == "tree"
 
         # Verify channels were generated
         # Example calculation for QB: 6 sectors × 99 devices × 4 properties = 2,376
@@ -186,23 +186,23 @@ class TestExampleDatabases:
         print("✓ Consecutive instances pattern database: All tests passed")
 
     def test_legacy_accelerator_backward_compatible(self):
-        """Test existing hierarchical.json still works (backward compatibility)."""
+        """Test main hierarchical.json uses new unified schema correctly."""
         db_path = Path(__file__).parents[3] / "src/osprey/templates/apps/control_assistant/data/channel_databases/hierarchical.json"
 
         if not db_path.exists():
-            pytest.skip(f"Legacy database not found: {db_path}")
+            pytest.skip(f"Database not found: {db_path}")
 
         db = HierarchicalChannelDatabase(str(db_path))
 
-        # Should auto-infer hierarchy_config
+        # Should have hierarchy_config from new unified schema
         assert hasattr(db, 'hierarchy_config')
         assert 'levels' in db.hierarchy_config
 
         # Verify structure
         assert db.hierarchy_levels == ["system", "family", "device", "field", "subfield"]
 
-        # Should have inferred legacy container mode
-        assert db.hierarchy_config["levels"]["device"]["structure"] == "container"
+        # Main database now uses new unified schema with instances type
+        assert db.hierarchy_config["levels"]["device"]["type"] == "instances"
 
         # Test that channels were built
         assert len(db.channel_map) > 0

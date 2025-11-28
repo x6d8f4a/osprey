@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Backward compatibility: Legacy databases with implicit configuration automatically converted with deprecation warnings
   - Support hierarchies from 1 to 15+ levels with any combination of types
   - Updated documentation with clean schema examples and comprehensive guides
+- **Hello World Weather E2E Test**
+  - New end-to-end test validating complete Hello World tutorial workflow
+  - Tests weather capability execution, mock API integration, and registry initialization
+  - LLM judge evaluation ensures beginner-friendly experience
+  - Validates template generation and framework setup for new users
+
+### Changed
+- **Test Infrastructure**
+  - Fixed test isolation between unit tests and e2e tests using `reset_registry()`
+  - Updated all e2e tests to use Claude Haiku (faster, more cost-effective)
+  - Separated unit test and e2e test execution to prevent registry mock contamination
+  - Updated channel finder tests to use new unified database schema (`"type"` instead of `"structure"`)
+  - Documentation: Updated `RELEASE_WORKFLOW.md` with clear instructions for running unit tests (`pytest tests/ --ignore=tests/e2e`) and e2e tests (`pytest tests/e2e/`) separately
 
 ## [0.9.3] - 2025-11-27
 
