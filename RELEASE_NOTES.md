@@ -1,4 +1,4 @@
-# Osprey Framework - Latest Release (v0.9.3)
+# Osprey Framework - Latest Release (v0.9.4)
 
 🎉 **LLM API Call Logging & End-to-End Testing** - Enhanced Developer Experience & Quality Assurance
 
