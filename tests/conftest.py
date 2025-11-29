@@ -4,11 +4,46 @@ Pytest configuration and shared test utilities.
 This module provides shared fixtures and utilities for all Osprey tests.
 """
 
+import os
+
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from osprey.base.planning import ExecutionPlan, PlannedStep
 from osprey.state import AgentState
+
+
+# ===================================================================
+# Auto-reset Registry and Config Between Tests
+# ===================================================================
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_state_between_tests():
+    """Auto-reset registry and config before each test to ensure isolation.
+
+    This prevents state leakage between tests by:
+    - Resetting the registry
+    - Clearing config caches
+
+    Note: Does NOT clear CONFIG_FILE env var since test fixtures may set it.
+    Tests that need a clean CONFIG_FILE state should handle it explicitly.
+    """
+    # Reset before test
+    from osprey.registry import reset_registry
+    from osprey.utils import config as config_module
+
+    reset_registry()
+    config_module._default_config = None
+    config_module._default_configurable = None
+    config_module._config_cache.clear()
+
+    yield
+
+    # Reset after test
+    reset_registry()
+    config_module._default_config = None
+    config_module._default_configurable = None
+    config_module._config_cache.clear()
 
 # ===================================================================
 # Test State Factory
