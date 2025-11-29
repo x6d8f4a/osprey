@@ -537,6 +537,15 @@ class TimeRangeParsingCapability(BaseCapability):
             # Get model config from LangGraph configurable
             model_config = get_model_config("time_parsing")
 
+            # Set caller context for API call logging (propagates through asyncio.to_thread)
+            from osprey.models import set_api_call_context
+            set_api_call_context(
+                function="execute",
+                module="time_range_parsing",
+                class_name="TimeRangeParsingCapability",
+                extra={"capability": "time_range_parsing"}
+            )
+
             # LLM call with structured output
             response_data = await asyncio.to_thread(
                 get_chat_completion,

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **API Call Logging**: Enhanced with caller context tracking across all LLM-calling components. Logging metadata now includes capability/module/operation details for better debugging. Improved JSON serialization with Pydantic model support and better error visibility
+
 ### Added
 - **Python Executor Service - Complete Modular Refactoring**
   - **Modular Subdirectory Structure**: Reorganized python_executor service into focused subdirectories
