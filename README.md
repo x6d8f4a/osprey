@@ -1,6 +1,6 @@
 # Osprey Framework
 
-**🎉 Latest Release: v0.9.4** - Flexible Hierarchical Database Schema & E2E Benchmarks
+**🎉 Latest Release: v0.9.5** - Pluggable Code Generator System & Python Executor Refactoring
 
 > **🚧 Early Access Release**
 > This is an early access version of the Osprey Framework. While the core functionality is stable and ready for experimentation, documentation and APIs may still evolve. We welcome feedback and contributions!
