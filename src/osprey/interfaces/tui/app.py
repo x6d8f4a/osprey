@@ -256,6 +256,8 @@ class ProcessingBlock(Static):
         self._breathing_index = 0
         # Output preview for collapsible toggle
         self._output_preview: str = ""
+        # Input preview for collapsible toggle
+        self._input_preview: str = ""
         # LOG section - streaming messages for debugging
         self._log_messages: list[tuple[str, str]] = []  # [(status, message), ...]
         # Track if IN was populated from streaming (vs placeholder)
@@ -269,7 +271,15 @@ class ProcessingBlock(Static):
         """Compose the block with header, input, separator, OUT, and LOG sections."""
         header_text = f"{self.INDICATOR_PENDING} {self.title}"
         yield Static(header_text, classes="block-header", id="block-header")
-        yield Static("", classes="block-input", id="block-input")
+        # IN section - collapsible like OUT/LOG
+        yield Collapsible(
+            Static("", id="block-input-content"),
+            title="",
+            collapsed=True,
+            collapsed_symbol="",
+            expanded_symbol="",
+            id="block-input",
+        )
         # Full-width separator (will be truncated by container)
         yield Static("─" * 120, classes="block-separator", id="block-separator")
         # OUT section - final outcome only (hide built-in arrows)
@@ -294,6 +304,10 @@ class ProcessingBlock(Static):
     def on_mount(self) -> None:
         """Apply pending state after widget is mounted."""
         self._mounted = True
+        # Hide IN section initially
+        inputs = self.query("#block-input")
+        if inputs:
+            inputs.first().display = False
         # Hide separator initially
         separator = self.query_one("#block-separator", Static)
         separator.display = False
@@ -352,22 +366,17 @@ class ProcessingBlock(Static):
         self._start_breathing()
 
     def _apply_input(self, text: str) -> None:
-        """Internal: apply input text with hanging indent for wrapped lines."""
-        input_widget = self.query_one("#block-input", Static)
+        """Internal: apply input text to collapsible section."""
+        input_section = self.query_one("#block-input", Collapsible)
+        input_section.display = True
 
-        # Prefix: "  IN    " = 8 visible chars (2 spaces + IN + 4 spaces)
-        prefix = "  [bold]IN[/bold]    "
-        indent = "          "  # 10 spaces for continuation (aligns with text after IN)
+        # Get preview for collapsed state
+        self._input_preview = self._get_preview(text, max_len=60)
+        input_section.title = f"[bold]IN[/bold]    ▸ {self._input_preview}"
 
-        # Wrap text with hanging indent
-        wrapped = textwrap.fill(
-            text,
-            width=80,
-            initial_indent="",
-            subsequent_indent=indent,
-        )
-
-        input_widget.update(f"{prefix}{wrapped}")
+        # Update full content inside collapsible
+        content = self.query_one("#block-input-content", Static)
+        content.update(text)
 
     def _get_preview(self, text: str, max_len: int = 60) -> str:
         """Get one-line preview of output."""
@@ -422,14 +431,18 @@ class ProcessingBlock(Static):
 
     def on_collapsible_expanded(self, event: Collapsible.Expanded) -> None:
         """Show descriptive header when expanded."""
-        if event.collapsible.id == "block-output":
+        if event.collapsible.id == "block-input":
+            event.collapsible.title = "[bold]IN[/bold]    ▾ Full input"
+        elif event.collapsible.id == "block-output":
             event.collapsible.title = f"[bold]OUT[/bold]   ▾ {self.EXPANDED_HEADER}"
         elif event.collapsible.id == "block-log":
             event.collapsible.title = f"[bold]LOG[/bold]   ▾ Streaming logs"
 
     def on_collapsible_collapsed(self, event: Collapsible.Collapsed) -> None:
         """Show collapsed arrow with preview."""
-        if event.collapsible.id == "block-output":
+        if event.collapsible.id == "block-input":
+            event.collapsible.title = f"[bold]IN[/bold]    ▸ {self._input_preview}"
+        elif event.collapsible.id == "block-output":
             event.collapsible.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
         elif event.collapsible.id == "block-log":
             count = len(self._log_messages)
@@ -517,7 +530,7 @@ class ProcessingBlock(Static):
                 self._last_error_msg = message
 
     def _format_log_messages(self) -> str:
-        """Format all log messages with status symbols.
+        """Format all log messages with status symbols and hanging indent.
 
         Uses Textual CSS theme variables for colors that adapt with theme changes.
         See: https://textual.textualize.io/guide/content/
@@ -549,10 +562,19 @@ class ProcessingBlock(Static):
                 "status": self.INDICATOR_PENDING,
                 "approval": self.INDICATOR_WARNING,
             }.get(msg_status, self.INDICATOR_PENDING)
+
+            # Wrap message with hanging indent (prefix is 2 chars: "· ")
+            wrapped = textwrap.fill(
+                msg,
+                width=78,
+                initial_indent="",
+                subsequent_indent="  ",  # 2 spaces to align with text after symbol
+            )
+
             if color:
-                lines.append(f"[{color}]{prefix} {msg}[/{color}]")
+                lines.append(f"[{color}]{prefix} {wrapped}[/{color}]")
             else:
-                lines.append(f"{prefix} {msg}")
+                lines.append(f"{prefix} {wrapped}")
         return "\n".join(lines)
 
     def _update_log_display(self) -> None:
@@ -641,28 +663,20 @@ class OrchestrationBlock(ProcessingBlock):
         super().__init__("Orchestration", **kwargs)
 
     def set_plan(self, steps: list[dict]) -> None:
-        """Show execution plan steps with proper wrapping alignment.
+        """Show execution plan steps.
+
+        Uses simple bullet-style formatting (like LOG section) - numbers act as
+        bullets and terminal handles soft-wrapping naturally. No textwrap needed.
 
         Args:
             steps: List of execution plan step dicts.
         """
         lines = []
-        # Prefix width: " 1. " = 4 chars, use 5 for cleaner indent
-        indent = "     "  # 5 spaces for continuation lines
-        width = 90  # Reasonable wrap width
-
         for i, step in enumerate(steps, 1):
             objective = step.get("task_objective", "")
             capability = step.get("capability", "")
-
-            prefix = f"{i:2}. "
-            content = f"{objective} [{capability}]"
-
-            # Wrap with hanging indent for continuation lines
-            wrapped = textwrap.fill(
-                content, width=width, initial_indent=prefix, subsequent_indent=indent
-            )
-            lines.append(wrapped)
+            # Simple format: "1. objective [capability]" - no textwrap
+            lines.append(f"{i}. {objective} [{capability}]")
 
         self.set_output("\n".join(lines) if lines else "No steps")
 

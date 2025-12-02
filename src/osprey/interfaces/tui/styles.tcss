@@ -117,7 +117,7 @@ ExecutionStepBlock {
     margin: 1 2 0 0;
     padding: 0 1;
     border: round $surface-lighten-1;
-    background: $surface-darken-1;
+    background: transparent;  /* Subtle - blends in, highlight on select */
 }
 
 /* Active block - highlighted border */
@@ -180,15 +180,13 @@ ExecutionStepBlock {
 /* Default output colors (success) */
 #block-output > CollapsibleTitle {
     color: $success;
-    padding: 0;
-    background: transparent;
 }
 
 #block-output-content {
     width: 100%;
     color: $success-darken-1;
-    padding-left: 2;
-    margin: 0;
+    padding-left: 4;
+    padding-bottom: 1;
 }
 
 /* Output colors by status */
@@ -216,6 +214,21 @@ ExecutionStepBlock {
     color: $warning-darken-1;
 }
 
+/* IN section styling - consistent with OUT/LOG */
+#block-input {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+#block-input-content {
+    width: 100%;
+    padding-left: 4;
+    padding-bottom: 1;
+}
+
 /* LOG section - collapsed by default, muted colors */
 #block-log {
     width: 100%;
@@ -227,15 +240,20 @@ ExecutionStepBlock {
 
 #block-log > CollapsibleTitle {
     color: $text-muted;
-    padding: 0;
-    background: transparent;
 }
 
 #block-log-content {
     width: 100%;
     /* No color set - allows Rich markup colors to work */
-    padding-left: 2;
-    margin: 0;
+    padding-left: 4;
+}
+
+/* Focus highlight for collapsible titles when parent is focused */
+#block-input:focus > CollapsibleTitle,
+#block-output:focus > CollapsibleTitle,
+#block-log:focus > CollapsibleTitle {
+    background: $surface-lighten-1;
+    color: $text;
 }
 
 /* SelectionList for capability checkbox list */
