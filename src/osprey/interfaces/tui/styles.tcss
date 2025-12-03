@@ -54,18 +54,23 @@ ChatMessage {
     width: 100%;
     height: auto;
     margin: 1 2 1 0;
-    padding: 0 2;
+    padding: 1 2 0 2;
     border: tall $surface-lighten-1;
+    border-title-color: $text;
+    border-title-style: bold;
 }
 
 /* User message styling */
 ChatMessage.message-user {
     background: $surface;
+    border-title-background: $primary;
+    border-title-align: right;
 }
 
 /* Assistant message styling */
 ChatMessage.message-assistant {
     background: $surface-darken-1;
+    border-title-background: $surface-lighten-1;
 }
 
 /* Message content - minimal spacing */
@@ -76,25 +81,17 @@ ChatMessage.message-assistant {
     padding: 0;
 }
 
-/* Role label - grey, italic, bottom-right */
-.role-label {
-    width: 100%;
-    height: auto;
-    text-align: right;
-    color: $text-muted;
-    text-style: italic;
-    margin: 0;
-    padding: 0;
-}
-
 /* Streaming message - same style as assistant message */
 StreamingMessage {
     width: 100%;
     height: auto;
     margin: 1 2 1 0;
-    padding: 0 2;
+    padding: 1 2 0 2;
     border: tall $surface-lighten-1;
     background: $surface-darken-1;
+    border-title-color: $text;
+    border-title-background: $surface-lighten-1;
+    border-title-style: bold;
 }
 
 /* Streaming status indicator */

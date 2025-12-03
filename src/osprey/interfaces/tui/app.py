@@ -108,12 +108,12 @@ class ChatMessage(Static):
         super().__init__(**kwargs)
         self.message_content = content
         self.role = role
+        self.border_title = role.capitalize()
         self.add_class(f"message-{role}")
 
     def compose(self) -> ComposeResult:
-        """Compose the message with content and role label."""
+        """Compose the message with content."""
         yield Static(self.message_content, classes="message-content")
-        yield Static(self.role, classes="role-label")
 
 
 class StreamingMessage(Static):
@@ -123,6 +123,7 @@ class StreamingMessage(Static):
         """Initialize streaming message."""
         super().__init__(**kwargs)
         self.add_class("message-assistant")
+        self.border_title = "Assistant"
         self._mounted = False
         self._pending_status: str | None = None
         self._pending_content: str | None = None
@@ -131,7 +132,6 @@ class StreamingMessage(Static):
         """Compose the streaming message with placeholders."""
         yield Static("", classes="message-content")
         yield Static("", classes="streaming-status")
-        yield Static("assistant", classes="role-label")
 
     def on_mount(self) -> None:
         """Apply pending state after widget is mounted."""
