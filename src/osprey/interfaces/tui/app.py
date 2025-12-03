@@ -280,8 +280,6 @@ class ProcessingBlock(Static):
             expanded_symbol="",
             id="block-input",
         )
-        # Full-width separator (will be truncated by container)
-        yield Static("─" * 120, classes="block-separator", id="block-separator")
         # OUT section - final outcome only (hide built-in arrows)
         yield Collapsible(
             Static("", id="block-output-content"),
@@ -291,6 +289,8 @@ class ProcessingBlock(Static):
             expanded_symbol="",
             id="block-output",
         )
+        # Full-width separator (will be truncated by container)
+        yield Static("─" * 120, classes="block-separator", id="block-separator")
         # LOG section - all streaming messages (collapsed by default)
         yield Collapsible(
             Static("", id="block-log-content"),
