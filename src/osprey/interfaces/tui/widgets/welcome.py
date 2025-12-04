@@ -70,6 +70,8 @@ class WelcomeScreen(Static):
             ),
             Center(
                 Vertical(
+                    # Dropdown FIRST - with overlay:screen, floats at top of container
+                    # Its bottom aligns with input's top (opens upward effect)
                     CommandDropdown(id="welcome-dropdown"),
                     ChatInput(
                         id="welcome-input",

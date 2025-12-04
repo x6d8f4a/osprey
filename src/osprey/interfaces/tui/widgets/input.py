@@ -422,6 +422,7 @@ class CommandDropdown(OptionList):
                     self.display = True
                     self._visible = True
                     self.highlighted = 0
+                    self._position_upward()
                 else:
                     self.hide()
                 return
@@ -458,6 +459,8 @@ class CommandDropdown(OptionList):
             self._visible = True
             # Highlight first option
             self.highlighted = 0
+            # Position dropdown upward
+            self._position_upward()
         else:
             self.hide()
 
@@ -468,6 +471,20 @@ class CommandDropdown(OptionList):
         self._mode = "commands"
         self._pending_command = None
         self._pending_options = []
+        # Reset offset when hiding
+        self.styles.offset = (0, 0)
+
+    def _position_upward(self) -> None:
+        """Position dropdown to open upward (bottom aligns with input top)."""
+        # Call after next refresh to get accurate height
+        self.call_after_refresh(self._apply_upward_offset)
+
+    def _apply_upward_offset(self) -> None:
+        """Apply negative offset to position dropdown above its DOM position."""
+        if self.display and self.option_count > 0:
+            # Each option is ~1 row, plus border (tall border = 2 rows total)
+            height = self.option_count + 2
+            self.styles.offset = (0, -height)
 
     @property
     def is_visible(self) -> bool:
@@ -524,6 +541,8 @@ class CommandDropdown(OptionList):
         self.display = True
         self._visible = True
         self.highlighted = 0
+        # Position dropdown upward
+        self._position_upward()
 
     def move_highlight_up(self) -> None:
         """Move highlight to previous option."""
