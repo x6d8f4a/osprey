@@ -814,9 +814,10 @@ class ChatInput(TextArea):
     class Submitted(Message):
         """Event posted when user submits input."""
 
-        def __init__(self, value: str):
+        def __init__(self, value: str, is_command: bool = False):
             super().__init__()
             self.value = value
+            self.is_command = is_command
 
     def __init__(self, **kwargs):
         """Initialize the chat input."""
@@ -919,10 +920,12 @@ class ChatInput(TextArea):
             event.stop()
             text = self.text.strip()
             if text:
-                self._save_to_history(text)  # Save to history
+                is_command = text.startswith("/")
+                if not is_command:
+                    self._save_to_history(text)  # Only save non-commands to history
                 self._history_index = -1  # Reset history position
                 self._current_input = ""  # Clear saved input
-                self.post_message(self.Submitted(text))
+                self.post_message(self.Submitted(text, is_command=is_command))
                 self.clear()
             return
         elif event.key == "alt+enter":
@@ -1117,8 +1120,219 @@ class OspreyTUI(App):
             self.exit()
             return
 
+        # Handle slash commands
+        if event.is_command:
+            self._execute_slash_command(user_input)
+            return
+
         # Process with agent (async worker) - start_new_query called inside
         self.process_with_agent(user_input)
+
+    def _execute_slash_command(self, command_line: str) -> None:
+        """Execute a slash command and show result.
+
+        Args:
+            command_line: The full command line (e.g., "/planning:on").
+        """
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        # Parse command: /command or /command:option
+        cmd_name, option = self._parse_command(command_line)
+
+        if cmd_name == "clear":
+            self._cmd_clear()
+        elif cmd_name == "help":
+            self._cmd_help(option)
+        elif cmd_name == "config":
+            self._cmd_config()
+        elif cmd_name == "status":
+            self._cmd_status()
+        elif cmd_name in ("planning", "approval", "task", "caps"):
+            self._cmd_agent_control(cmd_name, option)
+        elif cmd_name == "exit":
+            self.exit()
+        else:
+            chat_display.add_message(f"Unknown command: {command_line}\n\nType /help to see available commands.", "assistant")
+
+    def _parse_command(self, command_line: str) -> tuple[str, str | None]:
+        """Parse a command line into command name and option.
+
+        Args:
+            command_line: The full command line (e.g., "/planning:on").
+
+        Returns:
+            Tuple of (command_name, option or None).
+        """
+        # Remove leading slash
+        line = command_line[1:] if command_line.startswith("/") else command_line
+
+        # Check for colon syntax: /command:option
+        if ":" in line:
+            parts = line.split(":", 1)
+            return parts[0].lower(), parts[1]
+
+        return line.lower(), None
+
+    def _cmd_clear(self) -> None:
+        """Clear all conversation blocks."""
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+        # Remove all children from chat display
+        for child in list(chat_display.children):
+            child.remove()
+        # Reset block tracking
+        chat_display._current_blocks = {}
+        chat_display._seen_start_events = set()
+        chat_display._component_attempt_index = {}
+        chat_display._retry_triggered = set()
+        chat_display._pending_messages = {}
+
+    def _cmd_help(self, option: str | None) -> None:
+        """Show help for commands.
+
+        Args:
+            option: Optional specific command to get help for.
+        """
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        if option:
+            # Show help for specific command
+            help_text = self._get_command_help(option)
+        else:
+            # Show all commands
+            help_text = self._format_all_commands_help()
+
+        chat_display.add_message(help_text, "assistant")
+
+    def _get_command_help(self, cmd_name: str) -> str:
+        """Get help text for a specific command.
+
+        Args:
+            cmd_name: The command name.
+
+        Returns:
+            Help text for the command.
+        """
+        commands = {
+            "help": ("Show available commands", "Usage: `/help` or `/help:command`"),
+            "clear": ("Clear conversation history", "Usage: `/clear`"),
+            "config": ("Show current configuration", "Usage: `/config`"),
+            "status": ("Show system status", "Usage: `/status`"),
+            "planning": ("Control planning mode", "Usage: `/planning:on` or `/planning:off`"),
+            "approval": ("Control approval workflow", "Usage: `/approval:on`, `/approval:off`, or `/approval:selective`"),
+            "task": ("Control task extraction bypass", "Usage: `/task:on` or `/task:off`"),
+            "caps": ("Control capability selection bypass", "Usage: `/caps:on` or `/caps:off`"),
+            "exit": ("Exit the application", "Usage: `/exit`"),
+        }
+
+        if cmd_name in commands:
+            desc, usage = commands[cmd_name]
+            return f"**/{cmd_name}** - {desc}\n\n{usage}"
+
+        return f"Unknown command: /{cmd_name}"
+
+    def _format_all_commands_help(self) -> str:
+        """Format help text for all available commands.
+
+        Returns:
+            Formatted help text.
+        """
+        help_lines = [
+            "## Available Commands\n",
+            "| Command | Description |",
+            "|---------|-------------|",
+            "| `/help` | Show available commands |",
+            "| `/clear` | Clear conversation |",
+            "| `/config` | Show configuration |",
+            "| `/status` | System health check |",
+            "| `/planning:on/off` | Enable/disable planning mode |",
+            "| `/approval:on/off/selective` | Control approval workflow |",
+            "| `/task:on/off` | Enable/disable task extraction |",
+            "| `/caps:on/off` | Enable/disable capability selection |",
+            "| `/exit` | Exit the application |",
+            "",
+            "Type `/help:command` for detailed help on a specific command.",
+        ]
+        return "\n".join(help_lines)
+
+    def _cmd_config(self) -> None:
+        """Show current configuration."""
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        config = self.base_config.get("configurable", {})
+        lines = ["## Current Configuration\n"]
+
+        # Key config values to show
+        keys_to_show = [
+            ("planning_mode_enabled", "Planning Mode"),
+            ("task_extraction_bypass_enabled", "Task Extraction Bypass"),
+            ("capability_selection_bypass_enabled", "Capability Selection Bypass"),
+            ("approval_global_mode", "Approval Mode"),
+            ("interface_context", "Interface"),
+            ("thread_id", "Session ID"),
+        ]
+
+        for key, label in keys_to_show:
+            value = config.get(key, "N/A")
+            lines.append(f"- **{label}**: {value}")
+
+        chat_display.add_message("\n".join(lines), "assistant")
+
+    def _cmd_status(self) -> None:
+        """Show system status."""
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        # Get registry stats
+        registry = get_registry()
+        stats = registry.get_stats()
+
+        lines = [
+            "## System Status\n",
+            f"- **Capabilities**: {stats.get('capability_count', 0)} registered",
+            f"- **Session**: {self.thread_id}",
+            f"- **Graph**: {'Ready' if self.graph else 'Not initialized'}",
+            f"- **Gateway**: {'Ready' if self.gateway else 'Not initialized'}",
+        ]
+
+        chat_display.add_message("\n".join(lines), "assistant")
+
+    def _cmd_agent_control(self, cmd: str, value: str | None) -> None:
+        """Handle agent control commands (planning, approval, task, caps).
+
+        Args:
+            cmd: The command name.
+            value: The option value (on/off/selective).
+        """
+        chat_display = self.query_one("#chat-display", ChatDisplay)
+
+        if value is None:
+            chat_display.add_message(f"Usage: /{cmd}:on or /{cmd}:off", "assistant")
+            return
+
+        value = value.lower()
+
+        # Map command to config key
+        config_keys = {
+            "planning": "planning_mode_enabled",
+            "task": "task_extraction_bypass_enabled",
+            "caps": "capability_selection_bypass_enabled",
+        }
+
+        if cmd == "approval":
+            # Special handling for approval modes
+            mode_map = {"on": "all_capabilities", "off": "disabled", "selective": "selective"}
+            if value in mode_map:
+                self.base_config["configurable"]["approval_global_mode"] = mode_map[value]
+                chat_display.add_message(f"Approval mode: **{value}**", "assistant")
+            else:
+                chat_display.add_message("Invalid option. Use: `/approval:on`, `/approval:off`, or `/approval:selective`", "assistant")
+        elif cmd in config_keys:
+            enabled = value in ("on", "true", "enabled", "1")
+            self.base_config["configurable"][config_keys[cmd]] = enabled
+            status = "enabled" if enabled else "disabled"
+            cmd_display = {"planning": "Planning mode", "task": "Task extraction", "caps": "Capability selection"}
+            chat_display.add_message(f"{cmd_display[cmd]}: **{status}**", "assistant")
+        else:
+            chat_display.add_message(f"Unknown command: /{cmd}", "assistant")
 
     async def _consume_events(self, user_query: str, chat_display: ChatDisplay) -> None:
         """Event consumer - single gateway for all TUI block updates.
