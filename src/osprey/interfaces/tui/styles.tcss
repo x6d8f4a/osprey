@@ -147,20 +147,10 @@ WelcomeBanner {
     constrain: none inside;
 }
 
-#command-dropdown:focus {
-    border: tall $input-selection-background;
-}
-
 #command-dropdown > .option-list--option {
     padding: 0 2;
     color: $foreground;
     # text-style: bold;
-}
-
-#command-dropdown > .option-list--option-highlighted {
-    color: $block-cursor-blurred-foreground;
-    background: $block-cursor-blurred-background;
-    text-style: none;
 }
 
 /* Command text in dropdown - component class */

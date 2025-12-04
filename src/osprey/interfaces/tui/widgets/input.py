@@ -351,6 +351,8 @@ class StatusPanel(Static):
 class CommandDropdown(OptionList):
     """Dropdown showing matching slash commands with descriptions."""
 
+    can_focus = False  # Controlled via ChatInput, not directly focusable
+
     COMPONENT_CLASSES: ClassVar[set[str]] = {
         "command-dropdown--command",
         "command-dropdown--description",
