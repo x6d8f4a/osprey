@@ -2110,11 +2110,15 @@ class OspreyTUI(App):
             if state.interrupts:
                 interrupt = state.interrupts[0]
                 user_msg = interrupt.value.get("user_message", "Approval required")
-                streaming_msg.finalize(f"⚠️ {user_msg}\n\nRespond with 'yes'/'no' or feedback.")
+                # Remove empty StreamingMessage, add ChatMessage (same path as /help)
+                streaming_msg.remove()
+                chat_display.add_message(
+                    f"⚠️ {user_msg}\n\nRespond with 'yes'/'no' or feedback.", "assistant"
+                )
                 return
 
-            # Show final response
-            self._show_final_response(state.values, streaming_msg)
+            # Show final response (replaces StreamingMessage with ChatMessage)
+            self._show_final_response(state.values, streaming_msg, chat_display)
 
         except Exception as e:
             chat_display.add_message(f"Error: {e}", "assistant")
@@ -2281,21 +2285,29 @@ class OspreyTUI(App):
                         success = result.get("success", True)
                         block.set_output("Completed", status="success" if success else "error")
 
-    def _show_final_response(self, state: dict, streaming_msg: StreamingMessage) -> None:
-        """Show final AI response.
+    def _show_final_response(
+        self, state: dict, streaming_msg: StreamingMessage, chat_display: ChatDisplay
+    ) -> None:
+        """Show final AI response by replacing StreamingMessage with ChatMessage.
 
         Args:
             state: The final agent state.
-            streaming_msg: The streaming message widget to finalize.
+            streaming_msg: The streaming message widget to remove.
+            chat_display: The chat display to add the message to.
         """
+        content = "(No response)"
         messages = state.get("messages", [])
         if messages:
             for msg in reversed(messages):
                 if hasattr(msg, "content") and msg.content:
                     if not hasattr(msg, "type") or msg.type != "human":
-                        streaming_msg.finalize(msg.content)
-                        return
-        streaming_msg.finalize("(No response)")
+                        content = msg.content
+                        break
+
+        # Remove the empty StreamingMessage and add a proper ChatMessage
+        # This uses the same code path as /help which handles scroll correctly
+        streaming_msg.remove()
+        chat_display.add_message(content, "assistant")
 
 
 async def run_tui(config_path: str = "config.yml") -> None:
