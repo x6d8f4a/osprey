@@ -1,0 +1,493 @@
+"""Processing block widgets for the TUI."""
+
+import textwrap
+from typing import Any
+
+from textual.app import ComposeResult
+from textual.widgets import Collapsible, Static
+
+
+class ProcessingBlock(Static):
+    """Base class for processing blocks with indicator, input, and collapsible output."""
+
+    # Text-based indicators (professional look)
+    INDICATOR_PENDING = "·"
+    INDICATOR_ACTIVE = "*"
+    INDICATOR_SUCCESS = "✓"
+    INDICATOR_ERROR = "✗"
+    INDICATOR_WARNING = "⚠"
+
+    # Breathing animation frames - asterisk style
+    BREATHING_FRAMES = ["*", "✱", "✳", "✱"]
+
+    # Default expanded header text (subclasses override)
+    EXPANDED_HEADER = "Output"
+
+    def __init__(self, title: str, **kwargs):
+        """Initialize a processing block.
+
+        Args:
+            title: The title displayed in the block header.
+        """
+        super().__init__(**kwargs)
+        self.title = title
+        self._status = "pending"
+        self._mounted = False
+        # Pending state to apply after mount
+        self._pending_input: str | None = None
+        self._pending_output: tuple[str, str] | None = None  # (text, status)
+        # Breathing animation state
+        self._breathing_timer = None
+        self._breathing_index = 0
+        # Output preview for collapsible toggle
+        self._output_preview: str = ""
+        # Input preview for collapsible toggle
+        self._input_preview: str = ""
+        # LOG section - streaming messages for debugging
+        self._log_messages: list[tuple[str, str]] = []  # [(status, message), ...]
+        # Track if IN was populated from streaming (vs placeholder)
+        self._input_set: bool = False
+        # Data dict for extracted information (task, capabilities, steps, etc.)
+        self._data: dict[str, Any] = {}
+        # Track last error message for OUT section on block close
+        self._last_error_msg: str = ""
+
+    def compose(self) -> ComposeResult:
+        """Compose the block with header, input, separator, OUT, and LOG sections."""
+        header_text = f"{self.INDICATOR_PENDING} {self.title}"
+        yield Static(header_text, classes="block-header", id="block-header")
+        # IN section - collapsible like OUT/LOG
+        yield Collapsible(
+            Static("", id="block-input-content"),
+            title="",
+            collapsed=True,
+            collapsed_symbol="",
+            expanded_symbol="",
+            id="block-input",
+        )
+        # OUT section - final outcome only (hide built-in arrows)
+        yield Collapsible(
+            Static("", id="block-output-content"),
+            title="",
+            collapsed=True,
+            collapsed_symbol="",
+            expanded_symbol="",
+            id="block-output",
+        )
+        # Full-width separator (will be truncated by container)
+        yield Static("─" * 120, classes="block-separator", id="block-separator")
+        # LOG section - all streaming messages (collapsed by default)
+        yield Collapsible(
+            Static("", id="block-log-content"),
+            title="",
+            collapsed=True,
+            collapsed_symbol="",
+            expanded_symbol="",
+            id="block-log",
+        )
+
+    def on_mount(self) -> None:
+        """Apply pending state after widget is mounted."""
+        self._mounted = True
+        # Hide IN section initially
+        inputs = self.query("#block-input")
+        if inputs:
+            inputs.first().display = False
+        # Hide separator initially
+        separator = self.query_one("#block-separator", Static)
+        separator.display = False
+        # Hide OUT section initially
+        outputs = self.query("#block-output")
+        if outputs:
+            outputs.first().display = False
+        # Hide LOG section initially
+        logs = self.query("#block-log")
+        if logs:
+            logs.first().display = False
+        # Apply pending state
+        if self._status == "active":
+            self._apply_active()
+        if self._pending_input is not None:
+            self._apply_input(self._pending_input)
+        if self._pending_output is not None:
+            if self._status == "active":
+                # Block still active - use partial output (keeps breathing)
+                self._apply_partial_output(*self._pending_output)
+            else:
+                # Block complete - use full output (stops breathing)
+                self._apply_output(*self._pending_output)
+        # Show LOG section if logs were added before on_mount()
+        if self._log_messages:
+            self._update_log_display()
+
+    def _start_breathing(self) -> None:
+        """Start the breathing animation timer."""
+        if self._breathing_timer is None:
+            self._breathing_timer = self.set_interval(0.4, self._breathing_tick)
+
+    def _breathing_tick(self) -> None:
+        """Update breathing animation frame."""
+        if self._status != "active":
+            self._stop_breathing()
+            return
+
+        self._breathing_index = (self._breathing_index + 1) % len(self.BREATHING_FRAMES)
+        indicator = self.BREATHING_FRAMES[self._breathing_index]
+        header = self.query_one("#block-header", Static)
+        header.update(f"{indicator} {self.title}")
+
+    def _stop_breathing(self) -> None:
+        """Stop the breathing animation."""
+        if self._breathing_timer:
+            self._breathing_timer.stop()
+            self._breathing_timer = None
+
+    def _apply_active(self) -> None:
+        """Internal: apply active state to header and start breathing."""
+        header = self.query_one("#block-header", Static)
+        header.update(f"{self.INDICATOR_ACTIVE} {self.title}")
+        self.add_class("block-active")
+        # Start breathing animation
+        self._start_breathing()
+
+    def _apply_input(self, text: str) -> None:
+        """Internal: apply input text to collapsible section."""
+        input_section = self.query_one("#block-input", Collapsible)
+        input_section.display = True
+
+        # Get preview for collapsed state
+        self._input_preview = self._get_preview(text, max_len=60)
+        input_section.title = f"[bold]IN[/bold]    ▸ {self._input_preview}"
+
+        # Update full content inside collapsible
+        content = self.query_one("#block-input-content", Static)
+        content.update(text)
+
+    def _get_preview(self, text: str, max_len: int = 60) -> str:
+        """Get one-line preview of output."""
+        first_line = text.split("\n")[0] if text else ""
+        if len(first_line) > max_len:
+            return first_line[:max_len] + "..."
+        elif "\n" in text:
+            return first_line + " ..."
+        return first_line
+
+    def _apply_output(self, text: str, status: str) -> None:
+        """Internal: apply output with collapsible preview.
+
+        Args:
+            text: The output text to display.
+            status: The completion status ('success' or 'error').
+        """
+        # Stop breathing animation
+        self._stop_breathing()
+
+        # Update header indicator based on status (only success/error as terminal states)
+        indicators = {
+            "success": self.INDICATOR_SUCCESS,
+            "error": self.INDICATOR_ERROR,
+        }
+        indicator = indicators.get(status, self.INDICATOR_SUCCESS)
+        header = self.query_one("#block-header", Static)
+        header.update(f"{indicator} {self.title}")
+
+        # Show separator
+        separator = self.query_one("#block-separator", Static)
+        separator.display = True
+
+        # Store preview for collapsible toggle events
+        self._output_preview = self._get_preview(text)
+
+        # Show and update collapsible output (official Collapsible)
+        output = self.query_one("#block-output", Collapsible)
+        output.display = True
+        # Format: "[bold]OUT[/bold]   ▸ {preview}" - arrow before preview
+        output.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
+        # Update the content inside the collapsible
+        content = self.query_one("#block-output-content", Static)
+        content.update(text)
+
+        # Update CSS classes for status-specific styling
+        self.remove_class("block-active")
+        self.add_class(f"block-{status}")
+
+        # Add status class to output collapsible for color styling
+        output.add_class(f"output-{status}")
+
+    def on_collapsible_expanded(self, event: Collapsible.Expanded) -> None:
+        """Show descriptive header when expanded."""
+        if event.collapsible.id == "block-input":
+            event.collapsible.title = "[bold]IN[/bold]    ▾ Full input"
+        elif event.collapsible.id == "block-output":
+            event.collapsible.title = f"[bold]OUT[/bold]   ▾ {self.EXPANDED_HEADER}"
+        elif event.collapsible.id == "block-log":
+            event.collapsible.title = "[bold]LOG[/bold]   ▾ Streaming logs"
+
+    def on_collapsible_collapsed(self, event: Collapsible.Collapsed) -> None:
+        """Show collapsed arrow with preview."""
+        if event.collapsible.id == "block-input":
+            event.collapsible.title = f"[bold]IN[/bold]    ▸ {self._input_preview}"
+        elif event.collapsible.id == "block-output":
+            event.collapsible.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
+        elif event.collapsible.id == "block-log":
+            count = len(self._log_messages)
+            event.collapsible.title = f"[bold]LOG[/bold]   ▸ {count} messages"
+
+    def set_active(self) -> None:
+        """Mark the block as actively processing."""
+        self._status = "active"
+        if self._mounted:
+            self._apply_active()
+
+    def set_input(self, text: str, mark_set: bool = True) -> None:
+        """Set the input section text.
+
+        Args:
+            text: The input text to display.
+            mark_set: If True, mark _input_set flag (use False for placeholders).
+        """
+        self._pending_input = text
+        if mark_set:
+            self._input_set = True
+        if self._mounted:
+            self._apply_input(text)
+
+    def set_output(self, text: str, status: str = "success") -> None:
+        """Set the output section and mark complete.
+
+        Args:
+            text: The output text to display.
+            status: The completion status ('success' or 'error').
+        """
+        self._status = status
+        self._pending_output = (text, status)
+        if self._mounted:
+            self._apply_output(text, status)
+
+    def set_partial_output(self, text: str, status: str = "pending") -> None:
+        """Set partial output while block is still active (keeps breathing).
+
+        Unlike set_output(), this doesn't mark the block as complete.
+        Used for real-time status/error updates during streaming.
+
+        Args:
+            text: The output text to display.
+            status: The status for styling ('pending', 'error', etc.).
+        """
+        self._pending_output = (text, status)
+        self._output_preview = self._get_preview(text)
+        if self._mounted:
+            self._apply_partial_output(text, status)
+
+    def _apply_partial_output(self, text: str, status: str) -> None:
+        """Show separator and OUT section without stopping block.
+
+        Args:
+            text: The output text to display.
+            status: The status for styling.
+        """
+        # Show separator
+        separator = self.query_one("#block-separator", Static)
+        separator.display = True
+
+        # Show and update OUT section
+        output = self.query_one("#block-output", Collapsible)
+        output.display = True
+        output.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
+        content = self.query_one("#block-output-content", Static)
+        content.update(text)
+
+        # DON'T stop breathing or change header indicator
+        # Block remains "active" with breathing animation
+
+    def add_log(self, message: str, status: str = "status") -> None:
+        """Add a message to the LOG section.
+
+        Args:
+            message: The message text.
+            status: The message status ('status', 'success', 'error', 'warning').
+        """
+        if message:
+            self._log_messages.append((status, message))
+            self._update_log_display()
+            # Track last error message for OUT section on block close
+            if status == "error":
+                self._last_error_msg = message
+
+    def _format_log_messages(self) -> str:
+        """Format all log messages with status symbols and hanging indent.
+
+        Uses Textual CSS theme variables for colors that adapt with theme changes.
+        See: https://textual.textualize.io/guide/content/
+        """
+        if not self._log_messages:
+            return ""
+        lines = []
+        for msg_status, msg in self._log_messages:
+            # Map log_type to Textual CSS theme variables
+            # These adapt automatically when theme changes
+            color_map = {
+                "error": "$error",
+                "warning": "$warning",
+                "success": "$success",
+                "key_info": "$text",
+                "info": "",  # No color, uses inherited
+                "debug": "$text-muted",
+                "timing": "$accent",
+                "status": "",
+                "approval": "$warning",
+                "resume": "$success",
+            }
+            color = color_map.get(msg_status, "")
+            prefix = {
+                "error": self.INDICATOR_ERROR,
+                "warning": self.INDICATOR_WARNING,
+                "success": self.INDICATOR_SUCCESS,
+                "key_info": self.INDICATOR_SUCCESS,
+                "status": self.INDICATOR_PENDING,
+                "approval": self.INDICATOR_WARNING,
+            }.get(msg_status, self.INDICATOR_PENDING)
+
+            # Wrap message with hanging indent (prefix is 2 chars: "· ")
+            wrapped = textwrap.fill(
+                msg,
+                width=78,
+                initial_indent="",
+                subsequent_indent="  ",  # 2 spaces to align with text after symbol
+            )
+
+            if color:
+                lines.append(f"[{color}]{prefix} {wrapped}[/{color}]")
+            else:
+                lines.append(f"{prefix} {wrapped}")
+        return "\n".join(lines)
+
+    def _update_log_display(self) -> None:
+        """Update the LOG section display with current messages."""
+        if not self._mounted:
+            return
+
+        # Show LOG section
+        log_section = self.query_one("#block-log", Collapsible)
+        log_section.display = True
+        log_section.title = f"[bold]LOG[/bold]   ▸ {len(self._log_messages)} messages"
+
+        # Update content
+        content = self.query_one("#block-log-content", Static)
+        content.update(self._format_log_messages())
+
+
+class TaskExtractionBlock(ProcessingBlock):
+    """Block for task extraction phase."""
+
+    # Expanded header text (overrides base class)
+    EXPANDED_HEADER = "Extracted task"
+
+    def __init__(self, **kwargs):
+        """Initialize task extraction block."""
+        super().__init__("Task Extraction", **kwargs)
+
+
+class ClassificationBlock(ProcessingBlock):
+    """Block for capability classification phase with simple text output."""
+
+    # Expanded header text
+    EXPANDED_HEADER = "Activated capabilities"
+
+    def __init__(self, **kwargs):
+        """Initialize classification block."""
+        super().__init__("Classification", **kwargs)
+        self._all_capabilities: list[str] = []
+        self._selected_capabilities: list[str] = []
+
+    def set_capabilities(self, all_caps: list[str], selected: list[str]) -> None:
+        """Show capabilities as simple text with checkmarks (fast rendering).
+
+        Args:
+            all_caps: All available capabilities.
+            selected: The selected/active capabilities.
+        """
+        self._all_capabilities = all_caps
+        self._selected_capabilities = selected
+
+        # Format full list with checkmarks - gray out unselected
+        lines = []
+        for cap in all_caps:
+            if cap in selected:
+                lines.append(f"✓ {cap}")
+            else:
+                # Gray out unselected capabilities using Rich dim markup
+                lines.append(f"[dim]· {cap}[/dim]")
+
+        output_text = "\n".join(lines) if lines else "No capabilities"
+
+        # Call parent's set_output first
+        self.set_output(output_text)
+
+        # Override with custom preview (after set_output overwrites it)
+        if selected:
+            preview = f"Activated: {', '.join(selected)}"
+        else:
+            preview = "No capabilities activated"
+        self._output_preview = self._get_preview(preview)
+
+        # Update the collapsible title with our custom preview
+        if self._mounted:
+            output = self.query_one("#block-output", Collapsible)
+            output.title = f"[bold]OUT[/bold]   ▸ {self._output_preview}"
+
+
+class OrchestrationBlock(ProcessingBlock):
+    """Block for orchestration/planning phase."""
+
+    # Expanded header text (overrides base class)
+    EXPANDED_HEADER = "Planned steps"
+
+    def __init__(self, **kwargs):
+        """Initialize orchestration block."""
+        super().__init__("Orchestration", **kwargs)
+
+    def set_plan(self, steps: list[dict]) -> None:
+        """Show execution plan steps.
+
+        Uses simple bullet-style formatting (like LOG section) - numbers act as
+        bullets and terminal handles soft-wrapping naturally. No textwrap needed.
+
+        Args:
+            steps: List of execution plan step dicts.
+        """
+        lines = []
+        for i, step in enumerate(steps, 1):
+            objective = step.get("task_objective", "")
+            capability = step.get("capability", "")
+            # Simple format: "1. objective [capability]" - no textwrap
+            lines.append(f"{i}. {objective} [{capability}]")
+
+        self.set_output("\n".join(lines) if lines else "No steps")
+
+
+class ExecutionStepBlock(ProcessingBlock):
+    """Block for a single execution step in the plan."""
+
+    # Expanded header text (overrides base class)
+    EXPANDED_HEADER = "Execution result"
+
+    def __init__(self, step_number: int, capability: str, objective: str, **kwargs):
+        """Initialize execution step block.
+
+        Args:
+            step_number: The 1-based step number.
+            capability: The capability being executed.
+            objective: The task objective for this step.
+        """
+        super().__init__(f"Step {step_number}: {capability}", **kwargs)
+        self.step_number = step_number
+        self.capability = capability
+        self.objective = objective
+
+    def on_mount(self) -> None:
+        """Apply pending state and show objective as input."""
+        super().on_mount()
+        # Show objective as input when mounted
+        if self.objective:
+            self.set_input(self.objective)

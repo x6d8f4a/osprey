@@ -131,29 +131,6 @@ ChatMessage.message-assistant {
     padding: 0;
 }
 
-/* Streaming message - same style as assistant message */
-StreamingMessage {
-    width: 100%;
-    height: auto;
-    margin: 1 0;
-    padding: 1 2 0 2;
-    border: tall $surface-lighten-1;
-    background: $surface-darken-1;
-    border-title-color: $text;
-    border-title-background: $surface-lighten-1;
-    border-title-style: bold;
-}
-
-/* Streaming status indicator */
-.streaming-status {
-    width: 100%;
-    height: auto;
-    color: $text-muted;
-    text-style: italic;
-    margin: 0;
-    padding: 0;
-}
-
 /* Processing block base styles */
 ProcessingBlock,
 TaskExtractionBlock,
@@ -220,13 +197,6 @@ ExecutionStepBlock {
     color: $text;
     padding-left: 4;
     padding-bottom: 1;
-}
-
-/* Block output section (legacy) */
-.block-output {
-    width: 100%;
-    color: $text;
-    margin: 0;
 }
 
 #block-output:focus-within > CollapsibleTitle {
