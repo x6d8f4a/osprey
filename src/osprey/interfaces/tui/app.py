@@ -1206,7 +1206,7 @@ class CommandDropdown(OptionList):
         if matches:
             for cmd, desc in matches:
                 # Pad command to align descriptions (table-like)
-                padded_cmd = cmd.ljust(self._MAX_CMD_LEN + 2)
+                padded_cmd = cmd.ljust(self._MAX_CMD_LEN + 8)
                 self.add_option(Option(f"{padded_cmd}[dim]{desc}[/dim]", id=cmd))
             self.display = True
             self._visible = True
@@ -1342,7 +1342,7 @@ class OspreyTUI(App):
         yield Footer()
 
     def action_request_quit(self) -> None:
-        """Handle Ctrl+C - requires double press within 0.5s to quit."""
+        """Handle Ctrl+C - requires double press within 1.0s to quit."""
         if self._quit_pending:
             # Second Ctrl+C within timeout - actually quit
             self._cancel_quit_timer()
@@ -1351,10 +1351,8 @@ class OspreyTUI(App):
             # First Ctrl+C - show confirmation message
             self._quit_pending = True
             self._show_quit_hint()
-            # Set timer to reset after 0.5s
-            self._quit_timer = asyncio.get_event_loop().call_later(
-                0.5, self._reset_quit_state
-            )
+            # Set timer to reset after 1.0s
+            self._quit_timer = asyncio.get_event_loop().call_later(1.0, self._reset_quit_state)
 
     def _show_quit_hint(self) -> None:
         """Show quit confirmation hint in status panel."""
