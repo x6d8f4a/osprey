@@ -1168,14 +1168,22 @@ class CommandDropdown(OptionList):
         self.clear_options()
         prefix_lower = prefix.lower()
 
-        # Check if we're in options mode (text has ":" and we have a pending command)
-        if ":" in prefix_lower and self._pending_command:
+        # Check if text contains ":" - might be editing options for a toggle command
+        if ":" in prefix_lower:
             base_cmd, partial_opt = prefix_lower.rsplit(":", 1)
-            if base_cmd == self._pending_command.lower():
+
+            # Look up the base command to get its options
+            meta = self.COMMANDS.get(base_cmd)
+            if meta and meta["options"]:
+                # This is a toggle command - show matching options
                 self._mode = "options"
+                self._pending_command = base_cmd
+                self._pending_options = meta["options"]
+
                 for opt in self._pending_options:
                     if opt.startswith(partial_opt):
                         self.add_option(Option(opt, id=opt))
+
                 if self.option_count > 0:
                     self.display = True
                     self._visible = True
