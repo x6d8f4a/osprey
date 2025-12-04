@@ -28,14 +28,16 @@ class ExecutionWrapper:
     Environment-specific adaptations handled via parameters.
     """
 
-    def __init__(self, execution_mode: str = "container"):
+    def __init__(self, execution_mode: str = "container", limits_validator=None):
         """
         Initialize wrapper for specific execution environment.
 
         Args:
             execution_mode: "container" or "local"
+            limits_validator: Optional LimitsValidator instance for channel checking
         """
         self.execution_mode = execution_mode
+        self.limits_validator = limits_validator
 
     def create_wrapper(
         self,
@@ -56,6 +58,7 @@ class ExecutionWrapper:
         # Build wrapper components
         imports = self._get_imports()
         environment_setup = self._get_environment_setup(execution_folder)
+        limits_checking = self._get_limits_checking_monkeypatch()
         metadata_init = self._get_metadata_init()
         context_loading = self._get_context_loading()
         output_capture_start = self._get_output_capture_start()
@@ -66,6 +69,7 @@ class ExecutionWrapper:
         wrapped_code = "\n".join([
             imports,
             environment_setup,
+            limits_checking,
             metadata_init,
             context_loading,
             output_capture_start,
@@ -200,6 +204,94 @@ print(f"Container working directory: {{Path.cwd()}}")
 
         return textwrap.dedent(setup).strip()
 
+    def _get_limits_checking_monkeypatch(self) -> str:
+        """Generate monkeypatch code with embedded validator config."""
+        if self.limits_validator is None:
+            return ""  # No limits checking
+
+        import json
+
+        # Serialize limits database to JSON
+        limits_db_serialized = {}
+        for pv_name, config in self.limits_validator.limits.items():
+            limits_db_serialized[pv_name] = {
+                'min_value': config.min_value,
+                'max_value': config.max_value,
+                'max_step': config.max_step,  # IMPORTANT: Include max_step for serialization
+                'writable': config.writable
+            }
+
+        db_json = json.dumps(limits_db_serialized)
+        policy_json = json.dumps(self.limits_validator.policy)
+
+        return textwrap.dedent(f"""
+            # Runtime Channel Limits Checking (Monkeypatch with Embedded Config)
+            try:
+                import json
+                from osprey.services.python_executor.execution.limits_validator import (
+                    LimitsValidator, ChannelLimitsConfig
+                )
+                from osprey.services.python_executor.exceptions import ChannelLimitsViolationError
+
+                # Deserialize embedded config
+                _limits_db_raw = json.loads('''{db_json}''')
+                _policy = json.loads('''{policy_json}''')
+
+                # Reconstruct limits database
+                _limits_db = {{}}
+                for pv_name, config_dict in _limits_db_raw.items():
+                    _limits_db[pv_name] = ChannelLimitsConfig(
+                        channel_address=pv_name,
+                        min_value=config_dict.get('min_value'),
+                        max_value=config_dict.get('max_value'),
+                        max_step=config_dict.get('max_step'),  # Include max_step from serialized config
+                        writable=config_dict.get('writable', True)
+                    )
+
+                # Create validator with embedded config
+                _limits_validator = LimitsValidator(_limits_db, _policy)
+                print("🛡️  Runtime channel limits checking ENABLED")
+
+                # IMPORTANT: Also inject validator into osprey.runtime module
+                # This ensures write_channel() uses the same embedded validator
+                try:
+                    import osprey.runtime as _runtime_module
+                    _runtime_module._limits_validator = _limits_validator
+                    print("✅ Injected limits validator into osprey.runtime")
+                except ImportError:
+                    print("ℹ️  osprey.runtime not available for limits injection")
+
+                try:
+                    import epics
+
+                    # Store original functions
+                    _original_caput = epics.caput
+                    _original_PV_put = epics.PV.put if hasattr(epics.PV, 'put') else None
+
+                    def _checked_caput(pvname, value, wait=False, timeout=60, **kwargs):
+                        '''Limits-checked wrapper for epics.caput()'''
+                        _limits_validator.validate(pvname, value)  # Raises if invalid
+                        return _original_caput(pvname, value, wait=wait, timeout=timeout, **kwargs)
+
+                    if _original_PV_put is not None:
+                        def _checked_PV_put(self, value, wait=False, timeout=60, **kwargs):
+                            '''Limits-checked wrapper for PV.put()'''
+                            _limits_validator.validate(self.pvname, value)  # Raises if invalid
+                            return _original_PV_put(self, value, wait=wait, timeout=timeout, **kwargs)
+
+                        epics.PV.put = _checked_PV_put
+
+                    epics.caput = _checked_caput
+                    print("✅ Monkeypatched epics.caput() and PV.put()")
+
+                except ImportError:
+                    print("ℹ️  pyepics not available - EPICS limits checking disabled")
+            except Exception as e:
+                print(f"⚠️  Limits checking setup failed: {{e}}")
+                import traceback
+                traceback.print_exc()
+        """).strip()
+
     def _get_metadata_init(self) -> str:
         """Initialize execution metadata tracking."""
         return textwrap.dedent(f"""
@@ -237,6 +329,15 @@ print(f"Container working directory: {{Path.cwd()}}")
                     print(f"Context available with {{len([k for k in dir(context) if not k.startswith('_')])}} context categories")
                     available_types = [k for k in dir(context) if not k.startswith('_')]
                     print(f"Available context types: {{available_types}}")
+
+                    # Configure runtime from context
+                    try:
+                        from osprey.runtime import configure_from_context
+                        configure_from_context(context)
+                    except ImportError:
+                        print("⚠️  osprey.runtime not available - control system operations disabled")
+                    except Exception as e:
+                        print(f"⚠️  Failed to configure runtime: {{e}}")
                 else:
                     print("⚠️ No execution context available")
                     context = None
@@ -248,6 +349,22 @@ print(f"Container working directory: {{Path.cwd()}}")
                 execution_metadata["error_type"] = "INFRASTRUCTURE_ERROR"
                 execution_metadata["infrastructure_error"] = f"Context loading failed: {{str(e)}}"
                 context = None
+        """).strip()
+
+    def _get_cleanup_code(self) -> str:
+        """Get runtime cleanup code.
+
+        This should be called in the finally block of the execution wrapper
+        to ensure cleanup happens even if user code raises an exception.
+        """
+        return textwrap.dedent("""
+            # Cleanup runtime resources
+            try:
+                import asyncio
+                from osprey.runtime import cleanup_runtime
+                asyncio.run(cleanup_runtime())
+            except Exception as e:
+                print(f"⚠️  Cleanup warning: {{e}}")
         """).strip()
 
     def _get_output_capture_start(self) -> str:
@@ -266,16 +383,31 @@ print(f"Container working directory: {{Path.cwd()}}")
         """).strip()
 
     def _wrap_user_code(self, user_code: str) -> str:
-        """Wrap user code with proper indentation."""
-        indented_code = "\n".join("    " + line for line in user_code.split("\n"))
+        """Execute user code directly (synchronous).
+
+        User code is expected to be synchronous - osprey.runtime utilities
+        handle async internally so generated code can be simple and straightforward.
+        """
+        # Indent user code (8 spaces = 2 levels, inside try block)
+        indented_code = "\n".join("        " + line if line.strip() else line for line in user_code.split("\n"))
+
         return f"""
     # Execute user code
+    try:
 {indented_code}
 
-    # Mark successful execution
-    execution_metadata["success"] = True
-    execution_metadata["error_type"] = None
-    execution_metadata["end_time"] = _datetime.now().isoformat()
+        # Mark successful execution
+        execution_metadata["success"] = True
+        execution_metadata["error_type"] = None
+        execution_metadata["end_time"] = _datetime.now().isoformat()
+
+    except Exception as user_code_error:
+        # Capture user code errors
+        execution_metadata["success"] = False
+        execution_metadata["error_type"] = type(user_code_error).__name__
+        execution_metadata["error_message"] = str(user_code_error)
+        execution_metadata["end_time"] = _datetime.now().isoformat()
+        raise
 """
 
     def _get_cleanup_and_export(self) -> str:
@@ -336,6 +468,15 @@ print(f"Container working directory: {{Path.cwd()}}")
                 execution_metadata["stdout"] = stdout_capture.getvalue()
                 execution_metadata["stderr"] = stderr_capture.getvalue()
                 execution_metadata["end_time"] = _datetime.now().isoformat()
+
+                # Cleanup runtime resources
+                try:
+                    import asyncio
+                    from osprey.runtime import cleanup_runtime
+                    # We're in a subprocess with no running event loop
+                    asyncio.run(cleanup_runtime())
+                except Exception as e:
+                    print(f"⚠️  Cleanup warning: {{e}}")
         """).strip()
 
         file_persistence_section = textwrap.dedent("""

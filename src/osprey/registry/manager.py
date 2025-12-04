@@ -2483,6 +2483,26 @@ def initialize_registry(auto_export: bool = True, config_path: str | None = None
     registry = get_registry(config_path=config_path)
     registry.initialize()
 
+    # Eagerly initialize subsystems that should fail-fast on startup
+    # This validates configuration early and groups initialization logs at startup
+    from osprey.approval.approval_manager import get_approval_manager
+    get_approval_manager()  # Validates approval config, initializes singleton
+
+    # Validate channel limits database if limits checking is enabled
+    # Note: This is a best-effort initialization that logs warnings but doesn't fail
+    # if the limits database is missing or misconfigured. The validator will handle
+    # runtime checks appropriately based on configuration.
+    try:
+        from osprey.services.python_executor.execution.limits_validator import LimitsValidator
+        limits_validator = LimitsValidator.from_config()
+        if limits_validator:
+            logger.info(f"✅ Channel limits database loaded: {len(limits_validator.limits)} channels configured")
+    except Exception as e:
+        # Log as warning instead of error - missing limits database is not fatal
+        # The validator will enforce policy at runtime (e.g., block all writes if no database)
+        logger.debug(f"Channel limits database not loaded: {e}")
+        logger.debug("Runtime limits validation will use safe defaults")
+
     # Auto-export registry data if requested
     if auto_export:
         try:

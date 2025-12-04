@@ -4,14 +4,11 @@ Pytest configuration and shared test utilities.
 This module provides shared fixtures and utilities for all Osprey tests.
 """
 
-import os
-
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from osprey.base.planning import ExecutionPlan, PlannedStep
 from osprey.state import AgentState
-
 
 # ===================================================================
 # Auto-reset Registry and Config Between Tests
@@ -24,6 +21,7 @@ def reset_state_between_tests():
     This prevents state leakage between tests by:
     - Resetting the registry
     - Clearing config caches
+    - Resetting approval manager singleton
 
     Note: Does NOT clear CONFIG_FILE env var since test fixtures may set it.
     Tests that need a clean CONFIG_FILE state should handle it explicitly.
@@ -37,6 +35,13 @@ def reset_state_between_tests():
     config_module._default_configurable = None
     config_module._config_cache.clear()
 
+    # Reset approval manager singleton to prevent approval state pollution
+    try:
+        import osprey.approval.approval_manager as approval_module
+        approval_module._approval_manager = None
+    except ImportError:
+        pass  # Approval manager might not be available in all test environments
+
     yield
 
     # Reset after test
@@ -44,6 +49,13 @@ def reset_state_between_tests():
     config_module._default_config = None
     config_module._default_configurable = None
     config_module._config_cache.clear()
+
+    # Reset approval manager singleton again
+    try:
+        import osprey.approval.approval_manager as approval_module
+        approval_module._approval_manager = None
+    except ImportError:
+        pass
 
 # ===================================================================
 # Test State Factory
@@ -347,25 +359,7 @@ class TestRegistryProvider(RegistryConfigProvider):
             }
         },
         'control_system': {
-            'type': 'epics',
-            'patterns': {
-                'epics': {
-                    'write': [
-                        r'\bcaput\s*\(',
-                        r'epics\.caput\(',
-                        r'\.put\s*\(',
-                    ],
-                    'read': [
-                        r'\bcaget\s*\(',
-                        r'epics\.caget\(',
-                        r'\.get\s*\(',
-                    ]
-                },
-                'mock': {
-                    'write': [r'\.caput\(', r'\.write_pv\('],
-                    'read': [r'\.caget\(', r'\.read_pv\(']
-                }
-            }
+            'type': 'mock',  # Use mock for tests - default patterns include write_channel/read_channel
         },
         'execution': {
             'execution_method': 'local',  # Fast for tests
@@ -479,25 +473,7 @@ class TestRegistryProvider(RegistryConfigProvider):
             }
         },
         'control_system': {
-            'type': 'epics',
-            'patterns': {
-                'epics': {
-                    'write': [
-                        r'\bcaput\s*\(',
-                        r'epics\.caput\(',
-                        r'\.put\s*\(',
-                    ],
-                    'read': [
-                        r'\bcaget\s*\(',
-                        r'epics\.caget\(',
-                        r'\.get\s*\(',
-                    ]
-                },
-                'mock': {
-                    'write': [r'\.caput\(', r'\.write_pv\('],
-                    'read': [r'\.caget\(', r'\.read_pv\(']
-                }
-            }
+            'type': 'mock',  # Use mock for tests - default patterns include write_channel/read_channel
         },
         'execution': {
             'execution_method': 'local',

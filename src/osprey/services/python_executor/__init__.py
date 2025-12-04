@@ -212,9 +212,11 @@ osprey:
 from .analysis import (
     detect_control_system_operations,
     get_default_patterns,
+    get_framework_standard_patterns,
 )
 from .exceptions import (
     # Code errors (retry code generation)
+    ChannelLimitsViolationError,
     CodeGenerationError,
     CodeRuntimeError,
     CodeSyntaxError,
@@ -279,6 +281,7 @@ __all__ = [
     # Analysis utilities
     "detect_control_system_operations",
     "get_default_patterns",
+    "get_framework_standard_patterns",
 
     # Execution context and notebook management
     "NotebookAttempt",
@@ -302,6 +305,7 @@ __all__ = [
     "CodeGenerationError",
     "CodeSyntaxError",
     "CodeRuntimeError",
+    "ChannelLimitsViolationError",
     "ExecutionTimeoutError",
     "MaxAttemptsExceededError",
     "WorkflowError",
