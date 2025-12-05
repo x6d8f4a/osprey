@@ -190,7 +190,7 @@ class ChatInput(TextArea):
         """Reset status panel to default tips."""
         status = self._get_status_panel()
         if status:
-            status.update("Enter to send · Option + Enter for newline · ↑↓ for history")
+            status.update("/ for commands · option + ⏎ for newline · ↑↓ for history")
 
     def _on_key(self, event: Key) -> None:
         """Handle key events - Enter submits, Option+Enter for newline."""
@@ -345,7 +345,7 @@ class StatusPanel(Static):
     def __init__(self, **kwargs):
         """Initialize the status panel with default tips."""
         super().__init__(**kwargs)
-        self.update("Enter to send · Option + Enter for newline · ↑↓ for history")
+        self.update("/ for commands · option + ⏎ for newline · ↑↓ for history")
 
 
 class CommandDropdown(OptionList):
@@ -441,9 +441,7 @@ class CommandDropdown(OptionList):
 
         if matches:
             # Get styles from CSS
-            cmd_style = Style.from_styles(
-                self.get_component_styles("command-dropdown--command")
-            )
+            cmd_style = Style.from_styles(self.get_component_styles("command-dropdown--command"))
             desc_style = Style.from_styles(
                 self.get_component_styles("command-dropdown--description")
             )

@@ -120,7 +120,7 @@ class OspreyTUI(App):
         panel_id = "#welcome-status" if self._welcome_mode else "#status-panel"
         try:
             status = self.query_one(panel_id, StatusPanel)
-            status.update("Enter to send · Option + Enter for newline · ↑↓ for history")
+            status.update("/ for commands · option + ⏎ for newline · ↑↓ for history")
         except Exception:
             pass
 
@@ -770,9 +770,7 @@ class OspreyTUI(App):
                 # Task available but no caps yet - show partial
                 block.set_input(task, mark_set=False)
 
-    def _update_output_from_data(
-        self, block: ProcessingBlock, component: str, chunk: dict
-    ) -> None:
+    def _update_output_from_data(self, block: ProcessingBlock, component: str, chunk: dict) -> None:
         """Update block OUT section from _data dict during streaming.
 
         Uses set_partial_output() for real-time updates (keeps block active).
