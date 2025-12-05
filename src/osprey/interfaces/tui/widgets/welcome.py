@@ -12,16 +12,16 @@ from osprey.interfaces.tui.widgets.input import (
 
 # ASCII art banner from CLI (interactive_menu.py)
 OSPREY_BANNER = """\
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║    ░█████╗░░██████╗██████╗░██████╗░███████╗██╗░░░██╗      ║
-║    ██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝╚██╗░██╔╝      ║
-║    ██║░░██║╚█████╗░██████╔╝██████╔╝█████╗░░░╚████╔╝░      ║
-║    ██║░░██║░╚═══██╗██╔═══╝░██╔══██╗██╔══╝░░░░╚██╔╝░░      ║
-║    ╚█████╔╝██████╔╝██║░░░░░██║░░██║███████╗░░░██║░░░      ║
-║    ░╚════╝░╚═════╝░╚═╝░░░░░╚═╝░░╚═╝╚══════╝░░░╚═╝░░░      ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝\
+█▀▀█ █▀▀▀ █▀▀█ █▀▀▀ █▀▀█ █  █
+█░░█ ▀▀▀▀ █░░█ █░░░ █▀▀▀ █░░█
+▀▀▀▀ ▀▀▀▀ █▀▀▀ ▀    ▀▀▀▀ ▀▀▀█\
+"""
+
+OTTER_BANNER = """\
+     ▄    ▄
+█▀▀█ █▀▀▀ █▀▀▀ █▀▀█ █▀▀▀
+█░░█ █░░░ █░░░ █▀▀▀ █░░░
+▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀   \
 """
 
 
@@ -41,7 +41,7 @@ class WelcomeBanner(Static):
         """Compose the banner with art and version."""
         yield Static(OSPREY_BANNER, id="banner-art")
         if self.version:
-            yield Static(f"v{self.version}", id="banner-version")
+            yield Static(self.version, id="banner-version")
 
 
 class WelcomeScreen(Static):

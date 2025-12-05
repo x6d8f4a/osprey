@@ -65,14 +65,13 @@ WelcomeBanner {
 #banner-art {
     width: auto;
     height: auto;
-    color: $primary;
+    color: $foreground;
 }
 
 #banner-version {
     width: 100%;
     text-align: right;
     color: $text-muted;
-    padding-right: 1;
     margin-bottom: 1;
 }
 
