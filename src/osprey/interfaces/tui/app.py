@@ -12,7 +12,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Footer, Header
 
 from osprey.graph import create_graph
 from osprey.infrastructure.gateway import Gateway
@@ -78,7 +77,6 @@ class OspreyTUI(App):
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        yield Header()
         # Welcome screen (shown initially)
         yield WelcomeScreen(version=self._get_version(), id="welcome-screen")
         # Chat screen (hidden initially)
@@ -89,7 +87,6 @@ class OspreyTUI(App):
             StatusPanel(id="status-panel"),
             id="main-content",
         )
-        yield Footer()
 
     def action_request_quit(self) -> None:
         """Handle Ctrl+C - requires double press within 1.0s to quit."""
