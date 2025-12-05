@@ -48,6 +48,7 @@ class ChatInput(TextArea):
         super().__init__(**kwargs)
         self.show_line_numbers = False
         self.cursor_blink = False
+        self.highlight_line = False
         self._dropdown_id = dropdown_id
         self._status_id = status_id
         # Set placeholder if provided (TextArea supports this attribute)

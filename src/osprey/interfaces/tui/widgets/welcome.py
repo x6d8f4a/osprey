@@ -1,7 +1,11 @@
 """Welcome screen widgets for the TUI."""
 
+from typing import ClassVar
+
 from textual.app import ComposeResult
 from textual.containers import Center, Vertical
+from textual.content import Content
+from textual.style import Style
 from textual.widgets import Static
 
 from osprey.interfaces.tui.widgets.input import (
@@ -10,23 +14,21 @@ from osprey.interfaces.tui.widgets.input import (
     StatusPanel,
 )
 
-# ASCII art banner from CLI (interactive_menu.py)
-OSPREY_BANNER = """\
-█▀▀█ █▀▀▀ █▀▀█ █▀▀▀ █▀▀█ █  █
-█░░█ ▀▀▀▀ █░░█ █░░░ █▀▀▀ █░░█
-▀▀▀▀ ▀▀▀▀ █▀▀▀ ▀    ▀▀▀▀ ▀▀▀█\
-"""
-
-OTTER_BANNER = """\
-     ▄    ▄
-█▀▀█ █▀▀▀ █▀▀▀ █▀▀█ █▀▀▀
-█░░█ █░░░ █░░░ █▀▀▀ █░░░
-▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀   \
-"""
+# Banner lines for two-tone styling ("os" muted, "prey" normal)
+OSPREY_BANNER_LINES = [
+    "█▀▀█ █▀▀▀ █▀▀█ █▀▀▀ █▀▀█ █  █",
+    "█░░█ ▀▀▀▀ █░░█ █░░░ █▀▀▀ █░░█",
+    "▀▀▀▀ ▀▀▀▀ █▀▀▀ ▀    ▀▀▀▀ ▀▀▀█",
+]
 
 
 class WelcomeBanner(Static):
     """Welcome banner with ASCII art and version number."""
+
+    COMPONENT_CLASSES: ClassVar[set[str]] = {
+        "banner--muted",   # for "os"
+        "banner--normal",  # for "prey"
+    }
 
     def __init__(self, version: str = "", **kwargs):
         """Initialize the welcome banner.
@@ -39,9 +41,24 @@ class WelcomeBanner(Static):
 
     def compose(self) -> ComposeResult:
         """Compose the banner with art and version."""
-        yield Static(OSPREY_BANNER, id="banner-art")
+        yield Static("", id="banner-art")
         if self.version:
             yield Static(self.version, id="banner-version")
+
+    def on_mount(self) -> None:
+        """Build styled banner after mount when CSS is available."""
+        muted = Style.from_styles(self.get_component_styles("banner--muted"))
+        normal = Style.from_styles(self.get_component_styles("banner--normal"))
+
+        parts = []
+        for i, line in enumerate(OSPREY_BANNER_LINES):
+            if i > 0:
+                parts.append(("\n", normal))
+            # First 10 chars = "os", rest = "prey"
+            parts.append((line[:10], muted))
+            parts.append((line[10:], normal))
+
+        self.query_one("#banner-art", Static).update(Content.assemble(*parts))
 
 
 class WelcomeScreen(Static):

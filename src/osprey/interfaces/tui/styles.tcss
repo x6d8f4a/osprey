@@ -90,6 +90,11 @@ WelcomeBanner {
     border: tall $primary;
 }
 
+/* Disable cursor line highlight in welcome input */
+#welcome-input > .text-area--cursor-line {
+    background: transparent;
+}
+
 /* Welcome dropdown - floats at top of input-container (opens upward) */
 #welcome-dropdown {
     width: 80;
@@ -131,6 +136,11 @@ WelcomeBanner {
 
 #chat-input:focus {
     border: tall $primary;
+}
+
+/* Disable cursor line highlight in chat input */
+#chat-input > .text-area--cursor-line {
+    background: transparent;
 }
 
 /* Command autocomplete dropdown - floats above content */
@@ -181,6 +191,16 @@ StatusPanel > .status-panel--command {
 /* Description text in status panel - component class */
 StatusPanel > .status-panel--description {
     color: $text-muted;
+}
+
+/* Banner "os" portion - muted */
+WelcomeBanner > .banner--muted {
+    color: $text-muted;
+}
+
+/* Banner "prey" portion - normal foreground */
+WelcomeBanner > .banner--normal {
+    color: $text;
 }
 
 /* Individual chat message - compact card style */
