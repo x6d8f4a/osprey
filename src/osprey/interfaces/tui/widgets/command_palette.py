@@ -6,8 +6,10 @@ from collections import defaultdict
 from typing import ClassVar
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.content import Content
+from textual.events import Key
 from textual.screen import ModalScreen
 from textual.style import Style
 from textual.widgets import Input, OptionList, Static
@@ -17,15 +19,23 @@ from textual.widgets.option_list import Option
 class CommandPalette(ModalScreen[str | None]):
     """Modal command palette with search and categorized commands."""
 
-    BINDINGS = [("escape", "dismiss_palette", "Close")]
+    BINDINGS = [
+        ("escape", "dismiss_palette", "Close"),
+        Binding("tab", "noop", "", show=False),  # Block tab from moving focus
+    ]
 
     # Command registry: {id: {label, shortcut, category}}
     # Ordered by category for display
     COMMANDS: ClassVar[dict[str, dict[str, str]]] = {
         "focus_input": {
             "label": "Focus input",
-            "shortcut": "ctrl+l",
+            "shortcut": "ctrl + l",
             "category": "Session",
+        },
+        "switch_theme": {
+            "label": "Switch theme",
+            "shortcut": "ctrl + t",
+            "category": "System",
         },
     }
 
@@ -34,6 +44,9 @@ class CommandPalette(ModalScreen[str | None]):
         "palette--shortcut",
         "palette--category",
     }
+
+    # Container width 60, padding 4*2=8, leaves 52 usable
+    OPTION_WIDTH: ClassVar[int] = 52
 
     def compose(self) -> ComposeResult:
         """Compose the command palette layout."""
@@ -47,7 +60,9 @@ class CommandPalette(ModalScreen[str | None]):
     def on_mount(self) -> None:
         """Initialize the palette on mount."""
         self._populate_options()
-        self.query_one("#palette-search", Input).focus()
+        search_input = self.query_one("#palette-search", Input)
+        search_input.cursor_blink = False
+        search_input.focus()
 
     def _populate_options(self, filter_text: str = "") -> None:
         """Populate the options list with commands grouped by category.
@@ -59,17 +74,12 @@ class CommandPalette(ModalScreen[str | None]):
         options_list.clear_options()
 
         # Get styles for Content.assemble
-        label_style = Style.from_styles(
-            self.get_component_styles("palette--label")
-        )
-        shortcut_style = Style.from_styles(
-            self.get_component_styles("palette--shortcut")
-        )
+        label_style = Style.from_styles(self.get_component_styles("palette--label"))
+        shortcut_style = Style.from_styles(self.get_component_styles("palette--shortcut"))
+        category_style = Style.from_styles(self.get_component_styles("palette--category"))
 
         # Group commands by category
-        categories: dict[str, list[tuple[str, dict[str, str]]]] = (
-            defaultdict(list)
-        )
+        categories: dict[str, list[tuple[str, dict[str, str]]]] = defaultdict(list)
         filter_lower = filter_text.lower()
 
         for cmd_id, cmd_data in self.COMMANDS.items():
@@ -81,29 +91,30 @@ class CommandPalette(ModalScreen[str | None]):
                     continue
             categories[cmd_data["category"]].append((cmd_id, cmd_data))
 
-        # Calculate max label length for alignment
-        max_label_len = 0
-        for cmds in categories.values():
-            for _, cmd_data in cmds:
-                max_label_len = max(max_label_len, len(cmd_data["label"]))
-
         # Add options grouped by category
         for category, cmds in categories.items():
             if not cmds:
                 continue
 
-            # Add category header (non-selectable)
-            options_list.add_option(
-                Option(category, disabled=True, id=f"cat_{category}")
-            )
+            # Add spacing before category
+            options_list.add_option(Option("", disabled=True, id=f"spacer_{category}"))
+
+            # Add category header with styled content (non-selectable)
+            category_content = Content.assemble((category, category_style))
+            options_list.add_option(Option(category_content, disabled=True, id=f"cat_{category}"))
 
             # Add commands in this category
             for cmd_id, cmd_data in cmds:
-                # Create styled content: label (padded) + shortcut
-                padded_label = cmd_data["label"].ljust(max_label_len + 4)
+                label = cmd_data["label"]
+                shortcut = cmd_data["shortcut"]
+                # Calculate padding to push shortcut to right edge
+                pad_len = self.OPTION_WIDTH - len(label) - len(shortcut)
+                padding = " " * max(pad_len, 2)
+
                 prompt = Content.assemble(
-                    (padded_label, label_style),
-                    (cmd_data["shortcut"], shortcut_style),
+                    (label, label_style),
+                    (padding, label_style),
+                    (shortcut, shortcut_style),
                 )
                 options_list.add_option(Option(prompt, id=cmd_id))
 
@@ -121,13 +132,28 @@ class CommandPalette(ModalScreen[str | None]):
         if event.input.id == "palette-search":
             self._populate_options(event.value)
 
+    def on_key(self, event: Key) -> None:
+        """Handle keyboard navigation while keeping focus on search."""
+        options = self.query_one("#palette-options", OptionList)
+
+        if event.key == "down":
+            options.action_cursor_down()
+            event.prevent_default()
+        elif event.key == "up":
+            options.action_cursor_up()
+            event.prevent_default()
+        elif event.key == "enter":
+            if options.highlighted is not None:
+                opt = options.get_option_at_index(options.highlighted)
+                if opt and opt.id and not str(opt.id).startswith("cat_"):
+                    self.dismiss(str(opt.id))
+            event.prevent_default()
+
     def action_dismiss_palette(self) -> None:
         """Dismiss the palette without selecting."""
         self.dismiss(None)
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle option selection."""
         if event.option.id and not str(event.option.id).startswith("cat_"):
             self.dismiss(str(event.option.id))
