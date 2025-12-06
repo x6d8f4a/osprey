@@ -86,6 +86,7 @@ WelcomeBanner {
     padding: 0 2;
     background: $surface;
     border: tall $primary-darken-2;
+    scrollbar-size: 0 0;
 }
 
 #welcome-input:focus {
@@ -134,6 +135,7 @@ WelcomeBanner {
     padding: 0 2;
     background: $surface;
     border: tall $primary-darken-2;
+    scrollbar-size: 0 0;
 }
 
 #chat-input:focus {
