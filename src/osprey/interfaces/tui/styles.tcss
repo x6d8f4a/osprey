@@ -466,13 +466,14 @@ DebugBlock,
 
 CommandPalette {
     align: center top;
+    background: $background 80%;  /* Semi-transparent scrim */
 }
 
 #palette-container {
     width: 60;
     height: auto;
     max-height: 50%;
-    margin-top: 10;
+    /* margin-top computed dynamically in Python */
     padding: 1 0 1 0;
     background: $surface;
     border: none;

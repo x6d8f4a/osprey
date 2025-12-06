@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.content import Content
-from textual.events import Key
+from textual.events import Key, Resize
 from textual.screen import ModalScreen
 from textual.style import Style
 from textual.widgets import Input, OptionList, Static
@@ -59,10 +59,47 @@ class CommandPalette(ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         """Initialize the palette on mount."""
+        # Set initial margin based on app size (before first render)
+        self._update_position(self.app.size.height)
         self._populate_options()
         search_input = self.query_one("#palette-search", Input)
         search_input.cursor_blink = False
         search_input.focus()
+
+    def on_resize(self, event: Resize) -> None:
+        """Update palette position when terminal is resized."""
+        self._update_position(event.size.height)
+
+    def _update_position(self, screen_height: int) -> None:
+        """Set palette margin to vertically center based on actual content height."""
+        container = self.query_one("#palette-container", Container)
+
+        # Calculate natural content height
+        content_height = self._calculate_content_height()
+
+        # Palette height is min of content height and 50% of screen
+        max_height = screen_height // 2
+        palette_height = min(content_height, max_height)
+
+        # Center the palette vertically
+        margin_top = (screen_height - palette_height) // 2
+        container.styles.margin = (margin_top, 0, 0, 0)
+
+    def _calculate_content_height(self) -> int:
+        """Calculate the natural height of the palette content."""
+        height = 2  # Container padding (1 top + 1 bottom)
+        height += 2  # Header (1) + margin-bottom (1)
+        height += 2  # Search (1) + margin-bottom (1)
+
+        # Count categories and commands
+        num_categories = len({cmd["category"] for cmd in self.COMMANDS.values()})
+        num_commands = len(self.COMMANDS)
+
+        # Each category has: spacer (1) + header (1)
+        # Each command has: 1 row
+        height += num_categories * 2 + num_commands
+
+        return height
 
     def _populate_options(self, filter_text: str = "") -> None:
         """Populate the options list with commands grouped by category.
