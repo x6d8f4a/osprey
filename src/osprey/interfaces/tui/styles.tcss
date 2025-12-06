@@ -211,9 +211,14 @@ ChatMessage {
     # height: auto;
     margin: 0 0 1 0;
     padding: 0 2;
-    border: tall $surface-lighten-1;
     border-title-color: $text;
     border-title-style: bold;
+    &:dark {
+        border: tall $surface-lighten-1;
+    }
+    &:light {
+        border: tall $surface-darken-1;
+    }
 }
 
 /* User message styling */
@@ -231,9 +236,15 @@ ChatMessage.message-assistant {
     border: none;
 }
 
-/* Slash command responses - darken bg */
+/* Slash command responses - subtle background shift */
+/* Dark theme: darker bg, Light theme: lighter bg */
 ChatMessage.message-assistant.message-type-instant {
-    background: $surface-darken-1;
+    &:dark {
+        background: $surface-darken-1;
+    }
+    &:light {
+        background: $surface-lighten-1;
+    }
 }
 
 /* Message content - minimal spacing */
@@ -260,8 +271,13 @@ ExecutionStepBlock {
     height: auto;
     margin: 0 2 1 2;
     padding: 0 2;
-    border: tall $surface-lighten-1;
     background: transparent;  /* Subtle - blends in, highlight on select */
+    &:dark {
+        border: tall $surface-lighten-1;
+    }
+    &:light {
+        border: tall $surface-darken-1;
+    }
 }
 
 /* Active block - highlighted border */
@@ -270,7 +286,12 @@ ExecutionStepBlock {
 }
 
 .block-success {
-    border: tall $surface-lighten-1;
+    &:dark {
+        border: tall $surface-lighten-1;
+    }
+    &:light {
+        border: tall $surface-darken-1;
+    }
 }
 
 .block-error {
@@ -337,6 +358,7 @@ ExecutionStepBlock {
 
 #block-input-content {
     width: 100%;
+    color: $text;
     padding-left: 4;
     padding-bottom: 1;
 }
@@ -365,7 +387,12 @@ ExecutionStepBlock {
 }
 
 #block-log:focus-within > CollapsibleTitle {
-    background: $surface-lighten-1;
+    &:dark {
+        background: $surface-lighten-1;
+    }
+    &:light {
+        background: $surface-darken-1;
+    }
 }
 
 /* Debug block for event visualization */
