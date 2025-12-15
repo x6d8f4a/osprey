@@ -71,7 +71,7 @@ If you use the Alpha Berkeley Framework in your research or projects, please cit
 
 ```bibtex
 @misc{hellert2025osprey,
-      title={Osprey: A Scalable Framework for the Orchestration of Agentic Systems},
+      title={Osprey: Production-Ready Agentic AI for Safety-Critical Control Systems},
       author={Thorsten Hellert and João Montenegro and Antonin Sulc},
       year={2025},
       eprint={2508.15066},
