@@ -67,7 +67,7 @@ See [TESTING_GUIDE.md](TESTING_GUIDE.md) and [tests/e2e/README.md](tests/e2e/REA
 
 ## 📖 Citation
 
-If you use the Alpha Berkeley Framework in your research or projects, please cite our [paper](https://arxiv.org/abs/2508.15066):
+If you use the Osprey Framework in your research or projects, please cite our [paper](https://arxiv.org/abs/2508.15066):
 
 ```bibtex
 @misc{hellert2025osprey,
