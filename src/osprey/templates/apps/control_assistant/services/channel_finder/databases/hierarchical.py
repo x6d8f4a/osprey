@@ -843,30 +843,18 @@ class HierarchicalChannelDatabase(BaseDatabase):
         # Get level configuration
         level_config = self.hierarchy_config["levels"][level]
         level_type = level_config["type"]
-        is_optional = level_config.get("optional", False)
 
         # Extract options based on level type
         if level_type == "tree":
             # Direct children of current node
             options = self._extract_tree_options(current_node)
 
-            # OPTIONAL LEVEL FILTERING: For optional tree levels, filter out leaf nodes
-            # Leaf nodes at this position belong to the NEXT level in the hierarchy,
-            # not this optional level. This prevents direct signals from appearing as
-            # subdevice options, for example.
-            if is_optional and options:
-                # Get level index for leaf detection
-                level_idx = self.hierarchy_levels.index(level)
-                filtered_options = []
-
-                for opt in options:
-                    opt_node = current_node.get(opt["name"])
-                    if opt_node and not self._is_leaf_node(opt_node, level_idx + 1):
-                        # Not a leaf - this is a valid container for this optional level
-                        filtered_options.append(opt)
-                    # Leaf nodes are skipped - they belong to the next level
-
-                return filtered_options
+            # OPTIONAL LEVEL BEHAVIOR: For optional tree levels, INCLUDE both:
+            # 1. Containers (subdevices, subsystems, etc.) - these lead to deeper navigation
+            # 2. Leaf nodes (direct signals) - these skip this optional level
+            # This allows the LLM to naturally select either a subdevice (PSU, ADC, etc.)
+            # OR a direct signal (Heartbeat, Status, etc.) without needing to reason about
+            # "NOTHING_FOUND". The navigation logic will handle both cases appropriately.
 
             return options
 

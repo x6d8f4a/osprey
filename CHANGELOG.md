@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation: Citation update**: Updated paper citation to reflect new title "Osprey: Production-Ready Agentic AI for Safety-Critical Control Systems"
 - **Documentation: Framework name cleanup**: Replaced all remaining references to "Alpha Berkeley Framework" with "Osprey Framework" across README, templates, documentation, and test files
 
+### Fixed
+- **Channel Finder: Optional levels LLM awareness and semantic navigation**: Fixed hierarchical pipeline to enable LLM to correctly navigate optional hierarchy levels through comprehensive description improvements and prompt enhancements: (1) **Database descriptions now explicitly list available children** - each level description states what direct signals and optional sublevels exist (e.g., "devices with direct signals (Status, Heartbeat, Mode, Config) and optional subdevices (PSU, ADC, MOTOR, CH)"), enabling the LLM to make informed decisions about whether to navigate into optional levels or skip them; (2) **Individual signal descriptions clarify hierarchy position** - direct signals explicitly marked as "direct signal, no subdevice" to distinguish from subdevice-specific signals; (3) **Avoided ambiguous terminology** - changed "Channel subdevices" to "Hardware channel interface modules" to prevent confusion between EPICS channel addresses and subdevice names; (4) **Added optional level guidance to prompts** - LLM now receives explicit instructions about when to skip optional levels (including user commands like "skip subdevice level") and how to skip by selecting NOTHING_FOUND. This comprehensive fix enables the LLM to semantically understand hierarchy structure and make correct navigation decisions based on query intent, properly distinguishing between direct device-level signals and subdevice-specific signals.
+
 ## [0.9.7] - 2025-12-14
 
 ### Added

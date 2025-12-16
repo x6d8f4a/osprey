@@ -1011,3 +1011,153 @@ class TestOptionalLevelsEdgeCases:
                 assert not (ch.endswith("_") and not ch.endswith("_RB"))
         finally:
             Path(db_path).unlink()
+
+
+class TestDirectSignalsAtOptionalLevels:
+    """Test that optional levels show both containers and direct signals (leaf nodes).
+
+    This tests the behavior where at an optional level like 'subdevice', the database
+    presents BOTH:
+    - Container nodes (subdevices like PSU, ADC, etc.)
+    - Leaf nodes (direct signals like Heartbeat, Status, etc.)
+
+    This allows the LLM to naturally select either a subdevice to navigate deeper,
+    or a direct signal that skips the optional level entirely.
+    """
+
+    @pytest.fixture
+    def direct_signals_db_content(self):
+        """Database with direct signals and subdevices at same level."""
+        return {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "subsystem", "type": "tree"},
+                    {"name": "device", "type": "instances"},
+                    {"name": "subdevice", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True},
+                ],
+                "naming_pattern": "{system}:{subsystem}:{device}:{subdevice}:{signal}:{suffix}",
+            },
+            "tree": {
+                "CTRL": {
+                    "_description": "Control System",
+                    "MAIN": {
+                        "_description": "Main Control",
+                        "DEVICE": {
+                            "_expansion": {
+                                "_type": "range",
+                                "_pattern": "MC-{:02d}",
+                                "_range": [1, 2],
+                            },
+                            "_description": "Main control devices",
+                            # Direct signals (no subdevice)
+                            "Status": {"_description": "Device status"},
+                            "Heartbeat": {"_description": "Device heartbeat"},
+                            # Subdevice with signals
+                            "PSU": {
+                                "_description": "Power Supply",
+                                "Voltage": {"_description": "Output voltage"},
+                                "Current": {"_description": "Output current"},
+                            },
+                            # Subdevice with signals
+                            "ADC": {
+                                "_description": "ADC",
+                                "Value": {"_description": "ADC value"},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+    @pytest.fixture
+    def direct_signals_db(self, direct_signals_db_content):
+        """Create temporary database with direct signals."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(direct_signals_db_content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            yield db
+        finally:
+            Path(db_path).unlink()
+
+    def test_optional_level_shows_both_containers_and_leaves(self, direct_signals_db):
+        """Optional level should show BOTH subdevices (containers) AND direct signals (leaves)."""
+        # Navigate to subdevice level
+        selections = {"system": "CTRL", "subsystem": "MAIN", "device": "MC-01"}
+        options = direct_signals_db.get_options_at_level("subdevice", selections)
+
+        # Should include BOTH containers and leaf nodes
+        option_names = {opt["name"] for opt in options}
+
+        # Containers (subdevices)
+        assert "PSU" in option_names, "Should include PSU subdevice container"
+        assert "ADC" in option_names, "Should include ADC subdevice container"
+
+        # Leaf nodes (direct signals)
+        assert "Status" in option_names, "Should include Status direct signal"
+        assert "Heartbeat" in option_names, "Should include Heartbeat direct signal"
+
+        # Should have all 4 options
+        assert len(options) == 4
+
+    def test_direct_signal_channels_generated_correctly(self, direct_signals_db):
+        """Direct signals should generate channels that skip the optional subdevice level."""
+        # Build channels for direct signal
+        selections = {"system": "CTRL", "subsystem": "MAIN", "device": "MC-01", "signal": "Heartbeat"}
+        channels = direct_signals_db.build_channels_from_selections(selections)
+
+        # Should generate channel without subdevice
+        assert len(channels) == 1
+        assert channels[0] == "CTRL:MAIN:MC-01:Heartbeat"
+
+    def test_subdevice_signal_channels_generated_correctly(self, direct_signals_db):
+        """Subdevice signals should generate channels with subdevice included."""
+        # Build channels for subdevice signal
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "subdevice": "PSU",
+            "signal": "Voltage",
+        }
+        channels = direct_signals_db.build_channels_from_selections(selections)
+
+        # Should generate channel WITH subdevice
+        assert len(channels) == 1
+        assert channels[0] == "CTRL:MAIN:MC-01:PSU:Voltage"
+
+    def test_all_channels_validate(self, direct_signals_db):
+        """All generated channels (direct and subdevice) should validate."""
+        # Direct signals
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:Status")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:Heartbeat")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:Status")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:Heartbeat")
+
+        # Subdevice signals
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:PSU:Voltage")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:PSU:Current")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:ADC:Value")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:PSU:Voltage")
+
+    def test_channel_count_includes_both_direct_and_subdevice(self, direct_signals_db):
+        """Total channel count should include both direct signals and subdevice signals."""
+        # 2 devices * (2 direct signals + 2 PSU signals + 1 ADC signal) = 2 * 5 = 10
+        assert len(direct_signals_db.channel_map) == 10
+
+    def test_get_channel_returns_correct_data(self, direct_signals_db):
+        """Getting channel data should work for both direct and subdevice signals."""
+        # Direct signal
+        status_data = direct_signals_db.get_channel("CTRL:MAIN:MC-01:Status")
+        assert status_data is not None
+        assert status_data["address"] == "CTRL:MAIN:MC-01:Status"
+
+        # Subdevice signal
+        psu_data = direct_signals_db.get_channel("CTRL:MAIN:MC-01:PSU:Voltage")
+        assert psu_data is not None
+        assert psu_data["address"] == "CTRL:MAIN:MC-01:PSU:Voltage"
