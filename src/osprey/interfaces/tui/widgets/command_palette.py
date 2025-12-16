@@ -30,39 +30,39 @@ class CommandPalette(ModalScreen[str | None]):
     COMMANDS: ClassVar[dict[str, dict[str, str]]] = {
         "focus_input": {
             "label": "Focus input",
-            "shortcut": "ctrl + l",
+            "shortcut": "^l",
             "category": "Session",
         },
         "switch_theme": {
             "label": "Switch theme",
-            "shortcut": "ctrl + t",
+            "shortcut": "^t",
             "category": "System",
         },
-        "view_status": {
-            "label": "View status",
-            "shortcut": "",
-            "category": "System",
-        },
+        # "view_status": {
+        #     "label": "View status",
+        #     "shortcut": "",
+        #     "category": "System",
+        # },
         "toggle_help_panel": {
             "label": "Toggle help",
-            "shortcut": "ctrl + h",
+            "shortcut": "^h",
             "category": "System",
         },
-        "open_docs": {
-            "label": "Open docs",
-            "shortcut": "",
-            "category": "System",
-        },
+        # "open_docs": {
+        #     "label": "Open docs",
+        #     "shortcut": "",
+        #     "category": "System",
+        # },
         "exit_app": {
             "label": "Exit the app",
             "shortcut": "^c ^c",
             "category": "System",
         },
-        "toggle_console": {
-            "label": "Toggle console",
-            "shortcut": "",
-            "category": "System",
-        },
+        # "toggle_console": {
+        #     "label": "Toggle console",
+        #     "shortcut": "",
+        #     "category": "System",
+        # },
     }
 
     COMPONENT_CLASSES: ClassVar[set[str]] = {
@@ -225,8 +225,7 @@ class CommandPalette(ModalScreen[str | None]):
             # Predict if we'll cycle to first selectable (no next selectable exists)
             if options.highlighted is not None:
                 has_next = any(
-                    options.get_option_at_index(i)
-                    and not options.get_option_at_index(i).disabled
+                    options.get_option_at_index(i) and not options.get_option_at_index(i).disabled
                     for i in range(options.highlighted + 1, options.option_count)
                 )
                 if not has_next:

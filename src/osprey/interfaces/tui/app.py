@@ -55,10 +55,10 @@ class OspreyTUI(App):
         Binding("ctrl+q", "noop", "", show=False, priority=True),
         ("ctrl+c", "smart_ctrl_c", "Copy/Quit"),
         # Command palette
-        ("ctrl+p", "show_command_palette", "Commands"),
+        ("ctrl+p", "show_command_palette", "Command palette"),
         Binding("ctrl+shift+p", "command_palette", "Debug palette", show=False),
         # Focus input
-        ("ctrl+l", "focus_input", "Focus Input"),
+        ("ctrl+l", "focus_input", "Focus input"),
         # Theme picker
         ("ctrl+t", "switch_theme", "Switch theme"),
         # Help - toggle keys panel
