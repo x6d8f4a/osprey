@@ -400,6 +400,76 @@ class LogsLink(Static):
                 break
 
 
+class WrappedStatic(Static):
+    """Static widget that wraps text with proper indentation at render time.
+
+    Unlike regular Static, this widget re-wraps content when the widget
+    is resized, ensuring text always fits within the available width.
+    """
+
+    def __init__(
+        self,
+        content: str = "",
+        initial_indent: str = "",
+        subsequent_indent: str = "",
+        **kwargs,
+    ):
+        """Initialize wrapped static widget.
+
+        Args:
+            content: Initial text content.
+            initial_indent: Prefix for first line (e.g., "  ╰ ").
+            subsequent_indent: Prefix for wrapped lines (e.g., "    ").
+        """
+        super().__init__(content, **kwargs)
+        self._raw_content = content
+        self._initial_indent = initial_indent
+        self._subsequent_indent = subsequent_indent
+
+    def set_content(self, content: str) -> None:
+        """Set raw content to be wrapped at render time.
+
+        Args:
+            content: The raw text content (without indentation).
+        """
+        self._raw_content = content
+        self._wrap_and_update()
+
+    def on_resize(self) -> None:
+        """Re-wrap content when widget is resized."""
+        self._wrap_and_update()
+
+    def _wrap_and_update(self) -> None:
+        """Wrap content to fit current width and update display."""
+        if not self._raw_content:
+            self.update("")
+            return
+
+        # Use content_size.width if available, else size.width, else fallback
+        try:
+            width = self.content_size.width
+            if width <= 0:
+                width = self.size.width
+            if width <= 0:
+                width = 80
+        except Exception:
+            width = 80
+
+        # Wrap each line separately (preserve hard line breaks)
+        wrapped_lines = []
+        for i, line in enumerate(self._raw_content.split("\n")):
+            indent = self._initial_indent if i == 0 else self._subsequent_indent
+            wrapped = textwrap.fill(
+                line,
+                width=width,
+                initial_indent=indent,
+                subsequent_indent=self._subsequent_indent,
+            )
+            wrapped_lines.append(wrapped)
+
+        self.update("\n".join(wrapped_lines))
+
+
 class ProcessingStep(Static):
     """Base class for minimal processing steps with indicator and title only.
 
@@ -450,13 +520,18 @@ class ProcessingStep(Static):
                 id="step-title",
             )
             yield LogsLink("logs", id="step-logs-link")
-        yield Static("", id="step-output")
+        yield WrappedStatic(
+            "",
+            initial_indent=f"  {self.OUTPUT_GUIDE} ",
+            subsequent_indent="    ",
+            id="step-output",
+        )
 
     def on_mount(self) -> None:
         """Apply pending state after widget is mounted."""
         self._mounted = True
         # Hide output line initially
-        output = self.query_one("#step-output", Static)
+        output = self.query_one("#step-output", WrappedStatic)
         output.display = False
         # Hide logs link initially (shown when complete)
         logs_link = self.query_one("#step-logs-link", LogsLink)
@@ -516,25 +591,6 @@ class ProcessingStep(Static):
         if self._mounted:
             self._apply_active()
 
-    def _format_output(self, output_msg: str) -> str:
-        """Format output with visual guide on first line.
-
-        Args:
-            output_msg: The output message to format.
-
-        Returns:
-            Formatted string with ╰ prefix on first line,
-            subsequent lines aligned with text.
-        """
-        if not output_msg:
-            return ""
-        lines = output_msg.split("\n")
-        # First line with visual guide: "  ╰ text"
-        first_line = f"  {self.OUTPUT_GUIDE} {lines[0]}"
-        # Subsequent lines aligned with text (4 spaces to match "  ╰ ")
-        rest_lines = [f"    {line}" for line in lines[1:]]
-        return "\n".join([first_line] + rest_lines)
-
     def set_complete(
         self, status: str = "success", output_msg: str = ""
     ) -> None:
@@ -565,8 +621,8 @@ class ProcessingStep(Static):
         # Show output message on second line (for both success and error)
         if output_msg and self._mounted:
             self._output_message = output_msg
-            output = self.query_one("#step-output", Static)
-            output.update(self._format_output(output_msg))
+            output = self.query_one("#step-output", WrappedStatic)
+            output.set_content(output_msg)
             output.display = True
 
     def add_log(self, message: str, status: str = "status") -> None:

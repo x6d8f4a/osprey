@@ -9,6 +9,7 @@ from osprey.interfaces.tui.widgets.blocks import (
     ProcessingStep,
     TaskExtractionBlock,
     TaskExtractionStep,
+    WrappedStatic,
 )
 from osprey.interfaces.tui.widgets.chat_display import ChatDisplay
 from osprey.interfaces.tui.widgets.command_palette import CommandPalette
@@ -43,4 +44,5 @@ __all__ = [
     "ThemePicker",
     "WelcomeBanner",
     "WelcomeScreen",
+    "WrappedStatic",
 ]
