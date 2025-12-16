@@ -90,7 +90,7 @@ class OspreyTUI(App):
         yield Vertical(
             ChatDisplay(id="chat-display"),
             CommandDropdown(id="command-dropdown"),
-            ChatInput(id="chat-input"),
+            ChatInput(id="chat-input", placeholder="Type your message here..."),
             StatusPanel(id="status-panel"),
             id="main-content",
         )
@@ -113,11 +113,13 @@ class OspreyTUI(App):
         panel_id = "#welcome-status" if self._welcome_mode else "#status-panel"
         try:
             status = self.query_one(panel_id, StatusPanel)
-            status.set_message([
-                ("Press ", "desc"),
-                ("Ctrl-C", "cmd"),
-                (" again to exit", "desc"),
-            ])
+            status.set_message(
+                [
+                    ("Press ", "desc"),
+                    ("Ctrl-C", "cmd"),
+                    (" again to exit", "desc"),
+                ]
+            )
         except Exception:
             pass
 
@@ -128,11 +130,13 @@ class OspreyTUI(App):
         panel_id = "#welcome-status" if self._welcome_mode else "#status-panel"
         try:
             status = self.query_one(panel_id, StatusPanel)
-            status.set_tips([
-                ("/", "for commands"),
-                ("option + ⏎", "for newline"),
-                ("↑↓", "for history"),
-            ])
+            status.set_tips(
+                [
+                    ("/", "for commands"),
+                    ("option + ⏎", "for newline"),
+                    ("↑↓", "for history"),
+                ]
+            )
         except Exception:
             pass
 
