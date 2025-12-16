@@ -13,6 +13,7 @@ from osprey.interfaces.tui.widgets.chat_display import ChatDisplay
 from osprey.interfaces.tui.widgets.command_palette import CommandPalette
 from osprey.interfaces.tui.widgets.theme_picker import ThemePicker
 from osprey.interfaces.tui.widgets.debug import DebugBlock
+from osprey.interfaces.tui.widgets.log_viewer import LogViewer
 from osprey.interfaces.tui.widgets.input import (
     ChatInput,
     CommandDropdown,
@@ -25,6 +26,7 @@ __all__ = [
     "ChatMessage",
     "CommandPalette",
     "DebugBlock",
+    "LogViewer",
     "ProcessingBlock",
     "ProcessingStep",
     "TaskExtractionBlock",

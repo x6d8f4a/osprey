@@ -1,10 +1,14 @@
 """Processing block widgets for the TUI."""
 
 import textwrap
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
+from textual.containers import Horizontal
 from textual.widgets import Collapsible, Static
+
+if TYPE_CHECKING:
+    from textual.events import Click
 
 
 class ProcessingBlock(Static):
@@ -381,7 +385,8 @@ class ProcessingStep(Static):
     """Base class for minimal processing steps with indicator and title only.
 
     Unlike ProcessingBlock, this displays just a single line with an indicator
-    and title. Used for steps that don't need IN/OUT/LOG sections visible.
+    and title, plus an optional output line showing the result.
+    Includes a "logs" link to view full log history in a modal.
     """
 
     # Same indicators as ProcessingBlock for consistency
@@ -412,12 +417,16 @@ class ProcessingStep(Static):
         self._data: dict[str, Any] = {}
         # Track if input was set (for compatibility)
         self._input_set: bool = False
-        # Error message for output line
-        self._error_message: str = ""
+        # Output message for display
+        self._output_message: str = ""
 
     def compose(self) -> ComposeResult:
-        """Compose the step with title line and optional output line."""
-        yield Static(f"{self.INDICATOR_PENDING} {self.title}", id="step-title")
+        """Compose the step with title line, logs link, and output line."""
+        with Horizontal(id="step-header"):
+            yield Static(
+                f"{self.INDICATOR_PENDING} {self.title}", id="step-title"
+            )
+            yield Static("logs", id="step-logs-link")
         yield Static("", id="step-output")
 
     def on_mount(self) -> None:
@@ -426,9 +435,26 @@ class ProcessingStep(Static):
         # Hide output line initially
         output = self.query_one("#step-output", Static)
         output.display = False
+        # Hide logs link initially (shown when complete)
+        logs_link = self.query_one("#step-logs-link", Static)
+        logs_link.display = False
         # Apply pending state
         if self._status == "active":
             self._apply_active()
+
+    def on_click(self, event: "Click") -> None:
+        """Handle click events on the logs link."""
+        # Check if click was on the logs link
+        logs_link = self.query_one("#step-logs-link", Static)
+        if logs_link in event.widget.ancestors_with_self:
+            self._show_logs()
+
+    def _show_logs(self) -> None:
+        """Open the log viewer modal."""
+        from osprey.interfaces.tui.widgets.log_viewer import LogViewer
+
+        viewer = LogViewer(f"{self.title} - Logs", self._log_messages)
+        self.app.push_screen(viewer)
 
     def _start_breathing(self) -> None:
         """Start the breathing animation timer."""
@@ -469,13 +495,13 @@ class ProcessingStep(Static):
             self._apply_active()
 
     def set_complete(
-        self, status: str = "success", error_msg: str = ""
+        self, status: str = "success", output_msg: str = ""
     ) -> None:
         """Mark the step as complete.
 
         Args:
             status: The completion status ('success' or 'error').
-            error_msg: Error message to display (only shown for error status).
+            output_msg: Output message to display on the second line.
         """
         self._status = status
         self._stop_breathing()
@@ -490,11 +516,16 @@ class ProcessingStep(Static):
         self.remove_class("step-active")
         self.add_class(f"step-{status}")
 
-        # Show error message on output line if error
-        if status == "error" and error_msg and self._mounted:
-            self._error_message = error_msg
+        # Show logs link now that step is complete
+        if self._mounted:
+            logs_link = self.query_one("#step-logs-link", Static)
+            logs_link.display = True
+
+        # Show output message on second line (for both success and error)
+        if output_msg and self._mounted:
+            self._output_message = output_msg
             output = self.query_one("#step-output", Static)
-            output.update(f"  {error_msg}")
+            output.update(f"  {output_msg}")
             output.display = True
 
     def add_log(self, message: str, status: str = "status") -> None:
@@ -508,7 +539,7 @@ class ProcessingStep(Static):
             self._log_messages.append((status, message))
             # Track last error for potential display
             if status == "error":
-                self._error_message = message
+                self._output_message = message
 
     # Compatibility methods for app.py interface
     def set_input(self, text: str, mark_set: bool = True) -> None:
@@ -522,14 +553,13 @@ class ProcessingStep(Static):
             self._input_set = True
 
     def set_output(self, text: str, status: str = "success") -> None:
-        """Mark complete with optional error message.
+        """Mark complete with output message.
 
         Args:
-            text: The output text (used as error message if status is error).
+            text: The output text to display on second line.
             status: The completion status ('success' or 'error').
         """
-        error_msg = text if status == "error" else ""
-        self.set_complete(status, error_msg)
+        self.set_complete(status, text)
 
     def set_partial_output(self, text: str, status: str = "pending") -> None:
         """No-op for step (no streaming output display).
