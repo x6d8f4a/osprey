@@ -43,9 +43,9 @@ class CommandPalette(ModalScreen[str | None]):
             "shortcut": "",
             "category": "System",
         },
-        "help": {
-            "label": "Help",
-            "shortcut": "",
+        "toggle_help_panel": {
+            "label": "Toggle help",
+            "shortcut": "ctrl + h",
             "category": "System",
         },
         "open_docs": {
@@ -55,7 +55,7 @@ class CommandPalette(ModalScreen[str | None]):
         },
         "exit_app": {
             "label": "Exit the app",
-            "shortcut": "",
+            "shortcut": "^c ^c",
             "category": "System",
         },
         "toggle_console": {

@@ -47,15 +47,22 @@ class OspreyTUI(App):
 
     CSS_PATH = "styles.tcss"
 
+    # Prevent inheriting ctrl+q from parent App class
+    _inherit_bindings = False
+
     BINDINGS = [
+        # Override default ctrl+q quit (built-in has priority=True, so we must too)
+        Binding("ctrl+q", "noop", "", show=False, priority=True),
         ("ctrl+c", "smart_ctrl_c", "Copy/Quit"),
-        Binding("ctrl+q", "noop", "", show=False),  # Disable default ctrl+q quit
         # Command palette
-        ("ctrl+shift+p", "show_command_palette", "Command Palette"),
-        # Focus input (cross-platform: ctrl+l on Linux, cmd+l on macOS)
+        ("ctrl+p", "show_command_palette", "Commands"),
+        Binding("ctrl+shift+p", "command_palette", "Debug palette", show=False),
+        # Focus input
         ("ctrl+l", "focus_input", "Focus Input"),
         # Theme picker
-        ("ctrl+t", "switch_theme", "Theme"),
+        ("ctrl+t", "switch_theme", "Switch theme"),
+        # Help - toggle keys panel
+        ("ctrl+h", "toggle_help_panel", "Toggle help"),
     ]
 
     def __init__(self, config_path: str = "config.yml"):
@@ -201,6 +208,21 @@ class OspreyTUI(App):
     def action_switch_theme(self) -> None:
         """Show the theme picker modal."""
         self.push_screen(ThemePicker())
+
+    def action_toggle_help_panel(self) -> None:
+        """Toggle the keys panel (HelpPanel) on the right side."""
+        from textual.css.query import NoMatches
+        from textual.widgets import HelpPanel
+
+        try:
+            help_panel = self.screen.query_one(HelpPanel)
+            help_panel.remove()
+        except NoMatches:
+            self.screen.mount(HelpPanel())
+
+    def action_exit_app(self) -> None:
+        """Exit the application."""
+        self.exit()
 
     def _get_version(self) -> str:
         """Get the framework version."""
