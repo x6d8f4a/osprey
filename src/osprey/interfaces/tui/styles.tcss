@@ -588,13 +588,38 @@ ContentViewer {
 
 #content-viewer-header {
     width: 100%;
-    height: 1;
+    height: auto;
     margin-bottom: 1;
 }
 
 #content-viewer-title {
-    width: 1fr;
+    width: auto;
     text-style: bold;
+}
+
+#markdown-checkbox {
+    width: auto;
+    height: 1;
+    margin-left: 2;
+    border: none;
+    padding-right: 1;
+    background: transparent;
+}
+
+#markdown-checkbox:focus {
+    background: $panel;
+}
+
+#markdown-checkbox > .toggle--label {
+    color: $text-muted;
+}
+
+#markdown-checkbox:focus > .toggle--label {
+    color: $text;
+}
+
+#header-spacer {
+    width: 1fr;
 }
 
 #content-viewer-dismiss-hint {
@@ -607,11 +632,6 @@ ContentViewer {
     height: auto;
     max-height: 100%;
     scrollbar-size: 0 0;
-}
-
-#content-viewer-text {
-    width: 100%;
-    height: auto;
 }
 
 /* Debug block for event visualization */

@@ -624,10 +624,14 @@ class ProcessingStep(Static):
         self.app.push_screen(viewer)
 
     def _show_response(self) -> None:
-        """Open the response viewer modal."""
+        """Open the response viewer modal with JSON syntax highlighting."""
         from osprey.interfaces.tui.widgets.content_viewer import ContentViewer
 
-        viewer = ContentViewer(f"{self.title} - Response", self._llm_response)
+        viewer = ContentViewer(
+            f"{self.title} - Response",
+            self._llm_response,
+            language="json",
+        )
         self.app.push_screen(viewer)
 
     def set_llm_prompt(self, prompt: str) -> None:
