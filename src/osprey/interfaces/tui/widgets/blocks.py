@@ -574,7 +574,7 @@ class ProcessingStep(Static):
         # Hide output line initially
         output = self.query_one("#step-output", WrappedStatic)
         output.display = False
-        # Hide logs link initially (shown when complete)
+        # Hide logs link initially (shown when logs available)
         logs_link = self.query_one("#step-logs-link", LogsLink)
         logs_link.display = False
         # Hide prompt/response links initially (shown when data available)
@@ -583,6 +583,8 @@ class ProcessingStep(Static):
         response_link = self.query_one("#step-response-link", ResponseLink)
         response_link.display = False
         # Show links if data was set before mounting (race condition fix)
+        if self._log_messages:
+            logs_link.display = True
         if self._llm_prompt:
             prompt_link.display = True
         if self._llm_response:
@@ -608,10 +610,10 @@ class ProcessingStep(Static):
             self._show_response()
 
     def _show_logs(self) -> None:
-        """Open the log viewer modal."""
+        """Open the log viewer modal with live updates."""
         from osprey.interfaces.tui.widgets.log_viewer import LogViewer
 
-        viewer = LogViewer(f"{self.title} - Logs", self._log_messages)
+        viewer = LogViewer(f"{self.title} - Logs", self)
         self.app.push_screen(viewer)
 
     def _show_prompt(self) -> None:
@@ -723,7 +725,7 @@ class ProcessingStep(Static):
             output.display = True
 
     def add_log(self, message: str, status: str = "status") -> None:
-        """Store log message internally (not displayed).
+        """Store log message and show logs link on first log.
 
         Args:
             message: The message text.
@@ -731,6 +733,10 @@ class ProcessingStep(Static):
         """
         if message:
             self._log_messages.append((status, message))
+            # Show logs link as soon as first log arrives
+            if self._mounted and len(self._log_messages) == 1:
+                logs_link = self.query_one("#step-logs-link", LogsLink)
+                logs_link.display = True
             # Track last error for potential display
             if status == "error":
                 self._output_message = message
