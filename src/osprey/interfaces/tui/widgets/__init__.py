@@ -2,6 +2,7 @@
 
 from osprey.interfaces.tui.widgets.blocks import (
     ClassificationBlock,
+    ClassificationStep,
     ExecutionStepBlock,
     LogsLink,
     OrchestrationBlock,
@@ -41,6 +42,7 @@ __all__ = [
     "TaskExtractionBlock",
     "TaskExtractionStep",
     "ClassificationBlock",
+    "ClassificationStep",
     "OrchestrationBlock",
     "ExecutionStepBlock",
     "ChatDisplay",

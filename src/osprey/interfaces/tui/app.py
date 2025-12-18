@@ -22,6 +22,7 @@ from osprey.interfaces.tui.widgets import (
     ChatDisplay,
     ChatInput,
     ClassificationBlock,
+    ClassificationStep,
     CommandDropdown,
     CommandPalette,
     ExecutionStepBlock,
@@ -774,7 +775,7 @@ class OspreyTUI(App):
                 block.set_output(task if task else "Task extracted")
             elif component == "classifier":
                 caps = data.get("capability_names", [])
-                if caps and isinstance(block, ClassificationBlock):
+                if caps and isinstance(block, (ClassificationBlock, ClassificationStep)):
                     block.set_capabilities(self.all_capability_names, caps)
                 else:
                     block.set_output("Classification complete")
@@ -822,7 +823,7 @@ class OspreyTUI(App):
         # Task extraction uses minimal step widget, others use full blocks
         block_classes = {
             "task_extraction": (TaskExtractionStep, "Task Extraction"),
-            "classifier": (ClassificationBlock, "Classification"),
+            "classifier": (ClassificationStep, "Classification"),
             "orchestrator": (OrchestrationBlock, "Orchestration"),
         }
 

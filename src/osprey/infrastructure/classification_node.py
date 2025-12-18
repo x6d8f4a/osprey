@@ -11,6 +11,7 @@ Convention-based LangGraph-native implementation with built-in error handling an
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 from osprey.base import BaseCapability, CapabilityMatch, ClassifierExample
@@ -499,6 +500,20 @@ async def select_capabilities(
         # Create classifier instance with shared context
         classifier = CapabilityClassifier(task, state, logger, previous_failure)
 
+        # Log a sample prompt for TUI display (using first capability as example)
+        first_cap = remaining_capabilities[0]
+        try:
+            classifier_guide = first_cap.classifier_guide
+            if classifier_guide:
+                sample_prompt = classifier._build_classification_prompt(classifier_guide)
+                logger.info(
+                    f"Classification prompt (sample for {first_cap.name})",
+                    llm_prompt=sample_prompt,
+                    stream=False,
+                )
+        except Exception:
+            pass  # Skip if can't build sample prompt
+
         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
 
@@ -518,6 +533,19 @@ async def select_capabilities(
                 continue
             elif result is True:
                 active_capabilities.append(capability.name)
+
+        # Log aggregated classification results for TUI display
+        response_data = {"task": task, "results": {}}
+        for capability, result in zip(remaining_capabilities, classification_results, strict=False):
+            if isinstance(result, Exception):
+                response_data["results"][capability.name] = {"error": str(result)}
+            else:
+                response_data["results"][capability.name] = {"selected": result}
+        logger.info(
+            "Classification results",
+            llm_response=json.dumps(response_data, indent=2),
+            stream=False,
+        )
 
     logger.info(f"{len(active_capabilities)} capabilities required: {active_capabilities}")
     return active_capabilities

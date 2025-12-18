@@ -785,6 +785,36 @@ class TaskExtractionStep(ProcessingStep):
         super().__init__("Task Extraction", **kwargs)
 
 
+class ClassificationStep(ProcessingStep):
+    """Step widget for capability classification phase - minimal UI.
+
+    Shows selected capabilities as a bulleted vertical list on completion.
+    """
+
+    def __init__(self, **kwargs):
+        """Initialize classification step."""
+        super().__init__("Classification", **kwargs)
+        self._all_capabilities: list[str] = []
+        self._selected_capabilities: list[str] = []
+
+    def set_capabilities(self, all_caps: list[str], selected: list[str]) -> None:
+        """Show selected capabilities as bulleted list.
+
+        Args:
+            all_caps: All available capabilities (stored but not displayed).
+            selected: The selected/active capabilities to display.
+        """
+        self._all_capabilities = all_caps
+        self._selected_capabilities = selected
+
+        if selected:
+            output_text = "\n".join(f"✓ {cap}" for cap in selected)
+        else:
+            output_text = "No capabilities selected"
+
+        self.set_complete("success", output_text)
+
+
 class TaskExtractionBlock(ProcessingBlock):
     """Block for task extraction phase (deprecated, use TaskExtractionStep)."""
 
@@ -797,7 +827,11 @@ class TaskExtractionBlock(ProcessingBlock):
 
 
 class ClassificationBlock(ProcessingBlock):
-    """Block for capability classification phase with simple text output."""
+    """Block for capability classification phase with simple text output.
+
+    .. deprecated::
+        Use ClassificationStep instead for minimal UI.
+    """
 
     # Expanded header text
     EXPANDED_HEADER = "Activated capabilities"

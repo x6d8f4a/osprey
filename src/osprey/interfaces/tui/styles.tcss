@@ -434,7 +434,8 @@ ExecutionStepBlock {
    ============================================================================= */
 
 ProcessingStep,
-TaskExtractionStep {
+TaskExtractionStep,
+ClassificationStep {
     width: 100%;
     height: auto;
     margin: 0 2 1 2;
