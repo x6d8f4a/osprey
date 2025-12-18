@@ -70,9 +70,9 @@ class LogViewer(ModalScreen[None]):
             with ScrollableContainer(id="log-viewer-content"):
                 yield Static(self._format_logs(), id="log-viewer-logs")
             yield Static(
-                "[$text bold]␣[/$text bold] pg down · "
-                "[$text bold]b[/$text bold] pg up · "
-                "[$text bold]⏎[/$text bold] close",
+                "[$text bold]␣[/$text bold] to pg down · "
+                "[$text bold]b[/$text bold] to pg up · "
+                "[$text bold]⏎[/$text bold] to close",
                 id="log-viewer-footer",
             )
 

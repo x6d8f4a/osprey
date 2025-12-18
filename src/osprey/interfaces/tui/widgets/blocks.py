@@ -620,7 +620,9 @@ class ProcessingStep(Static):
         """Open the prompt viewer modal."""
         from osprey.interfaces.tui.widgets.content_viewer import ContentViewer
 
-        viewer = ContentViewer(f"{self.title} - Prompt", self._llm_prompt)
+        viewer = ContentViewer(
+            f"{self.title} - Prompt", self._llm_prompt, language="markdown"
+        )
         self.app.push_screen(viewer)
 
     def _show_response(self) -> None:

@@ -597,27 +597,6 @@ ContentViewer {
     text-style: bold;
 }
 
-#markdown-checkbox {
-    width: auto;
-    height: 1;
-    margin-left: 2;
-    border: none;
-    padding-right: 1;
-    background: transparent;
-}
-
-#markdown-checkbox:focus {
-    background: $panel;
-}
-
-#markdown-checkbox > .toggle--label {
-    color: $text-muted;
-}
-
-#markdown-checkbox:focus > .toggle--label {
-    color: $text;
-}
-
 #header-spacer {
     width: 1fr;
 }
