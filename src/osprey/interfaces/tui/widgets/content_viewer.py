@@ -64,6 +64,8 @@ class ContentViewer(ModalScreen[None]):
 
         # Base height will be calculated in on_mount() when we have screen access
         self._base_height = 0
+        # Markdown base height - captured on first markdown render
+        self._markdown_base_height: int | None = None
 
     def _get_current_content(self) -> str:
         """Get content for currently selected tab."""
@@ -178,21 +180,31 @@ class ContentViewer(ModalScreen[None]):
 
         if self._markdown_mode:
             container.mount(Markdown(self._format_as_markdown()))
-            # In markdown mode, let height be auto for proper rendering
             if self._is_tabbed:
-                container.styles.height = "auto"
+                if self._markdown_base_height is None:
+                    # First markdown render (toggle) - just auto size, don't capture yet
+                    container.styles.height = "auto"
+                else:
+                    # Tab switch in markdown mode - use captured height
+                    container.styles.height = self._markdown_base_height
         else:
             container.mount(
                 Static(
                     self._get_current_content() or "[dim]No content available[/dim]"
                 )
             )
-            # In raw mode, use base height to prevent jumping when switching tabs
             if self._is_tabbed:
                 container.styles.height = self._base_height
+                # Reset markdown height when leaving markdown mode
+                self._markdown_base_height = None
 
     def _refresh_tab_display(self) -> None:
         """Update tab highlighting and content after tab switch."""
+        # If in markdown mode and height not yet captured, capture it before refresh
+        if self._markdown_mode and self._is_tabbed and self._markdown_base_height is None:
+            container = self.query_one("#content-viewer-content", ScrollableContainer)
+            self._markdown_base_height = container.size.height
+
         for i in range(len(self._tabs)):
             try:
                 tab = self.query_one(f"#tab-{i}", Static)
