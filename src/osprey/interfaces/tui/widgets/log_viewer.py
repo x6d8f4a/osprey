@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
+from textual.events import Key
 from textual.screen import ModalScreen
 from textual.timer import Timer
 from textual.widgets import Static
@@ -64,9 +65,16 @@ class LogViewer(ModalScreen[None]):
         with Container(id="log-viewer-container"):
             with Horizontal(id="log-viewer-header"):
                 yield Static(self.log_title, id="log-viewer-title")
-                yield Static("enter/esc", id="log-viewer-dismiss-hint")
+                yield Static("", id="log-header-spacer")
+                yield Static("esc", id="log-viewer-dismiss-hint")
             with ScrollableContainer(id="log-viewer-content"):
                 yield Static(self._format_logs(), id="log-viewer-logs")
+            yield Static(
+                "[$text bold]␣[/$text bold] pg down · "
+                "[$text bold]b[/$text bold] pg up · "
+                "[$text bold]⏎[/$text bold] close",
+                id="log-viewer-footer",
+            )
 
     def on_mount(self) -> None:
         """Start refresh timer for live updates."""
@@ -143,6 +151,21 @@ class LogViewer(ModalScreen[None]):
                 lines.append(f"{indicator} {wrapped}")
 
         return "\n".join(lines)
+
+    def on_key(self, event: Key) -> None:
+        """Handle key events - Space/b to scroll."""
+        if event.key == "space":
+            content = self.query_one(
+                "#log-viewer-content", ScrollableContainer
+            )
+            content.scroll_page_down(animate=False)
+            event.stop()
+        elif event.key == "b":
+            content = self.query_one(
+                "#log-viewer-content", ScrollableContainer
+            )
+            content.scroll_page_up(animate=False)
+            event.stop()
 
     def action_dismiss_viewer(self) -> None:
         """Dismiss the log viewer."""

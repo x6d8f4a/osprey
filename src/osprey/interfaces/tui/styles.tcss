@@ -622,16 +622,31 @@ ContentViewer {
     width: 1fr;
 }
 
-#content-viewer-dismiss-hint {
-    width: auto;
-    color: $text-muted;
-}
-
-#content-viewer-content {
+#content-viewer-content,
+#log-viewer-content {
     width: 100%;
     height: auto;
     max-height: 100%;
     scrollbar-size: 0 0;
+}
+
+#content-viewer-dismiss-hint,
+#log-viewer-dismiss-hint {
+    width: auto;
+    color: $text-muted;
+}
+
+#log-header-spacer {
+    width: 1fr;
+}
+
+#content-viewer-footer,
+#log-viewer-footer {
+    dock: bottom;
+    width: 100%;
+    height: 1;
+    text-align: right;
+    color: $text-muted;
 }
 
 /* Debug block for event visualization */

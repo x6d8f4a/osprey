@@ -57,9 +57,15 @@ class ContentViewer(ModalScreen[None]):
                 yield Static(self.viewer_title, id="content-viewer-title")
                 yield Checkbox("Markdown", id="markdown-checkbox")
                 yield Static("", id="header-spacer")
-                yield Static("enter/esc", id="content-viewer-dismiss-hint")
+                yield Static("esc", id="content-viewer-dismiss-hint")
             with ScrollableContainer(id="content-viewer-content"):
                 yield Static(self.content or "[dim]No content available[/dim]")
+            yield Static(
+                "[$text bold]␣[/$text bold] to pg down · "
+                "[$text bold]b[/$text bold] to pg up · "
+                "[$text bold]⏎[/$text bold] to close",
+                id="content-viewer-footer",
+            )
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         """Handle markdown checkbox toggle."""
@@ -73,18 +79,26 @@ class ContentViewer(ModalScreen[None]):
         if event.value:  # Checked = Markdown
             container.mount(Markdown(self._format_as_markdown()))
         else:  # Unchecked = Raw
-            container.mount(
-                Static(self.content or "[dim]No content available[/dim]")
-            )
+            container.mount(Static(self.content or "[dim]No content available[/dim]"))
 
     def on_key(self, event: Key) -> None:
-        """Handle key events - Enter to close unless on interactive widget."""
+        """Handle key events - Enter to close, Space/b to scroll."""
         if event.key == "enter":
             # Don't close if focus is on the checkbox (let it toggle)
             focused = self.app.focused
             if focused and focused.id == "markdown-checkbox":
                 return  # Let checkbox handle Enter
             self.dismiss(None)
+            event.stop()
+        elif event.key == "space":
+            # Page down (no animation)
+            container = self.query_one("#content-viewer-content", ScrollableContainer)
+            container.scroll_page_down(animate=False)
+            event.stop()
+        elif event.key == "b":
+            # Page up (vim/less convention, no animation)
+            container = self.query_one("#content-viewer-content", ScrollableContainer)
+            container.scroll_page_up(animate=False)
             event.stop()
 
     def action_dismiss_viewer(self) -> None:
