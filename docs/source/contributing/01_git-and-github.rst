@@ -176,6 +176,6 @@ If ``ci_check.sh`` passes locally, GitHub Actions CI will almost certainly pass.
 Next Steps
 ----------
 
-- :doc:`03_code-standards` - Code style guidelines
-- :doc:`04_developer-workflows` - Common workflows
+- :doc:`02_code-standards` - Code style guidelines
+- :doc:`03_ai-assisted-development` - AI workflows
 

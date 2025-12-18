@@ -1,12 +1,103 @@
-Developer Workflows
-===================
+AI-Assisted Development
+========================
 
-Streamlined workflow guides for common development tasks, designed to work seamlessly Example assistants.
+Osprey's workflows are designed for AI coding assistants. Use structured prompts to automate testing, documentation, commits, and releases.
 
 ----
 
-Workflow Categories
--------------------
+Getting Started
+---------------
+
+Osprey workflows work with AI coding assistants. Choose the tool that fits your workflow:
+
+.. tab-set::
+
+   .. tab-item:: 🎯 Cursor
+
+      **AI-powered code editor** with native ``@`` mentions for workflow files.
+
+      **Platform Support:** Windows, macOS, Linux
+
+      .. dropdown:: Installation Instructions
+         :color: info
+         :icon: download
+
+         **1. Download:**
+
+         Visit `cursor.com <https://cursor.com>`_ and download for your platform.
+
+         **2. Install:**
+
+         - **Windows:** Run the ``.exe`` installer
+         - **macOS:** Open the ``.dmg`` and drag to Applications
+         - **Linux:** Install ``.deb`` or ``.rpm`` package for your distribution
+
+         **3. First-Time Setup:**
+
+         - Launch Cursor
+         - Complete the setup wizard
+         - Create an account to unlock AI features (optional but recommended)
+         - Open the Osprey project folder
+
+         .. seealso::
+            Official docs: `docs.cursor.com <https://docs.cursor.com/en/get-started/installation>`_
+
+   .. tab-item:: 💬 Claude Code
+
+      **Terminal-based AI assistant** that works alongside your existing editor.
+
+      **Platform Support:** Windows (WSL), macOS, Linux
+
+      .. dropdown:: Installation Instructions
+         :color: info
+         :icon: download
+
+         **1. Prerequisites:**
+
+         - Node.js 18.0 or higher
+         - Internet connection
+
+         **2. Install:**
+
+         .. code-block:: bash
+
+            # Using npm (recommended)
+            npm install -g @anthropic-ai/claude-code
+
+            # Or using Homebrew (macOS)
+            brew install anthropic/tap/claude-code
+
+         **3. Verify Installation:**
+
+         .. code-block:: bash
+
+            claude --version
+
+         **4. Authenticate:**
+
+         .. code-block:: bash
+
+            claude auth login
+
+         This opens your browser to sign in with your Anthropic account.
+
+         **5. Update:**
+
+         .. code-block:: bash
+
+            # Using npm
+            npm update -g @anthropic-ai/claude-code
+
+            # Using Homebrew
+            brew upgrade claude-code
+
+         .. seealso::
+            Official docs: `docs.anthropic.com <https://docs.anthropic.com/en/docs/claude-code/getting-started>`_
+
+----
+
+Workflow Catalog
+----------------
 
 .. tab-set::
 
@@ -19,37 +110,22 @@ Workflow Categories
          :gutter: 3
 
          .. grid-item-card:: 🔍 Pre-Merge Cleanup
-            :link: #pre-merge-cleanup
+            :link: pre-merge-cleanup
             :link-type: ref
 
             Scan for common issues before committing.
 
-            +++
-            .. code-block:: bash
-
-               ./scripts/premerge_check.sh
-
          .. grid-item-card:: 📝 Docstrings
-            :link: #docstrings
+            :link: docstrings
             :link-type: ref
 
             Generate proper docstrings for functions and classes.
 
-            +++
-            .. code-block:: text
-
-               @docs/workflows/docstrings.md
-
          .. grid-item-card:: 💬 Comments
-            :link: #comments
+            :link: comments
             :link-type: ref
 
             Add strategic comments to complex code.
-
-            +++
-            .. code-block:: text
-
-               @docs/workflows/comments.md
 
    .. tab-item:: 🏗️ Standard Workflows
       :sync: standard
@@ -60,48 +136,28 @@ Workflow Categories
          :gutter: 3
 
          .. grid-item-card:: 🧪 Testing Strategy
-            :link: #testing
+            :link: testing
             :link-type: ref
 
             Cost-aware testing: unit, integration, or e2e?
 
-            +++
-            .. code-block:: text
-
-               @docs/workflows/testing-workflow.md
-
          .. grid-item-card:: 📦 Commit Organization
-            :link: #commits
+            :link: commits
             :link-type: ref
 
             Organize changes into atomic commits with CHANGELOG entries.
 
-            +++
-            .. code-block:: text
-
-               @docs/workflows/commit-organization.md
-
          .. grid-item-card:: 📚 Documentation Updates
-            :link: #documentation
+            :link: documentation
             :link-type: ref
 
             Identify and update documentation that needs changes.
 
-            +++
-            .. code-block:: text
-
-               @docs/workflows/update-documentation.md
-
          .. grid-item-card:: 🤖 AI Code Review
-            :link: #ai-review
+            :link: ai-review
             :link-type: ref
 
             Review AI-generated code for quality and correctness.
-
-            +++
-            .. code-block:: text
-
-               @docs/workflows/ai-code-review.md
 
    .. tab-item:: 🎯 Release Workflows
       :sync: release
@@ -112,15 +168,10 @@ Workflow Categories
          :gutter: 3
 
          .. grid-item-card:: 🚢 Release Process
-            :link: #release
+            :link: release
             :link-type: ref
 
             Complete release workflow with testing, versioning, and deployment.
-
-            +++
-            .. code-block:: text
-
-               @docs/workflows/release-workflow.md Guide me through releasing v0.9.8
 
 ----
 
@@ -298,59 +349,83 @@ Detailed Workflow Guides
 
 ----
 
-Common Workflow Patterns
--------------------------
+Best Practices
+--------------
 
-.. grid:: 2
-   :gutter: 3
+**Do:**
 
-   .. grid-item-card:: 🎯 Before Every Commit
+- Reference specific workflows with ``@`` mentions
+- Provide context about what you're working on
+- Review all AI-generated code carefully
+- Run tests to verify AI changes
+- Check for security issues in AI code
 
-      .. code-block:: text
+**Don't:**
 
-         @docs/workflows/pre-merge-cleanup.md Scan for issues
-
-      Catches common mistakes automatically.
-
-   .. grid-item-card:: 🎨 First PR?
-
-      .. code-block:: text
-
-         @docs/workflows/commit-organization.md + @CONTRIBUTING.md
-         Review my changes against contribution guidelines
-
-      Get your PR ready for review.
-
-   .. grid-item-card:: ✨ Adding Features?
-
-      .. code-block:: text
-
-         @docs/workflows/update-documentation.md
-         What documentation needs updating?
-
-      Don't forget the docs!
-
-   .. grid-item-card:: 🚀 Ready to Release?
-
-      .. code-block:: text
-
-         @docs/workflows/release-workflow.md Guide me through the release
-
-      Follow the complete release checklist.
+- Blindly accept AI suggestions
+- Skip testing AI-generated code
+- Assume AI knows project-specific details
+- Skip pre-merge cleanup checks
+- Use AI to write every single line
+- Skip human code review
 
 ----
 
-Next Steps
-----------
+Example: Adding a Capability with AI
+-------------------------------------
+
+**1. Plan the work:**
+
+.. code-block:: text
+
+   @docs/workflows/ + @docs/source/developer-guides/
+   I want to add a capability for archiver data. Help me plan the implementation.
+
+**2. Write the code and docstrings:**
+
+.. code-block:: text
+
+   @docs/workflows/docstrings.md
+   Write a docstring for my new capability class
+
+**3. Add appropriate tests:**
+
+.. code-block:: text
+
+   @docs/workflows/testing-workflow.md
+   My capability calls an external API. Should I write unit or integration tests?
+
+**4. Update documentation:**
+
+.. code-block:: text
+
+   @docs/workflows/update-documentation.md
+   I added a new archiver capability. What documentation needs updating?
+
+**5. Pre-commit cleanup:**
+
+.. code-block:: text
+
+   @docs/workflows/pre-merge-cleanup.md
+   Scan my uncommitted changes for issues
+
+**6. Organize commits:**
+
+.. code-block:: text
+
+   @docs/workflows/commit-organization.md
+   Help me organize these changes into atomic commits with CHANGELOG entries
+
+----
 
 .. seealso::
 
    **Explore More:**
 
-   - Browse detailed workflow files in ``docs/workflows/``
-   - :doc:`05_ai-assisted-development` for AI integration patterns
-   - :doc:`03_code-standards` for coding conventions
-   - :doc:`index` for contributing overview
+   - Browse all workflow files in ``docs/workflows/``
+   - :doc:`02_code-standards` for coding conventions
+   - :doc:`index` for environment setup
+   - :doc:`../developer-guides/index` for technical guides
 
    **Get Started:**
 

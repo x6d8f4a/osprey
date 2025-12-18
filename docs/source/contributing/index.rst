@@ -3,101 +3,142 @@ Contributing to Osprey
 
 Thank you for your interest in contributing to the Osprey Framework!
 
-Quick Start
------------
+This guide will help you get set up and ready to contribute. Whether you're fixing a bug, adding a feature, or improving documentation, we're excited to have you here.
+
+----
+
+Contributing Guide
+------------------
 
 .. grid:: 2
    :gutter: 3
 
-   .. grid-item-card:: 🚀 Getting Started
-      :link: 01_getting-started
-      :link-type: doc
-
-      Set up your development environment and run your first tests.
-
    .. grid-item-card:: 🔄 Git & GitHub Workflow
-      :link: 02_git-and-github
+      :link: 01_git-and-github
       :link-type: doc
 
       Learn branching conventions, commit messages, and the PR process.
 
    .. grid-item-card:: 📋 Code Standards
-      :link: 03_code-standards
+      :link: 02_code-standards
       :link-type: doc
 
       Python style guide, testing requirements, and linting setup.
 
-   .. grid-item-card:: 🎯 Developer Workflows
-      :link: 04_developer-workflows
-      :link-type: doc
-
-      Workflows for testing, commits, and documentation.
-
    .. grid-item-card:: 🤖 AI-Assisted Development
-      :link: 05_ai-assisted-development
+      :link: 03_ai-assisted-development
       :link-type: doc
 
-      Use AI tools effectively with Osprey workflows.
+      Structured workflows designed for AI coding assistants.
 
    .. grid-item-card:: 🤝 Community Guidelines
-      :link: 06_community
+      :link: 04_community
       :link-type: doc
 
       Code of conduct, reporting bugs, and getting help.
 
-Before Your First Commit
--------------------------
+----
 
-**Development Requirements:**
+Environment Setup
+-----------------
+
+Before you can contribute, you'll need to set up your local development environment. This process takes about 5-10 minutes for first-time setup.
+
+**Prerequisites:**
 
 - Python 3.11 or 3.12
-- Virtual environment recommended
 - Git for version control
+- A GitHub account
 
-**Pre-commit checklist:**
+**1. Fork and Clone**
 
-1. Quick check: ``./scripts/quick_check.sh`` (< 30 seconds)
-2. Full CI check: ``./scripts/ci_check.sh`` (before push)
-3. Pre-merge check: ``./scripts/premerge_check.sh`` (before PR)
-4. Add CHANGELOG entry
+First, fork the Osprey repository on GitHub, then clone your fork locally:
 
-See ``scripts/README.md`` for detailed script documentation.
+.. code-block:: bash
 
-**Every commit should:**
+   git clone https://github.com/YOUR-USERNAME/osprey.git
+   cd osprey
 
-- Follow conventional commits format (``feat:``, ``fix:``, ``docs:``, etc.)
-- Include CHANGELOG entry
-- Have passing tests
-- Include docstrings for new functions
-- Be atomic (one logical change)
+**2. Create Virtual Environment**
 
-Using Workflow Files with AI
------------------------------
+We strongly recommend using a virtual environment to isolate dependencies:
 
-Reference workflow files directly:
+.. code-block:: bash
 
-.. code-block:: text
+   python3.11 -m venv venv
+   source venv/bin/activate  # macOS/Linux
+   # or: venv\Scripts\activate  # Windows
 
-   @docs/workflows/pre-merge-cleanup.md Scan my uncommitted changes
-   @docs/workflows/commit-organization.md Help me organize my commits
-   @docs/workflows/testing-workflow.md What type of test should I write?
+**3. Install Dependencies**
 
-See :doc:`04_developer-workflows` for complete workflow documentation.
+Install Osprey in development mode with all development and documentation dependencies:
+
+.. code-block:: bash
+
+   pip install --upgrade pip
+   pip install -e ".[dev,docs]"
+
+This installs the framework in "editable" mode, meaning changes you make to the source code are immediately available.
+
+**4. Verify Installation**
+
+Run the test suite to make sure everything is working:
+
+.. code-block:: bash
+
+   pytest tests/ --ignore=tests/e2e -v
+
+If all tests pass, you're ready to start contributing!
+
+----
+
+Quick Reference
+---------------
+
+**Common Commands:**
+
+.. code-block:: bash
+
+   # Run tests
+   pytest tests/ --ignore=tests/e2e -v
+
+   # Check code style
+   ruff check src/ tests/
+
+   # Pre-commit check
+   ./scripts/premerge_check.sh
+
+   # Build documentation
+   cd docs && sphinx-autobuild source build
+
+**Before Every Commit:**
+
+- Run ``./scripts/premerge_check.sh`` to catch common issues
+- Follow conventional commit format (``feat:``, ``fix:``, ``docs:``, etc.)
+- Add a CHANGELOG entry
+- Ensure tests pass
+
+See the guide cards above for detailed workflows and standards.
+
+----
 
 Getting Help
 ------------
 
-- `GitHub Issues <https://github.com/als-apg/osprey/issues>`_ - Report bugs, request features, get help when something isn't working
-- `GitHub Discussions <https://github.com/als-apg/osprey/discussions>`_ - Ask questions, share ideas
-- :doc:`../developer-guides/index` - Technical documentation
+**Stuck? Have questions?**
+
+- `GitHub Discussions <https://github.com/als-apg/osprey/discussions>`_ - Ask questions, share ideas, get help from the community
+- `GitHub Issues <https://github.com/als-apg/osprey/issues>`_ - Report bugs, request features
+- :doc:`../developer-guides/index` - Deep technical documentation on framework architecture
+- :doc:`04_community` - Community guidelines and code of conduct
+
+
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   01_getting-started
-   02_git-and-github
-   03_code-standards
-   04_developer-workflows
-   05_ai-assisted-development
-   06_community
+   01_git-and-github
+   02_code-standards
+   03_ai-assisted-development
+   04_community

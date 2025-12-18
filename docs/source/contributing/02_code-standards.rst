@@ -148,41 +148,8 @@ This checks for:
 - Tests passing
 - Code formatting
 
-Code Review Checklist
----------------------
-
-Before requesting review:
-
-**Functionality:**
-
-- Code works as intended
-- Tests pass locally
-- Edge cases handled
-- Clear error messages
-
-**Quality:**
-
-- Follows style guide
-- No debug code
-- No commented-out code
-- No hardcoded secrets
-
-**Documentation:**
-
-- Docstrings for public functions/classes
-- Type hints where appropriate
-- CHANGELOG entries added
-- Related docs updated
-
-**Testing:**
-
-- New functionality has tests
-- Tests cover edge cases
-- Appropriate test type used
-- Tests pass in CI
-
 Next Steps
 ----------
 
-- :doc:`02_git-and-github` - Git and GitHub workflow
-- :doc:`04_developer-workflows` - Common workflows
+- :doc:`01_git-and-github` - Git and GitHub workflow
+- :doc:`03_ai-assisted-development` - AI workflows
