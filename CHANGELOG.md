@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Testing: Hello World Weather template coverage**: Added comprehensive unit test suite for hello_world_weather template including mock weather API validation, response formatting, and error handling scenarios
 - **Hello World Weather: LLM-based location extraction**: Added structured output parser using LLM to extract locations from natural language queries, replacing simple string matching with intelligent parsing that handles nicknames, abbreviations, and defaults to "local" when no location is specified
 - **Documentation Version Switcher**: PyData Sphinx Theme version switcher for GitHub Pages with multi-version documentation support; workflow dynamically generates `versions.json` from git tags and preserves historical versions in separate directories (e.g., `/v0.9.7/`, `/latest/`)
+- **Developer Workflows System**: New `docs/workflows/` directory with 10 comprehensive workflow guides (pre-merge cleanup, commit organization, release process, testing strategy, AI code review, docstrings, comments, documentation updates) featuring YAML frontmatter metadata and AI assistant integration prompts
+- **Custom Sphinx Extension**: `workflow_autodoc.py` extension with `.. workflow-summary::` and `.. workflow-list::` directives for auto-documenting workflow files from markdown with YAML frontmatter, including custom CSS styling
+- **Testing: Workflow autodoc extension**: Comprehensive test suite for custom Sphinx extension including frontmatter parsing, directive rendering, and integration tests with actual workflow files
+
+### Changed
+- **Documentation Workflows**: Migrated workflow files from `docs/resources/other/` to `docs/workflows/` with updated references throughout; workflows now feature consistent YAML frontmatter for machine parsing and AI integration
 
 ### Changed
 - **Hello World Weather: Mock API simplification**: Refactored mock weather API to accept any location string and generate random weather data, removing hardcoded city list and enabling flexible location support for tutorial demonstrations

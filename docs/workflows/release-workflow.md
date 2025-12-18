@@ -1,6 +1,58 @@
+---
+workflow: release-workflow
+category: release-management
+applies_when: [before_release, version_bump, publishing]
+estimated_time: 30-45 minutes
+ai_ready: true
+related: [pre-merge-cleanup, commit-organization]
+---
+
 # Release Workflow - Documentation Version Sync Fix
 
 This document provides the **definitive workflow** for creating releases that ensure documentation always shows the correct version.
+
+## 🤖 AI Quick Start
+
+**Paste this prompt to your AI assistant (Cursor/Copilot):**
+
+```
+I'm ready to create a new release. Following @docs/workflows/release-workflow.md,
+guide me through the complete release process for version X.X.X.
+
+Walk me through each step and verify completion before moving to the next:
+
+STEP 0 - Pre-Release Testing:
+1. Check that venv is activated
+2. Run unit tests: pytest tests/ --ignore=tests/e2e -v
+3. Run e2e tests: pytest tests/e2e/ -v
+4. Verify all tests pass before proceeding
+
+STEP 1 - Version Updates (BEFORE creating tag):
+1. Show me all files that need version updates
+2. For each file, show current version and what it should be changed to
+3. Generate the version consistency check commands
+4. After I update, verify all versions match
+5. Stage and commit version bump
+
+STEP 2 - GitHub Release:
+1. Verify I'm on main branch and pulled latest
+2. Generate the git tag command
+3. Generate the git push tag command
+4. Generate the gh release create command (or guide me through web UI)
+
+STEP 3 - PyPI Publishing:
+1. Guide through build process (clean, build, check)
+2. Verify package contents before upload
+3. Guide through twine upload
+4. Verify package appears on PyPI
+
+After each major step, confirm success before proceeding to next step.
+If any step fails, help me troubleshoot before continuing.
+```
+
+**Important**: This workflow includes critical testing (Step 0) and proper version sequencing. Don't skip steps!
+
+**Related workflows**: [pre-merge-cleanup.md](pre-merge-cleanup.md), [commit-organization.md](commit-organization.md)
 
 ## 🎯 Problem Solved
 
