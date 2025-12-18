@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.events import Key
@@ -60,6 +62,9 @@ class ContentViewer(ModalScreen[None]):
         # For backward compat
         self.content = self._get_current_content()
 
+        # Base height will be calculated in on_mount() when we have screen access
+        self._base_height = 0
+
     def _get_current_content(self) -> str:
         """Get content for currently selected tab."""
         if not self._tabs:
@@ -85,14 +90,40 @@ class ContentViewer(ModalScreen[None]):
             return f"```{self.language}\n{content}\n```"
         return content
 
-    def _get_max_content_lines(self) -> int:
-        """Get the maximum line count across all tab contents."""
-        max_lines = 0
+    def _calculate_visual_height(self, content: str) -> int:
+        """Calculate visual height accounting for soft-wrap.
+
+        Args:
+            content: The text content to measure.
+
+        Returns:
+            Estimated visual line count.
+        """
+        # Get container width (approximate - container padding is 4 on each side)
+        try:
+            container_width = self.screen.size.width - 16  # Conservative estimate
+        except Exception:
+            container_width = 80  # Fallback
+
+        if container_width <= 0:
+            container_width = 80
+
+        total_lines = 0
+        for line in content.split("\n"):
+            if len(line) == 0:
+                total_lines += 1
+            else:
+                total_lines += math.ceil(len(line) / container_width)
+        return total_lines
+
+    def _get_max_content_height(self) -> int:
+        """Get the maximum visual height across all tab contents."""
+        max_height = 0
         for content in self._content_dict.values():
             if content:
-                lines = content.count("\n") + 1
-                max_lines = max(max_lines, lines)
-        return max_lines
+                height = self._calculate_visual_height(content)
+                max_height = max(max_height, height)
+        return max_height
 
     def _compose_footer(self) -> Static:
         """Compose footer with appropriate hints."""
@@ -132,27 +163,33 @@ class ContentViewer(ModalScreen[None]):
             yield self._compose_footer()
 
     def on_mount(self) -> None:
-        """Set fixed height for tabbed content to prevent jumping."""
+        """Set initial height for tabbed content to prevent jumping when switching tabs."""
         if self._is_tabbed:
             container = self.query_one("#content-viewer-content", ScrollableContainer)
-            max_lines = self._get_max_content_lines()
-            # Set height to max lines - no artificial cap needed
-            # CSS max-height: 80% on parent container naturally limits overall height
-            container.styles.height = max_lines
+            # Calculate base height now that we have screen access
+            self._base_height = self._get_max_content_height()
+            container.styles.height = self._base_height
 
     def _refresh_content(self) -> None:
         """Refresh content based on current markdown mode."""
         container = self.query_one("#content-viewer-content", ScrollableContainer)
         for child in list(container.children):
             child.remove()
+
         if self._markdown_mode:
             container.mount(Markdown(self._format_as_markdown()))
+            # In markdown mode, let height be auto for proper rendering
+            if self._is_tabbed:
+                container.styles.height = "auto"
         else:
             container.mount(
                 Static(
                     self._get_current_content() or "[dim]No content available[/dim]"
                 )
             )
+            # In raw mode, use base height to prevent jumping when switching tabs
+            if self._is_tabbed:
+                container.styles.height = self._base_height
 
     def _refresh_tab_display(self) -> None:
         """Update tab highlighting and content after tab switch."""
