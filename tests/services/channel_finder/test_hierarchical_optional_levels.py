@@ -1416,11 +1416,12 @@ class TestExpansionAtOptionalLevel:
 
         actual_count = len(expansion_at_optional_db.channel_map)
         assert actual_count == expected_count, (
-            f"Expected {expected_count} channels (using expanded instances), "
-            f"got {actual_count}"
+            f"Expected {expected_count} channels (using expanded instances), got {actual_count}"
         )
 
-    def test_build_channels_from_selections_with_expanded_instance_preserves_separator_override(self, expansion_at_optional_db):
+    def test_build_channels_from_selections_with_expanded_instance_preserves_separator_override(
+        self, expansion_at_optional_db
+    ):
         """
         REGRESSION TEST: build_channels_from_selections should preserve separator overrides
         when given an expanded instance like 'CH-1'.

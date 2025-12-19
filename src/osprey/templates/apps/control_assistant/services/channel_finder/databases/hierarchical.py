@@ -919,7 +919,11 @@ class HierarchicalChannelDatabase(BaseDatabase):
                         # (e.g., selection="CH-1" but tree has "CH" with _expansion)
                         found_via_expansion = False
                         for key, value in current_node.items():
-                            if not key.startswith("_") and isinstance(value, dict) and "_expansion" in value:
+                            if (
+                                not key.startswith("_")
+                                and isinstance(value, dict)
+                                and "_expansion" in value
+                            ):
                                 # This node has an expansion - check if it generates our selection
                                 instance_names = self._get_instance_names(value["_expansion"])
                                 if selection in instance_names:
@@ -1422,7 +1426,11 @@ class HierarchicalChannelDatabase(BaseDatabase):
                     # (e.g., selection="CH-1" but tree has "CH" with _expansion)
                     found_via_expansion = False
                     for key, value in current_node.items():
-                        if not key.startswith("_") and isinstance(value, dict) and "_expansion" in value:
+                        if (
+                            not key.startswith("_")
+                            and isinstance(value, dict)
+                            and "_expansion" in value
+                        ):
                             # This node has an expansion - check if it generates our selection
                             instance_names = self._get_instance_names(value["_expansion"])
                             if selection in instance_names:
@@ -1446,7 +1454,11 @@ class HierarchicalChannelDatabase(BaseDatabase):
 
                 # First, try to find a container with an expansion that generates this selection
                 for key, value in current_node.items():
-                    if not key.startswith("_") and isinstance(value, dict) and "_expansion" in value:
+                    if (
+                        not key.startswith("_")
+                        and isinstance(value, dict)
+                        and "_expansion" in value
+                    ):
                         # This container has an expansion - check if it generates our selection
                         instance_names = self._get_instance_names(value["_expansion"])
                         if selection in instance_names:
