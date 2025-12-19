@@ -809,19 +809,20 @@ ThemePicker {
 
 .content-tab {
     width: auto;
-    padding: 0 2;
-    margin-right: 1;
+    padding: 0 1;
+    # margin-right: 0;
 }
 
 .tab-active {
     color: $text;
     text-style: bold;
-    &:dark {
-        background: $surface-lighten-1;
-    }
-    &:light {
-        background: $surface-darken-1;
-    }
+    background: $accent;
+    # &:dark {
+    #     background: $surface-lighten-1;
+    # }
+    # &:light {
+    #     background: $surface-darken-1;
+    # }
 }
 
 .tab-inactive {
