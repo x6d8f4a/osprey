@@ -10,6 +10,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+# Skip all tests in this module if Sphinx is not available
+# Sphinx is only required for documentation builds, not for general testing
+pytest.importorskip("sphinx", reason="Sphinx is required for workflow autodoc tests")
+
 # Add the docs/_ext directory to the path
 docs_ext_path = Path(__file__).parent.parent.parent / "docs" / "source" / "_ext"
 sys.path.insert(0, str(docs_ext_path))
