@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.8] - 2025-12-19
 
 ### Added
+- **Channel Finder - Tools**: Middle layer support across all CLI tools
+  - Database preview tool with tree visualization for functional hierarchy
+  - CLI query interface with middle_layer pipeline support
+  - Benchmark runner with middle_layer dataset support
 - **Templates - Channel Finder**: Middle layer configuration support
   - Conditional config generation for middle_layer pipeline
   - Dynamic AVAILABLE_PIPELINES list based on enabled pipelines
