@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.8] - 2025-12-19
 
 ### Added
+- **Templates - Channel Finder**: Middle layer configuration support
+  - Conditional config generation for middle_layer pipeline
+  - Dynamic AVAILABLE_PIPELINES list based on enabled pipelines
+  - Database and benchmark paths auto-configured
 - **Channel Finder - Middle Layer Testing**: Comprehensive tool and utility tests
   - 480 lines of tests covering all database query tools
   - Tests for prompt loader with middle_layer support
