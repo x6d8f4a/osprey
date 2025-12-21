@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Workflows**: Moved AI workflow files from `docs/workflows/` to `src/osprey/workflows/` for package bundling
+  - Workflows now distributed with installed package
+  - Enables version-locked workflow documentation
+
 ### Added
 - **Documentation - AI Workflows**: Channel Finder workflow guides for AI-assisted development
   - New workflow files: pipeline selection guide and database builder guide with AI prompts and code references
