@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.8] - 2025-12-19
-
 ### Added
+- **Documentation - AI Workflows**: Channel Finder workflow guides for AI-assisted development
+  - New workflow files: pipeline selection guide and database builder guide with AI prompts and code references
+  - Workflow cards in AI-assisted development guide linking to pipeline selection and database building workflows
+  - AI-assisted workflow dropdowns in tutorial "Build Your Database" sections for all three pipelines (in-context, hierarchical, middle layer)
+  - AI-assisted pipeline selection dropdown before pipeline tab-set in tutorial
+  - Enhanced workflows with guidance for AI assistants to read database format code and examples before giving advice
+  - Code reference sections showing AI how to use source files for evidence-based recommendations
 - **Documentation**: Comprehensive middle layer pipeline guide in Sphinx docs
   - Complete tutorial with architecture comparison and usage examples
   - CLI screenshots and integration examples
@@ -38,6 +43,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Suppress INFO/DEBUG logging during initialization when `silent=True`
   - Useful for CLI tools that need clean output without verbose registry logs
 - **Channel Finder: Middle Layer Pipeline**: Complete React agent-based channel finder pipeline for MATLAB Middle Layer (MML) databases with System→Family→Field hierarchy; includes MiddleLayerDatabase with O(1) validation and device/sector filtering, MiddleLayerPipeline with 5 database query tools (list_systems, list_families, inspect_fields, list_channel_names, get_common_names), MMLConverter utility for converting Python MML exports to JSON, optional _description fields at all levels for enhanced LLM guidance, comprehensive test suite (14 tests), sample database, and complete documentation
+
+### Changed
+- **CLI - Project Initialization**: Enhanced channel finder selection
+  - Added middle_layer option to interactive menu
+  - Changed default from "both" to "all" (now includes all three pipelines)
+  - Updated descriptions for clarity: in_context (<200 channels), hierarchical (pattern-based), middle_layer (functional)
+- **Channel Finder - Middle Layer Pipeline**: Migrated from Pydantic-AI to LangGraph
+  - Now uses LangGraph's create_react_agent for improved agent behavior
+  - Converted tools from Pydantic-AI format to LangChain StructuredTool
+  - Enhanced structured output with ChannelSearchResult model
+  - Better error handling and agent state management
+
+### Fixed
+- **Build Scripts**: Removed trailing whitespace from configuration and script files
+- **Testing: Channel Finder test path correction**: Fixed incorrect database path in `test_multiple_direct_signals_fix.py` to point to correct example database location
+- **Channel Finder: Multiple direct signal selection**: Fixed leaf node detection to properly handle multiple direct signals (e.g., "status and heartbeat") selected together at optional levels
+- **Channel Finder: Optional levels LLM awareness**: Enhanced database descriptions and prompts to better distinguish direct signals from subdevice-specific signals
+- **Channel Finder: Separator overrides**: Fixed `build_channels_from_selections()` to respect `_separator` metadata from tree nodes via new `_collect_separator_overrides()` method
+- **Channel Finder: Separator overrides with expanded instances**: Fixed `_collect_separator_overrides()` navigation through expanded instance names (e.g., `CH-1`) by checking `_expansion` definitions to find container nodes
+- **Channel Finder: Navigation through expanded instances**: Fixed `_navigate_to_node()` and `_extract_tree_options()` to properly handle expanded instances at optional levels - base containers with `_expansion` no longer appear as selectable options, and navigation through expanded instance names works correctly
+
+### Removed
+- **Documentation**: Obsolete markdown tutorials for middle layer
+  - Content migrated to Sphinx documentation (control-assistant-part2-channel-finder.rst)
+
+## [0.9.8] - 2025-12-19
+
+### Added
 - **Testing: Hello World Weather template coverage**: Added comprehensive unit test suite for hello_world_weather template including mock weather API validation, response formatting, and error handling scenarios
 - **Hello World Weather: LLM-based location extraction**: Added structured output parser using LLM to extract locations from natural language queries, replacing simple string matching with intelligent parsing that handles nicknames, abbreviations, and defaults to "local" when no location is specified
 - **Documentation Version Switcher**: PyData Sphinx Theme version switcher for GitHub Pages with multi-version documentation support; workflow dynamically generates `versions.json` from git tags and preserves historical versions in separate directories (e.g., `/v0.9.7/`, `/latest/`)
@@ -54,15 +87,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Badges**: README.md badges for CI status, documentation, code coverage, PyPI version, Python version support, and license
 
 ### Changed
-- **CLI - Project Initialization**: Enhanced channel finder selection
-  - Added middle_layer option to interactive menu
-  - Changed default from "both" to "all" (now includes all three pipelines)
-  - Updated descriptions for clarity: in_context (<200 channels), hierarchical (pattern-based), middle_layer (functional)
-- **Channel Finder - Middle Layer Pipeline**: Migrated from Pydantic-AI to LangGraph
-  - Now uses LangGraph's create_react_agent for improved agent behavior
-  - Converted tools from Pydantic-AI format to LangChain StructuredTool
-  - Enhanced structured output with ChannelSearchResult model
-  - Better error handling and agent state management
 - **Code Quality: Comprehensive Linting Cleanup**: Fixed multiple code quality issues across 47 files - B904 exception chaining (30 instances), E722 bare except clauses (5 instances), B007 unused loop variables (4 instances), formatting issues; removed B904 from ruff ignore list and added intentional per-file ignores for test files and example scripts; all changes verified with full test suite (968 unit + 15 e2e tests passing)
 - **Code Formatting**: Applied automated Ruff formatting across codebase - modernized type hints to Python 3.10+ style (`Optional[T]` → `T | None`, `List[T]` → `list[T]`), normalized quotes, cleaned whitespace, and removed unused imports; no functional changes
 - **Documentation Workflows**: Migrated workflow files from `docs/resources/other/` to `docs/workflows/` with updated references throughout; workflows now feature consistent YAML frontmatter for machine parsing and AI integration
@@ -77,22 +101,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hello World Weather Template**: Enhanced mock weather API with improved error handling and response formatting; updated tutorial documentation for better clarity
 
 ### Fixed
-- **Build Scripts**: Removed trailing whitespace from configuration and script files
 - **Configuration: Execution defaults for Python code generation**: Added missing code generator configuration defaults to `ConfigBuilder._get_execution_defaults()`. Now includes `code_generator: "basic"` and corresponding generators configuration, preventing "Unknown provider: None" errors when using Python capabilities in projects with minimal configuration
 - **Hello World Weather Template**: Fixed template conditional to include execution infrastructure configuration while excluding only EPICS-specific settings, ensuring Python code generation works out-of-the-box
-- **Testing: Channel Finder test path correction**: Fixed incorrect database path in `test_multiple_direct_signals_fix.py` to point to correct example database location
-- **Channel Finder: Multiple direct signal selection**: Fixed leaf node detection to properly handle multiple direct signals (e.g., "status and heartbeat") selected together at optional levels
-- **Channel Finder: Optional levels LLM awareness**: Enhanced database descriptions and prompts to better distinguish direct signals from subdevice-specific signals
-- **Channel Finder: Separator overrides**: Fixed `build_channels_from_selections()` to respect `_separator` metadata from tree nodes via new `_collect_separator_overrides()` method
-- **Channel Finder: Separator overrides with expanded instances**: Fixed `_collect_separator_overrides()` navigation through expanded instance names (e.g., `CH-1`) by checking `_expansion` definitions to find container nodes
-- **Channel Finder: Navigation through expanded instances**: Fixed `_navigate_to_node()` and `_extract_tree_options()` to properly handle expanded instances at optional levels - base containers with `_expansion` no longer appear as selectable options, and navigation through expanded instance names works correctly
-
-### Fixed
 - **Testing: CI workflow autodoc test collection**: Fixed `ModuleNotFoundError: No module named 'sphinx'` in CI by adding `pytest.importorskip` to `tests/documentation/test_workflow_autodoc.py`; Sphinx is only required for documentation builds and is not part of `[dev]` dependencies, so workflow autodoc tests now gracefully skip when Sphinx is unavailable
 
 ### Removed
-- **Documentation**: Obsolete markdown tutorials for middle layer
-  - Content migrated to Sphinx documentation (control-assistant-part2-channel-finder.rst)
 - **Documentation: Local server launcher**: Removed `docs/launch_docs.py` script; users should use standard Sphinx commands (`make html` and `python -m http.server`) for local documentation builds and serving
 
 ## [0.9.7] - 2025-12-14

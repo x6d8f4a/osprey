@@ -43,6 +43,24 @@ To switch pipelines, edit ``config.yml`` and change the ``pipeline_mode`` settin
 
 That's it—no code changes required. The template includes complete implementations of all three pipelines with example databases, CLI tools, and benchmark datasets. The tabs below detail each pipeline's workflow, database format, and testing tools.
 
+.. dropdown:: AI-Assisted Pipeline Selection
+   :color: info
+   :icon: workflow
+
+   **Not sure which pipeline to use?** Let a coding assistant help you choose based on your channel naming patterns.
+
+   **When to use this workflow:**
+
+   - Setting up Channel Finder for the first time
+   - You have channel examples but aren't sure which pipeline fits best
+   - You want to have a discussion with a coding assistant to help you choose the right pipeline
+
+   **Copy this prompt to your AI assistant:**
+
+   .. code-block:: text
+
+      @docs/workflows/channel-finder-pipeline-selection.md Help me select the right Channel Finder pipeline.
+
 .. _channel-finder-benchmarking:
 
 .. tab-set::
@@ -238,6 +256,29 @@ That's it—no code changes required. The template includes complete implementat
             **From CSV to Template Database**
 
             The in-context pipeline provides tools to build template-based databases from simple CSV files. This workflow streamlines database creation, especially for facilities with device families.
+
+            .. dropdown:: AI-Assisted Database Building
+               :color: info
+               :icon: workflow
+
+               **Need help writing effective channel descriptions?** Let an AI coding assistant guide you through building a high-quality database.
+
+               **When to use this workflow:**
+
+               - Writing channel descriptions that enable effective LLM matching
+               - Extracting information from existing documentation or source code files
+               - Improving database quality based on test query results
+               - Understanding what makes descriptions helpful vs. just complete
+
+               **Example query to your AI assistant:**
+
+               .. code-block:: text
+
+                  @docs/workflows/channel-finder-database-builder.md Help me build my Channel Finder database.
+
+                  I'm using the in-context pipeline with ~250 channels from a CSV export.
+                  I have EPICS .db files with DESC fields and access to wiki page about out control system.
+                  Guide me on writing descriptions that help the LLM distinguish between channels.
 
             **Workflow Overview:**
 
@@ -877,6 +918,29 @@ That's it—no code changes required. The template includes complete implementat
             **Manual JSON Creation: A Structured Approach**
 
             Unlike the in-context pipeline (which has automated CSV-to-JSON builders), hierarchical databases require manual JSON creation. This reflects their purpose: representing well-organized control systems with existing hierarchical structures.
+
+            .. dropdown:: AI-Assisted Database Building
+               :color: info
+               :icon: workflow
+
+               **Need help structuring your hierarchy and writing descriptions?** Let an AI coding assistant guide you through the process.
+
+               **When to use this workflow:**
+
+               - Organizing your control system into a hierarchical structure
+               - Writing distinguishing descriptions at branching points
+               - Understanding which hierarchy levels need the most detailed descriptions
+               - Extracting hierarchy information from existing documentation
+
+               **Example query to your AI assistant:**
+
+               .. code-block:: text
+
+                  @docs/workflows/channel-finder-database-builder.md Help me build my Channel Finder database.
+
+                  I'm using the hierarchical pipeline for an accelerator with ~1,050 channels.
+                  My naming follows SYSTEM:FAMILY[DEVICE]:FIELD:SUBFIELD pattern.
+                  Guide me on writing descriptions that help the LLM navigate the hierarchy correctly.
 
             **When to Use This Workflow:**
 
@@ -1801,6 +1865,29 @@ That's it—no code changes required. The template includes complete implementat
             **From MATLAB Middle Layer Exports**
 
             If your facility already uses MATLAB Middle Layer (MML), you can convert existing MML data structures directly to the middle layer JSON format using the included converter utility.
+
+            .. dropdown:: AI-Assisted Database Building
+               :color: info
+               :icon: workflow
+
+               **Need help organizing functional hierarchy and writing descriptions?** Let an AI coding assistant guide you through the process.
+
+               **When to use this workflow:**
+
+               - Organizing channels by function (System → Family → Field)
+               - Writing descriptions that help the agent explore the database
+               - Converting from MATLAB Middle Layer or other middle layer formats
+               - Understanding what metadata to include for effective matching
+
+               **Example query to your AI assistant:**
+
+               .. code-block:: text
+
+                  @docs/workflows/channel-finder-database-builder.md Help me build my Channel Finder database.
+
+                  I'm using the middle layer pipeline for an accelerator with functional organization.
+                  I have MATLAB Middle Layer exports and want to ensure rich descriptions at all levels.
+                  Guide me on writing descriptions that help the agent explore the database effectively.
 
             **Workflow Overview:**
 

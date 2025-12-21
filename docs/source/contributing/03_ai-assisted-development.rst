@@ -159,6 +159,18 @@ Workflow Catalog
 
             Review AI-generated code for quality and correctness.
 
+         .. grid-item-card:: 🔍 Channel Finder Pipeline Selection
+            :link: channel-finder-pipeline
+            :link-type: ref
+
+            Choose the right pipeline for your control system.
+
+         .. grid-item-card:: 🗄️ Channel Finder Database Builder
+            :link: channel-finder-database
+            :link-type: ref
+
+            Build high-quality channel databases with AI assistance.
+
    .. tab-item:: 🎯 Release Workflows
       :sync: release
 
@@ -330,6 +342,39 @@ Detailed Workflow Guides
 .. code-block:: text
 
    @docs/workflows/ai-code-review.md Review this AI-generated code
+
+----
+
+.. _channel-finder-pipeline:
+
+🔍 Channel Finder Pipeline Selection
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. workflow-summary:: ../../workflows/channel-finder-pipeline-selection.md
+   :show-use-when:
+
+**Example:**
+
+.. code-block:: text
+
+   @docs/workflows/channel-finder-pipeline-selection.md Help me select the right Channel Finder pipeline.
+
+----
+
+.. _channel-finder-database:
+
+🗄️ Channel Finder Database Builder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. workflow-summary:: ../../workflows/channel-finder-database-builder.md
+   :show-use-when:
+
+**Example:**
+
+.. code-block:: text
+
+   @docs/workflows/channel-finder-database-builder.md Help me build my Channel Finder database.
+
 
 ----
 
