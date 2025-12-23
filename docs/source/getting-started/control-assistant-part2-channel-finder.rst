@@ -6,6 +6,11 @@ Part 2: Building Your Channel Finder
 Step 3: Semantic Channel Finding Pipelines
 ==========================================
 
+.. admonition:: Academic Reference
+   :class: seealso
+
+   For a comprehensive theoretical framework and analysis of semantic channel finding in complex experimental infrastructure, see Hellert et al. (2025), "From Natural Language to Control Signals: A Conceptual Framework for Semantic Channel Finding in Complex Experimental Infrastructure," available on `arXiv:2512.18779 <https://arxiv.org/abs/2512.18779>`_.
+
 **The Core Challenge: Bridging Human Language and Control System Addresses**
 
 Control systems at scientific facilities present a fundamental communication gap: operators and physicists think in terms of physical concepts ("beam current," "terminal voltage," "ion pump pressure"), while control systems use technical addresses (``SR01C___DCCT1_AM00``, ``TMVST``, ``IP41Pressure``). This gap becomes critical in large facilities with thousands to hundreds of thousands of channels—manually looking up addresses is impractical, and exact string matching fails because users don't know the precise naming conventions.
@@ -2184,24 +2189,6 @@ That's it—no code changes required. The template includes complete implementat
 
 2.1: OSPREY Framework Integration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. admonition:: Capability Pattern Update (v0.9.2+)
-   :class: tip
-
-   This tutorial uses the **new instance method pattern** introduced in v0.9.2+.
-   If you have existing capabilities from v0.9.1 or earlier using static methods,
-   see the :doc:`../developer-guides/migration-guide-instance-methods` for a complete upgrade guide.
-
-   **New features in v0.9.2+:**
-
-   - Helper methods: ``self.get_required_contexts()``, ``self.store_output_context()``
-   - Automatic state injection via ``@capability_node`` decorator
-   - Simplified code with 50-60% less boilerplate
-
-   **Easiest migration path:** After upgrading to v0.9.2+, recreate the tutorial using
-   ``osprey init`` to generate fresh templates with the new pattern. Then cherry-pick
-   your custom business logic from the old capabilities into the new ones. This is often
-   faster than manual migration and ensures you get all the new patterns correctly.
 
 The channel finder integrates into OSPREY as a **capability**—a reusable component that the agent orchestrator can plan and execute. The capability acts as a thin orchestration layer that connects the framework to the service layer, while all channel finding logic lives in ``services/channel_finder/``. This separation makes the service independently testable via CLI and benchmarks before agent integration. The template provides a complete implementation in ``src/my_control_assistant/capabilities/channel_finding.py``.
 

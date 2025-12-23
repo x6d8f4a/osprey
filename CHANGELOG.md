@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- **Documentation**: Fixed double slash typos in image paths causing 404 errors on GitHub Pages for in-context and hierarchical channel finder CLI screenshots
-
-### Changed
-- **Documentation**: Added "Viewing Exported Workflows" section to AI-assisted development guide showing example output of exported workflow files
+### Documentation
+- Fixed double slash typos in image paths causing 404 errors on GitHub Pages for in-context and hierarchical channel finder CLI screenshots
+- Added "Viewing Exported Workflows" section to AI-assisted development guide showing example output of exported workflow files
+- Removed v0.9.2+ migration guide (no longer needed as framework has fully transitioned to instance method pattern)
+  - Cleaned up all cross-references to migration guide across documentation
+  - Streamlined architecture overview sections in main index and developer guides
+  - Updated main index diagram from workflow to architecture overview
+- Added academic reference (Hellert et al. 2025, arXiv:2512.18779) for semantic channel finding theoretical framework
 
 ## [0.9.9] - 2025-12-22
 
