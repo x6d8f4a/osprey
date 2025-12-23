@@ -8,10 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Tests**: Added comprehensive tests for `chat_cmd.py` (92.3% coverage) and `export_config_cmd.py` (100% coverage)
-  - 15 tests for chat command covering help, execution, error handling, and output formatting
-  - 16 tests for export-config command covering deprecation warnings, format options, and error handling
+- **Tests**: Added comprehensive tests for CLI commands
+  - `chat_cmd.py`: 15 tests for command execution, error handling, and output formatting
+  - `export_config_cmd.py`: 16 tests for deprecation warnings, format options, and error handling
+  - `deploy_cmd.py`: 23 tests for all deployment actions (up/down/restart/status/build/clean/rebuild)
+  - `registry_cmd.py`: 22 tests for registry display functions and table formatting
   - Fixed missing `Dict` import in `scripts/analyze_test_coverage.py`
+  - Renamed `analyze_coverage.py` → `analyze_test_coverage.py` for clarity
 
 ### Changed
 - **Control Assistant**: Write access now enabled by default in control assistant template (`writes_enabled: true` for mock connector)
