@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CLI**: Fixed broken imports in `config_cmd.py`
+  - Changed `update_control_system_type` → `set_control_system_type` (correct function name)
+  - Changed `update_epics_gateway` → `set_epics_gateway_config` (correct function name)
+  - Updated function calls to handle return values correctly (both functions return tuple of new_content, preview)
+
 ### Added
 - **Tests**: Added comprehensive tests for CLI commands
   - `chat_cmd.py`: 15 tests for command execution, error handling, and output formatting
   - `export_config_cmd.py`: 16 tests for deprecation warnings, format options, and error handling
   - `deploy_cmd.py`: 23 tests for all deployment actions (up/down/restart/status/build/clean/rebuild)
   - `registry_cmd.py`: 22 tests for registry display functions and table formatting
+  - `config_cmd.py`: 23 tests for all config subcommands (show/export/set-control-system/set-epics-gateway/set-models)
+  - `remove_cmd.py`: 16 tests for capability removal, backups, and error handling
   - Fixed missing `Dict` import in `scripts/analyze_test_coverage.py`
   - Renamed `analyze_coverage.py` → `analyze_test_coverage.py` for clarity
 
