@@ -8,13 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Channel Finder**: Added explicit detection functionality to channel finder service
-  - New `explicit_detection.py` prompt module for detecting explicit channel names, PV names, and IOC names
-  - Updated `BasePipeline` with `build_result()` helper method for constructing pipeline results
-  - Enhanced all pipeline implementations (hierarchical, in-context, middle layer) to use explicit detection
-  - Added unit tests for explicit detection prompt and `build_result()` method
-  - Updated e2e tests to verify explicit detection behavior
-  - Configuration updates to include explicit detection in pipeline workflows
+- **Tests**: Added comprehensive tests for `chat_cmd.py` (92.3% coverage) and `export_config_cmd.py` (100% coverage)
+  - 15 tests for chat command covering help, execution, error handling, and output formatting
+  - 16 tests for export-config command covering deprecation warnings, format options, and error handling
+  - Fixed missing `Dict` import in `scripts/analyze_test_coverage.py`
 
 ### Changed
 - **Control Assistant**: Write access now enabled by default in control assistant template (`writes_enabled: true` for mock connector)
