@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **License**: Added explicit "BSD 3-Clause License" header to LICENSE.txt for clarity
 
 ### Documentation
+- Fixed version picker showing non-existent versioned directories causing 404 errors
+  - Updated docs workflow to only list actually deployed versions (stable and latest/development)
+  - Removed all individual version tag entries from versions.json until versioned directories are implemented
 - Fixed double slash typos in image paths causing 404 errors on GitHub Pages for in-context and hierarchical channel finder CLI screenshots
 - Added "Viewing Exported Workflows" section to AI-assisted development guide showing example output of exported workflow files
 - Removed v0.9.2+ migration guide (no longer needed as framework has fully transitioned to instance method pattern)
