@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated function calls to handle return values correctly (both functions return tuple of new_content, preview)
 
 ### Added
+- **Tests**: `test_respond_node.py`: 26 tests for response generation, context gathering, and mode determination (37.7% → 72.1% coverage, infrastructure module 54.7% → 58.4%)
+- **Tests**: `test_task_extraction_node.py`: 25 tests for task extraction, data source integration, and error classification (33.0% → 62.1% coverage, infrastructure module 52.1% → 54.7%)
+- **Tests**: `test_error_node.py`: 29 tests for error response generation and context handling (33.6% → 91.8% coverage, infrastructure module 45.2% → 52.1%)
 - **Tests**: Expanded infrastructure and models tests - 40 new tests for error classification, retry policies, and helper functions (infrastructure module 37.2% → 45.2%, overall 45.8% → 46.4%)
 - **Tests**: Added comprehensive tests for CLI and deployment modules (coverage expansion)
   - `test_preview_styles.py`: 23 tests for theme preview and color display functionality (0% → 88.1% coverage)
