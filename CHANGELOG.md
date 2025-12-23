@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated function calls to handle return values correctly (both functions return tuple of new_content, preview)
 
 ### Added
+- **Tests**: `test_providers_anthropic.py`: 27 tests for Anthropic provider metadata, model creation, and health checks (23.5% → 50.0% coverage)
 - **Tests**: `test_completion.py`: 28 tests for TypedDict conversion and proxy validation (30.9% → 58.0% coverage)
 - **Tests**: `test_logging.py`: 19 tests for API call context and result sanitization (13.3% → 29.1% coverage)
 - **Tests**: `test_respond_node.py`: 26 tests for response generation, context gathering, and mode determination (37.7% → 72.1% coverage, infrastructure module 54.7% → 58.4%)
