@@ -55,9 +55,7 @@ class TestClassifierAnalysis:
                 ClassifierExampleRaw(query="What's the weather?", reason="Direct weather question")
             ],
             negative_examples=[
-                ClassifierExampleRaw(
-                    query="What time is it?", reason="Not related to weather"
-                )
+                ClassifierExampleRaw(query="What time is it?", reason="Not related to weather")
             ],
             edge_cases=["User asks about climate vs weather"],
         )
@@ -264,12 +262,10 @@ class TestIntegration:
     def test_full_classifier_workflow(self):
         """Test creating a complete classifier analysis structure."""
         positive_ex = ClassifierExampleRaw(
-            query="Get weather forecast",
-            reason="Direct weather request"
+            query="Get weather forecast", reason="Direct weather request"
         )
         negative_ex = ClassifierExampleRaw(
-            query="What time is dinner?",
-            reason="Not weather related"
+            query="What time is dinner?", reason="Not weather related"
         )
 
         analysis = ClassifierAnalysis(
@@ -302,8 +298,7 @@ class TestIntegration:
         )
 
         pattern = ToolPattern(
-            tool_name="data_fetcher",
-            typical_scenario="Retrieving time-series data"
+            tool_name="data_fetcher", typical_scenario="Retrieving time-series data"
         )
 
         analysis = OrchestratorAnalysis(
@@ -338,4 +333,3 @@ class TestIntegration:
         assert restored.capability_name_suggestion == original.capability_name_suggestion
         assert restored.description == original.description
         assert restored.context_type_suggestion == original.context_type_suggestion
-

@@ -231,7 +231,9 @@ class TestBuildTaskExtractionPrompt:
         """Test building prompt without retrieval data."""
         messages = [HumanMessage(content="Test message")]
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts") as mock_get_prompts:
+        with patch(
+            "osprey.infrastructure.task_extraction_node.get_framework_prompts"
+        ) as mock_get_prompts:
             mock_builder = Mock()
             mock_builder.get_system_instructions.return_value = "System prompt"
             mock_prompts = Mock()
@@ -250,7 +252,9 @@ class TestBuildTaskExtractionPrompt:
         messages = [HumanMessage(content="Test")]
         mock_result = Mock()
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts") as mock_get_prompts:
+        with patch(
+            "osprey.infrastructure.task_extraction_node.get_framework_prompts"
+        ) as mock_get_prompts:
             mock_builder = Mock()
             mock_builder.get_system_instructions.return_value = "Prompt with data"
             mock_prompts = Mock()
@@ -278,10 +282,11 @@ class TestExtractTask:
             depends_on_user_memory=False,
         )
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"), \
-             patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_config, \
-             patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm:
-
+        with (
+            patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"),
+            patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_config,
+            patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm,
+        ):
             mock_config.return_value = {"model": "gpt-4"}
             mock_llm.return_value = expected_task
 
@@ -304,10 +309,11 @@ class TestExtractTask:
             depends_on_user_memory=False,
         )
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"), \
-             patch("osprey.infrastructure.task_extraction_node.get_model_config"), \
-             patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm:
-
+        with (
+            patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"),
+            patch("osprey.infrastructure.task_extraction_node.get_model_config"),
+            patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm,
+        ):
             mock_llm.return_value = expected_task
 
             result = _extract_task(messages, mock_result, logger)
@@ -320,12 +326,15 @@ class TestExtractTask:
         messages = [HumanMessage(content="Test")]
         logger = Mock()
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"), \
-             patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_config, \
-             patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm:
-
+        with (
+            patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"),
+            patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_config,
+            patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm,
+        ):
             mock_config.return_value = {"model": "test-model"}
-            mock_llm.return_value = ExtractedTask(task="Test", depends_on_chat_history=False, depends_on_user_memory=False)
+            mock_llm.return_value = ExtractedTask(
+                task="Test", depends_on_chat_history=False, depends_on_user_memory=False
+            )
 
             _extract_task(messages, None, logger)
 
@@ -336,11 +345,14 @@ class TestExtractTask:
         messages = [HumanMessage(content="Test")]
         logger = Mock()
 
-        with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"), \
-             patch("osprey.infrastructure.task_extraction_node.get_model_config"), \
-             patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm:
-
-            mock_llm.return_value = ExtractedTask(task="Test", depends_on_chat_history=False, depends_on_user_memory=False)
+        with (
+            patch("osprey.infrastructure.task_extraction_node.get_framework_prompts"),
+            patch("osprey.infrastructure.task_extraction_node.get_model_config"),
+            patch("osprey.infrastructure.task_extraction_node.get_chat_completion") as mock_llm,
+        ):
+            mock_llm.return_value = ExtractedTask(
+                task="Test", depends_on_chat_history=False, depends_on_user_memory=False
+            )
 
             _extract_task(messages, None, logger)
 
@@ -348,4 +360,3 @@ class TestExtractTask:
         call_args = mock_llm.call_args
         assert "output_model" in call_args.kwargs
         assert call_args.kwargs["output_model"] == ExtractedTask
-

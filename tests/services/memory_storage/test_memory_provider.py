@@ -329,4 +329,3 @@ class TestFormatForPrompt:
 
         # Should use bullet points for entries
         assert any("•" in line for line in lines)
-

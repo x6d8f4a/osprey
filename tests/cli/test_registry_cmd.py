@@ -61,12 +61,12 @@ def mock_registry():
     }
 
     # Mock context classes
-    registry.get_all_context_classes.return_value = {
-        "test_context": type("TestContext", (), {})
-    }
+    registry.get_all_context_classes.return_value = {"test_context": type("TestContext", (), {})}
 
     # Mock data sources
-    registry.get_data_source.return_value = MagicMock(__class__=MagicMock(__name__="TestDataSource"))
+    registry.get_data_source.return_value = MagicMock(
+        __class__=MagicMock(__name__="TestDataSource")
+    )
 
     # Mock services
     registry.get_service.return_value = MagicMock(__class__=MagicMock(__name__="TestService"))
@@ -339,4 +339,3 @@ class TestHandleRegistryAction:
                 # Should call with verbose=True
                 call_kwargs = mock_display.call_args[1]
                 assert call_kwargs["verbose"] is True
-

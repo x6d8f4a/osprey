@@ -28,7 +28,7 @@ from osprey.cli.styles import ColorTheme
 @pytest.fixture
 def mock_console():
     """Mock the rich console to avoid actual terminal output."""
-    with mock.patch('osprey.cli.preview_styles.console') as mock_console:
+    with mock.patch("osprey.cli.preview_styles.console") as mock_console:
         yield mock_console
 
 
@@ -118,8 +118,8 @@ class TestShowFunctions:
 class TestPreviewTheme:
     """Test the preview_theme function."""
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.set_theme')
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.set_theme")
     def test_preview_theme_basic(self, mock_set_theme, mock_console, sample_theme):
         """Test basic theme preview."""
         preview_theme("test", sample_theme, show_banner_art=False)
@@ -131,8 +131,8 @@ class TestPreviewTheme:
         assert mock_console.clear.called
         assert mock_console.print.called
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.set_theme')
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.set_theme")
     def test_preview_theme_with_banner(self, mock_set_theme, mock_console, sample_theme):
         """Test theme preview with banner enabled."""
         preview_theme("test", sample_theme, show_banner_art=True)
@@ -140,8 +140,8 @@ class TestPreviewTheme:
         # Should call console.print multiple times (banner included)
         assert mock_console.print.call_count > 5
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.set_theme')
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.set_theme")
     def test_preview_theme_without_banner(self, mock_set_theme, mock_console, sample_theme):
         """Test theme preview without banner."""
         preview_theme("test", sample_theme, show_banner_art=False)
@@ -153,8 +153,8 @@ class TestPreviewTheme:
 class TestCompareThemes:
     """Test the compare_themes function."""
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.set_theme')
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.set_theme")
     def test_compare_themes(self, mock_set_theme, mock_console):
         """Test theme comparison display."""
         compare_themes()
@@ -170,10 +170,10 @@ class TestCompareThemes:
 class TestCreateCustomTheme:
     """Test custom theme creation."""
 
-    @mock.patch('osprey.cli.preview_styles.console')
+    @mock.patch("osprey.cli.preview_styles.console")
     def test_create_custom_theme_missing_questionary(self, mock_console):
         """Test custom theme creation handles missing questionary."""
-        with mock.patch.dict('sys.modules', {'questionary': None}):
+        with mock.patch.dict("sys.modules", {"questionary": None}):
             from osprey.cli.preview_styles import create_custom_theme
 
             # Should handle missing dependency gracefully
@@ -188,8 +188,8 @@ class TestCreateCustomTheme:
 class TestMainFunction:
     """Test the main entry point."""
 
-    @mock.patch('osprey.cli.preview_styles.preview_theme')
-    @mock.patch('sys.argv', ['preview_styles.py'])
+    @mock.patch("osprey.cli.preview_styles.preview_theme")
+    @mock.patch("sys.argv", ["preview_styles.py"])
     def test_main_default_theme(self, mock_preview):
         """Test main with default arguments."""
         try:
@@ -200,8 +200,8 @@ class TestMainFunction:
         # Should call preview_theme with default theme
         assert mock_preview.called
 
-    @mock.patch('osprey.cli.preview_styles.preview_theme')
-    @mock.patch('sys.argv', ['preview_styles.py', '--theme', 'ocean'])
+    @mock.patch("osprey.cli.preview_styles.preview_theme")
+    @mock.patch("sys.argv", ["preview_styles.py", "--theme", "ocean"])
     def test_main_with_specific_theme(self, mock_preview):
         """Test main with specific theme selection."""
         try:
@@ -213,10 +213,10 @@ class TestMainFunction:
         assert mock_preview.called
         call_args = mock_preview.call_args
         if call_args:
-            assert call_args[0][0] == 'ocean'
+            assert call_args[0][0] == "ocean"
 
-    @mock.patch('osprey.cli.preview_styles.compare_themes')
-    @mock.patch('sys.argv', ['preview_styles.py', '--compare'])
+    @mock.patch("osprey.cli.preview_styles.compare_themes")
+    @mock.patch("sys.argv", ["preview_styles.py", "--compare"])
     def test_main_with_compare_flag(self, mock_compare):
         """Test main with --compare flag."""
         try:
@@ -227,8 +227,8 @@ class TestMainFunction:
         # Should call compare_themes
         assert mock_compare.called
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('sys.argv', ['preview_styles.py', '--help'])
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("sys.argv", ["preview_styles.py", "--help"])
     def test_main_with_help_flag(self, mock_console):
         """Test main with --help flag."""
         with pytest.raises(SystemExit) as exc_info:
@@ -237,9 +237,9 @@ class TestMainFunction:
         # Help should exit with 0
         assert exc_info.value.code == 0
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.preview_theme')
-    @mock.patch('sys.argv', ['preview_styles.py'])
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.preview_theme")
+    @mock.patch("sys.argv", ["preview_styles.py"])
     def test_main_keyboard_interrupt(self, mock_preview, mock_console):
         """Test main handles keyboard interrupt gracefully."""
         mock_preview.side_effect = KeyboardInterrupt()
@@ -267,8 +267,8 @@ class TestEdgeCases:
             assert theme.path
             assert theme.info
 
-    @mock.patch('osprey.cli.preview_styles.console')
-    @mock.patch('osprey.cli.preview_styles.set_theme')
+    @mock.patch("osprey.cli.preview_styles.console")
+    @mock.patch("osprey.cli.preview_styles.set_theme")
     def test_preview_handles_none_theme_name(self, mock_set_theme, mock_console):
         """Test preview handles edge case inputs."""
         theme = THEMES["osprey"]
@@ -279,4 +279,3 @@ class TestEdgeCases:
         except Exception:
             # Documenting current behavior - may raise or handle gracefully
             pass
-

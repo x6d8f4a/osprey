@@ -524,7 +524,7 @@ class TestHealthExitCodes:
                     mock_checker_instance = Mock()
                     mock_checker_instance.results = [
                         HealthCheckResult("test1", "ok"),
-                        HealthCheckResult("test2", "ok")
+                        HealthCheckResult("test2", "ok"),
                     ]
 
                     with patch("osprey.cli.health_cmd.HealthChecker") as MockChecker:
@@ -544,7 +544,7 @@ class TestHealthExitCodes:
                 mock_checker_instance = Mock()
                 mock_checker_instance.results = [
                     HealthCheckResult("test1", "ok"),
-                    HealthCheckResult("test2", "warning")
+                    HealthCheckResult("test2", "warning"),
                 ]
 
                 with patch("osprey.cli.health_cmd.HealthChecker") as MockChecker:
@@ -564,7 +564,7 @@ class TestHealthExitCodes:
                 mock_checker_instance = Mock()
                 mock_checker_instance.results = [
                     HealthCheckResult("test1", "ok"),
-                    HealthCheckResult("test2", "error")
+                    HealthCheckResult("test2", "error"),
                 ]
 
                 with patch("osprey.cli.health_cmd.HealthChecker") as MockChecker:
@@ -573,4 +573,3 @@ class TestHealthExitCodes:
                     result = cli_runner.invoke(health, [])
 
                     assert result.exit_code == 2
-

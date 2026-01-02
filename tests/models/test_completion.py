@@ -255,4 +255,3 @@ class TestProxyUrlValidation:
     def test_validate_proxy_with_path(self):
         """Test validation accepts proxy URL with path component."""
         assert _validate_proxy_url("http://proxy.example.com:8080/path") is True
-

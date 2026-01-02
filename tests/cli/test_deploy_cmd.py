@@ -302,5 +302,6 @@ class TestDeployCommandOutput:
                 result = cli_runner.invoke(deploy, ["build", "--config", str(config_file)])
 
                 # Should show build progress and success
-                assert "Building" in result.output or "built" in result.output or "✅" in result.output
-
+                assert (
+                    "Building" in result.output or "built" in result.output or "✅" in result.output
+                )

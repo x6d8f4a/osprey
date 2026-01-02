@@ -309,12 +309,13 @@ class TestGatherInformation:
         state["task_current_task"] = "Test task"
         logger = Mock()
 
-        with patch("osprey.infrastructure.respond_node.ContextManager") as mock_cm, \
-             patch("osprey.infrastructure.respond_node.StateManager") as mock_sm, \
-             patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode, \
-             patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps, \
-             patch("osprey.utils.config.get_interface_context") as mock_interface:
-
+        with (
+            patch("osprey.infrastructure.respond_node.ContextManager") as mock_cm,
+            patch("osprey.infrastructure.respond_node.StateManager") as mock_sm,
+            patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode,
+            patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps,
+            patch("osprey.utils.config.get_interface_context") as mock_interface,
+        ):
             # Setup mocks
             mock_cm_instance = Mock()
             mock_cm_instance.get_summaries.return_value = []
@@ -339,17 +340,16 @@ class TestGatherInformation:
         """Test gathering information in technical mode."""
         state = AgentState()
         state["task_current_task"] = "Technical task"
-        state["execution_step_results"] = {
-            "step_0": {"step_index": 0, "capability": "test"}
-        }
+        state["execution_step_results"] = {"step_0": {"step_index": 0, "capability": "test"}}
         logger = Mock()
 
-        with patch("osprey.infrastructure.respond_node.ContextManager") as mock_cm, \
-             patch("osprey.infrastructure.respond_node.StateManager") as mock_sm, \
-             patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode, \
-             patch("osprey.infrastructure.respond_node._get_execution_history") as mock_history, \
-             patch("osprey.utils.config.get_interface_context") as mock_interface:
-
+        with (
+            patch("osprey.infrastructure.respond_node.ContextManager") as mock_cm,
+            patch("osprey.infrastructure.respond_node.StateManager") as mock_sm,
+            patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode,
+            patch("osprey.infrastructure.respond_node._get_execution_history") as mock_history,
+            patch("osprey.utils.config.get_interface_context") as mock_interface,
+        ):
             mock_cm_instance = Mock()
             mock_cm_instance.get_summaries.return_value = []
             mock_cm.return_value = mock_cm_instance
@@ -375,12 +375,13 @@ class TestGatherInformation:
         state["ui_launchable_commands"] = [{"cmd": "test"}]
         state["ui_captured_notebooks"] = [{"nb": "test.ipynb"}]
 
-        with patch("osprey.context.context_manager.ContextManager") as mock_cm_class, \
-             patch("osprey.infrastructure.respond_node.StateManager") as mock_sm, \
-             patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode, \
-             patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps, \
-             patch("osprey.utils.config.get_interface_context") as mock_interface:
-
+        with (
+            patch("osprey.context.context_manager.ContextManager") as mock_cm_class,
+            patch("osprey.infrastructure.respond_node.StateManager") as mock_sm,
+            patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode,
+            patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps,
+            patch("osprey.utils.config.get_interface_context") as mock_interface,
+        ):
             mock_cm_instance = Mock()
             mock_cm_instance.get_summaries.return_value = []
             mock_cm_class.return_value = mock_cm_instance
@@ -405,12 +406,13 @@ class TestGatherInformation:
         state["control_is_killed"] = True
         state["control_kill_reason"] = "Timeout"
 
-        with patch("osprey.context.context_manager.ContextManager") as mock_cm_class, \
-             patch("osprey.infrastructure.respond_node.StateManager") as mock_sm, \
-             patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode, \
-             patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps, \
-             patch("osprey.utils.config.get_interface_context") as mock_interface:
-
+        with (
+            patch("osprey.context.context_manager.ContextManager") as mock_cm_class,
+            patch("osprey.infrastructure.respond_node.StateManager") as mock_sm,
+            patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode,
+            patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps,
+            patch("osprey.utils.config.get_interface_context") as mock_interface,
+        ):
             mock_cm_instance = Mock()
             mock_cm_instance.get_summaries.return_value = []
             mock_cm_class.return_value = mock_cm_instance
@@ -432,13 +434,14 @@ class TestGatherInformation:
         state["task_current_task"] = "Test"
         state["capability_context_data"] = {}
 
-        with patch("osprey.context.context_manager.ContextManager") as mock_cm_class, \
-             patch("osprey.infrastructure.respond_node.StateManager") as mock_sm, \
-             patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode, \
-             patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps, \
-             patch("osprey.utils.config.get_interface_context") as mock_interface, \
-             patch("osprey.infrastructure.respond_node.datetime") as mock_dt:
-
+        with (
+            patch("osprey.context.context_manager.ContextManager") as mock_cm_class,
+            patch("osprey.infrastructure.respond_node.StateManager") as mock_sm,
+            patch("osprey.infrastructure.respond_node._determine_response_mode") as mock_mode,
+            patch("osprey.infrastructure.respond_node._get_capabilities_overview") as mock_caps,
+            patch("osprey.utils.config.get_interface_context") as mock_interface,
+            patch("osprey.infrastructure.respond_node.datetime") as mock_dt,
+        ):
             mock_cm_instance = Mock()
             mock_cm_instance.get_summaries.return_value = []
             mock_cm_class.return_value = mock_cm_instance
@@ -457,4 +460,3 @@ class TestGatherInformation:
             context = _gather_information(state)
 
         assert context.current_date == "2025-12-23"
-

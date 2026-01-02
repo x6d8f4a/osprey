@@ -222,9 +222,7 @@ class TestAnthropicHealthCheck:
             "Invalid API key", response=MagicMock(), body=None
         )
 
-        is_healthy, message = provider.check_health(
-            api_key="sk-ant-invalid-key", base_url=None
-        )
+        is_healthy, message = provider.check_health(api_key="sk-ant-invalid-key", base_url=None)
 
         assert is_healthy is False
         assert "authentication" in message.lower() or "invalid" in message.lower()
@@ -345,14 +343,16 @@ class TestAnthropicHealthCheck:
 
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
-        mock_client.messages.create.side_effect = APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
 
         is_healthy, message = provider.check_health(api_key="sk-ant-key", base_url=None)
 
         assert is_healthy is False
-        assert "error" in message.lower() or "connection" in message.lower() or "failed" in message.lower()
+        assert (
+            "error" in message.lower()
+            or "connection" in message.lower()
+            or "failed" in message.lower()
+        )
 
     @patch("osprey.models.providers.anthropic.anthropic.Anthropic")
     def test_health_check_unexpected_error(self, mock_client_class):
@@ -367,4 +367,3 @@ class TestAnthropicHealthCheck:
 
         assert is_healthy is False
         assert "error" in message.lower() or "unexpected" in message.lower()
-

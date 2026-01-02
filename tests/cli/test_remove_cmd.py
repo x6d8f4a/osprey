@@ -159,10 +159,18 @@ class TestRemoveCapabilityCommand:
 
         with patch("osprey.generators.registry_updater.find_registry_file") as mock_find_registry:
             with patch("osprey.generators.config_updater.find_config_file") as mock_find_config:
-                with patch("osprey.generators.registry_updater.is_already_registered") as mock_is_registered:
-                    with patch("osprey.generators.config_updater.has_capability_react_model") as mock_has_model:
-                        with patch("osprey.generators.registry_updater.remove_from_registry") as mock_remove_reg:
-                            with patch("osprey.generators.config_updater.remove_capability_react_from_config") as mock_remove_cfg:
+                with patch(
+                    "osprey.generators.registry_updater.is_already_registered"
+                ) as mock_is_registered:
+                    with patch(
+                        "osprey.generators.config_updater.has_capability_react_model"
+                    ) as mock_has_model:
+                        with patch(
+                            "osprey.generators.registry_updater.remove_from_registry"
+                        ) as mock_remove_reg:
+                            with patch(
+                                "osprey.generators.config_updater.remove_capability_react_from_config"
+                            ) as mock_remove_cfg:
                                 mock_find_registry.return_value = registry_file
                                 mock_find_config.return_value = config_file
                                 mock_is_registered.return_value = True
@@ -170,15 +178,21 @@ class TestRemoveCapabilityCommand:
                                 mock_remove_reg.return_value = ("new content", "preview", "backup")
                                 mock_remove_cfg.return_value = ("new content", "preview", "backup")
 
-                                result = cli_runner.invoke(capability, [
-                                    "--name", "test_cap",
-                                    "--force"  # Skip confirmation
-                                ])
+                                result = cli_runner.invoke(
+                                    capability,
+                                    [
+                                        "--name",
+                                        "test_cap",
+                                        "--force",  # Skip confirmation
+                                    ],
+                                )
 
                                 # Should succeed
                                 assert result.exit_code == 0
                                 # Should show success message
-                                assert "successfully removed" in result.output or "✅" in result.output
+                                assert (
+                                    "successfully removed" in result.output or "✅" in result.output
+                                )
 
     def test_capability_removal_with_no_components(self, cli_runner, tmp_path, monkeypatch):
         """Test attempting to remove capability that doesn't exist."""
@@ -188,8 +202,12 @@ class TestRemoveCapabilityCommand:
 
         with patch("osprey.generators.registry_updater.find_registry_file") as mock_find_registry:
             with patch("osprey.generators.config_updater.find_config_file") as mock_find_config:
-                with patch("osprey.generators.registry_updater.is_already_registered") as mock_is_registered:
-                    with patch("osprey.generators.config_updater.has_capability_react_model") as mock_has_model:
+                with patch(
+                    "osprey.generators.registry_updater.is_already_registered"
+                ) as mock_is_registered:
+                    with patch(
+                        "osprey.generators.config_updater.has_capability_react_model"
+                    ) as mock_has_model:
                         with patch("osprey.cli.remove_cmd.find_capability_file") as mock_find_cap:
                             mock_find_registry.return_value = Path("registry.py")
                             mock_find_config.return_value = Path("config.yml")
@@ -197,14 +215,16 @@ class TestRemoveCapabilityCommand:
                             mock_has_model.return_value = False
                             mock_find_cap.return_value = None
 
-                            result = cli_runner.invoke(capability, [
-                                "--name", "nonexistent",
-                                "--force"
-                            ])
+                            result = cli_runner.invoke(
+                                capability, ["--name", "nonexistent", "--force"]
+                            )
 
                             # Should succeed but show warning
                             assert result.exit_code == 0
-                            assert "No components found" in result.output or "Nothing to remove" in result.output
+                            assert (
+                                "No components found" in result.output
+                                or "Nothing to remove" in result.output
+                            )
 
     def test_capability_force_flag_skips_confirmation(self, cli_runner, tmp_path, monkeypatch):
         """Test that --force flag skips confirmation prompt."""
@@ -213,16 +233,17 @@ class TestRemoveCapabilityCommand:
         config_file.write_text("models:\n  test_cap_react: {}\n")
 
         with patch("osprey.generators.config_updater.find_config_file") as mock_find_config:
-            with patch("osprey.generators.config_updater.has_capability_react_model") as mock_has_model:
-                with patch("osprey.generators.config_updater.remove_capability_react_from_config") as mock_remove:
+            with patch(
+                "osprey.generators.config_updater.has_capability_react_model"
+            ) as mock_has_model:
+                with patch(
+                    "osprey.generators.config_updater.remove_capability_react_from_config"
+                ) as mock_remove:
                     mock_find_config.return_value = config_file
                     mock_has_model.return_value = True
                     mock_remove.return_value = ("new", "preview", "backup")
 
-                    result = cli_runner.invoke(capability, [
-                        "--name", "test_cap",
-                        "--force"
-                    ])
+                    result = cli_runner.invoke(capability, ["--name", "test_cap", "--force"])
 
                     # Should not prompt for confirmation
                     assert "Proceed with removal" not in result.output
@@ -235,17 +256,17 @@ class TestRemoveCapabilityCommand:
         config_file.write_text("models: {}\n")
 
         with patch("osprey.generators.config_updater.find_config_file") as mock_find_config:
-            with patch("osprey.generators.config_updater.has_capability_react_model") as mock_has_model:
+            with patch(
+                "osprey.generators.config_updater.has_capability_react_model"
+            ) as mock_has_model:
                 with patch("osprey.cli.remove_cmd.find_capability_file") as mock_find_cap:
                     mock_find_config.return_value = config_file
                     mock_has_model.return_value = False
                     mock_find_cap.return_value = None
 
-                    result = cli_runner.invoke(capability, [
-                        "--name", "test_cap",
-                        "--force",
-                        "--quiet"
-                    ])
+                    result = cli_runner.invoke(
+                        capability, ["--name", "test_cap", "--force", "--quiet"]
+                    )
 
                     # Should have less output
                     assert result.exit_code == 0
@@ -265,10 +286,18 @@ class TestRemoveCapabilityErrorHandling:
 
         with patch("osprey.generators.registry_updater.find_registry_file") as mock_find_registry:
             with patch("osprey.generators.config_updater.find_config_file") as mock_find_config:
-                with patch("osprey.generators.registry_updater.is_already_registered") as mock_is_registered:
-                    with patch("osprey.generators.config_updater.has_capability_react_model") as mock_has_model:
-                        with patch("osprey.generators.registry_updater.remove_from_registry") as mock_remove_reg:
-                            with patch("osprey.generators.config_updater.remove_capability_react_from_config") as mock_remove_cfg:
+                with patch(
+                    "osprey.generators.registry_updater.is_already_registered"
+                ) as mock_is_registered:
+                    with patch(
+                        "osprey.generators.config_updater.has_capability_react_model"
+                    ) as mock_has_model:
+                        with patch(
+                            "osprey.generators.registry_updater.remove_from_registry"
+                        ) as mock_remove_reg:
+                            with patch(
+                                "osprey.generators.config_updater.remove_capability_react_from_config"
+                            ) as mock_remove_cfg:
                                 mock_find_registry.return_value = registry_file
                                 mock_find_config.return_value = config_file
                                 mock_is_registered.return_value = True
@@ -276,12 +305,10 @@ class TestRemoveCapabilityErrorHandling:
                                 mock_remove_reg.return_value = ("new", "preview", "backup")
                                 mock_remove_cfg.return_value = ("new", "preview", "backup")
 
-                                result = cli_runner.invoke(capability, [
-                                    "--name", "test_cap",
-                                    "--force"
-                                ])
+                                result = cli_runner.invoke(
+                                    capability, ["--name", "test_cap", "--force"]
+                                )
 
                                 # Should mention backups in output
                                 assert result.exit_code == 0
                                 assert "backup" in result.output.lower() or ".bak" in result.output
-

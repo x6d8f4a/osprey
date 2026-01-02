@@ -352,4 +352,3 @@ class TestArgoExecuteCompletion:
                     api_key="test-key",
                     base_url="https://test.url",
                 )
-

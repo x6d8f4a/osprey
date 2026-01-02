@@ -1,7 +1,5 @@
 """Tests for AI model factory."""
 
-
-
 from osprey.models.factory import _validate_proxy_url
 
 # =============================================================================

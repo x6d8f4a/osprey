@@ -155,10 +155,7 @@ class TestExecutionError:
 
     def test_create_basic_error(self):
         """Test creating a basic execution error."""
-        error = ExecutionError(
-            error_type="execution",
-            error_message="Division by zero"
-        )
+        error = ExecutionError(error_type="execution", error_message="Division by zero")
         assert error.error_type == "execution"
         assert error.error_message == "Division by zero"
         assert error.failed_code is None
@@ -174,7 +171,7 @@ class TestExecutionError:
             traceback="Traceback...",
             attempt_number=2,
             stage="generation",
-            analysis_issues=["Missing closing parenthesis"]
+            analysis_issues=["Missing closing parenthesis"],
         )
         assert error.error_type == "syntax"
         assert error.attempt_number == 2
@@ -187,7 +184,7 @@ class TestExecutionError:
             error_type="execution",
             error_message="NameError: undefined_var",
             attempt_number=1,
-            stage="execution"
+            stage="execution",
         )
         text = error.to_prompt_text()
         assert "Attempt 1" in text
@@ -201,7 +198,7 @@ class TestExecutionError:
             error_message="Error occurred",
             failed_code="result = undefined_var + 10",
             attempt_number=1,
-            stage="execution"
+            stage="execution",
         )
         text = error.to_prompt_text()
         assert "Code that failed:" in text
@@ -215,7 +212,7 @@ class TestExecutionError:
             error_message="Code failed analysis",
             attempt_number=1,
             stage="analysis",
-            analysis_issues=["Missing imports", "Unsafe operation"]
+            analysis_issues=["Missing imports", "Unsafe operation"],
         )
         text = error.to_prompt_text()
         assert "Issues Found:" in text
@@ -230,7 +227,7 @@ class TestExecutionError:
             error_message="Error",
             traceback=long_traceback,
             attempt_number=1,
-            stage="execution"
+            stage="execution",
         )
         text = error.to_prompt_text()
         # Should have truncated if traceback > 1000 chars
@@ -247,7 +244,7 @@ class TestExecutionError:
             traceback="Traceback (most recent call last):\n  File...",
             attempt_number=3,
             stage="execution",
-            analysis_issues=["Risky operation detected"]
+            analysis_issues=["Risky operation detected"],
         )
         text = error.to_prompt_text()
 
@@ -292,7 +289,7 @@ class TestNotebookAttempt:
             attempt_number=1,
             stage="execution",
             notebook_path=Path("/path/to/notebook.ipynb"),
-            notebook_link="http://jupyter/notebooks/notebook.ipynb"
+            notebook_link="http://jupyter/notebooks/notebook.ipynb",
         )
         assert attempt.notebook_type == NotebookType.FINAL_SUCCESS
         assert attempt.attempt_number == 1
@@ -310,7 +307,7 @@ class TestNotebookAttempt:
             notebook_path=Path("/tmp/gen.ipynb"),
             notebook_link="http://localhost/gen.ipynb",
             error_context="Generation failed",
-            created_at="2025-12-23T10:00:00"
+            created_at="2025-12-23T10:00:00",
         )
         data = attempt.to_dict()
 
@@ -329,7 +326,7 @@ class TestNotebookAttempt:
             attempt_number=1,
             stage="execution",
             notebook_path=Path("/absolute/path/notebook.ipynb"),
-            notebook_link="http://link"
+            notebook_link="http://link",
         )
         data = attempt.to_dict()
         assert isinstance(data["notebook_path"], str)
@@ -366,7 +363,7 @@ class TestPythonExecutionContext:
             attempt_number=1,
             stage="execution",
             notebook_path=Path("/path/notebook.ipynb"),
-            notebook_link="http://link"
+            notebook_link="http://link",
         )
         context.add_notebook_attempt(attempt)
         assert len(context.notebook_attempts) == 1
@@ -382,7 +379,7 @@ class TestPythonExecutionContext:
                 attempt_number=i + 1,
                 stage="generation",
                 notebook_path=Path(f"/path/notebook_{i}.ipynb"),
-                notebook_link=f"http://link/{i}"
+                notebook_link=f"http://link/{i}",
             )
             context.add_notebook_attempt(attempt)
 
@@ -408,7 +405,7 @@ class TestPythonExecutionContext:
             attempt_number=1,
             stage="generation",
             notebook_path=Path("/path1"),
-            notebook_link="http://link1"
+            notebook_link="http://link1",
         )
         context.add_notebook_attempt(attempt1)
 
@@ -421,7 +418,7 @@ class TestPythonExecutionContext:
             attempt_number=2,
             stage="execution",
             notebook_path=Path("/path2"),
-            notebook_link="http://link2"
+            notebook_link="http://link2",
         )
         context.add_notebook_attempt(attempt2)
 
@@ -435,7 +432,7 @@ class TestPythonExecutionContext:
             folder_path=Path("/tmp/execution_123"),
             folder_url="http://jupyter/execution_123",
             attempts_folder=Path("/tmp/execution_123/attempts"),
-            context_file_path=Path("/tmp/execution_123/context.json")
+            context_file_path=Path("/tmp/execution_123/context.json"),
         )
 
         assert context.is_initialized
@@ -446,7 +443,7 @@ class TestPythonExecutionContext:
             attempt_number=context.get_next_attempt_number(),
             stage="generation",
             notebook_path=context.folder_path / "gen_1.ipynb",
-            notebook_link=f"{context.folder_url}/gen_1.ipynb"
+            notebook_link=f"{context.folder_url}/gen_1.ipynb",
         )
         context.add_notebook_attempt(gen_attempt)
 
@@ -456,7 +453,7 @@ class TestPythonExecutionContext:
             attempt_number=context.get_next_attempt_number(),
             stage="execution",
             notebook_path=context.folder_path / "exec_1.ipynb",
-            notebook_link=f"{context.folder_url}/exec_1.ipynb"
+            notebook_link=f"{context.folder_url}/exec_1.ipynb",
         )
         context.add_notebook_attempt(exec_attempt)
 
@@ -466,7 +463,7 @@ class TestPythonExecutionContext:
             attempt_number=context.get_next_attempt_number(),
             stage="final",
             notebook_path=context.folder_path / "final.ipynb",
-            notebook_link=f"{context.folder_url}/final.ipynb"
+            notebook_link=f"{context.folder_url}/final.ipynb",
         )
         context.add_notebook_attempt(final_attempt)
 
@@ -476,4 +473,3 @@ class TestPythonExecutionContext:
         assert context.notebook_attempts[1].notebook_type == NotebookType.EXECUTION_ATTEMPT
         assert context.notebook_attempts[2].notebook_type == NotebookType.FINAL_SUCCESS
         assert context.get_next_attempt_number() == 4
-

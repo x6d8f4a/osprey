@@ -17,7 +17,6 @@ per COVERAGE_EXPANSION_PLAN.md guidance on "files genuinely hard to test in isol
 """
 
 
-
 class TestApprovalNodeDocumentation:
     """Document that approval node is tested via integration tests."""
 
@@ -33,4 +32,3 @@ class TestApprovalNodeDocumentation:
         # - State preservation during resume
         # - Write operation approval workflows
         assert True, "See tests/integration/test_python_executor_service.py::TestApprovalWorkflow"
-

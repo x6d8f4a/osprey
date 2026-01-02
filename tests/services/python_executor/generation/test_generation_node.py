@@ -55,7 +55,6 @@ per COVERAGE_EXPANSION_PLAN.md guidance on "files genuinely hard to test in isol
 """
 
 
-
 class TestGenerationNodeDocumentation:
     """Document that generation node is tested via integration/e2e tests."""
 
@@ -85,4 +84,3 @@ class TestGenerationNodeDocumentation:
         # - Basic and Claude Code generators
         # - Codebase reading and guidance
         assert True, "See integration/e2e tests for generation node coverage"
-

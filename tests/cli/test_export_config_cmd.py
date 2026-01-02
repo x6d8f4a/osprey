@@ -209,4 +209,3 @@ class TestExportConfigOutput:
 
                 # Should show some output (success or error)
                 assert len(result.output) > 0
-

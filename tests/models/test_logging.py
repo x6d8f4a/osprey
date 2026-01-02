@@ -478,9 +478,7 @@ class TestLogApiCall:
         # Mock config to enable logging
         monkeypatch.setattr(
             "osprey.models.logging.get_config_value",
-            MagicMock(
-                return_value={"api_calls": {"save_all": True, "latest_only": True}}
-            ),
+            MagicMock(return_value={"api_calls": {"save_all": True, "latest_only": True}}),
         )
 
         # Mock agent dir to use tmp_path
@@ -525,9 +523,7 @@ class TestLogApiCall:
         # Mock config
         monkeypatch.setattr(
             "osprey.models.logging.get_config_value",
-            MagicMock(
-                return_value={"api_calls": {"save_all": True, "latest_only": True}}
-            ),
+            MagicMock(return_value={"api_calls": {"save_all": True, "latest_only": True}}),
         )
         monkeypatch.setattr("osprey.models.logging.get_agent_dir", lambda x: tmp_path)
         monkeypatch.setattr(
@@ -588,9 +584,7 @@ class TestLogApiCall:
 
         monkeypatch.setattr(
             "osprey.models.logging.get_config_value",
-            MagicMock(
-                return_value={"api_calls": {"save_all": True, "latest_only": False}}
-            ),
+            MagicMock(return_value={"api_calls": {"save_all": True, "latest_only": False}}),
         )
         monkeypatch.setattr("osprey.models.logging.get_agent_dir", lambda x: tmp_path)
         monkeypatch.setattr(
@@ -615,4 +609,3 @@ class TestLogApiCall:
         assert filename.startswith("test_test_")
         assert "_20" in filename  # Should have year starting with 20
         assert filename.endswith(".txt")
-

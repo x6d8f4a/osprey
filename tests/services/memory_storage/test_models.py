@@ -94,10 +94,7 @@ class TestMemoryContent:
 
     def test_model_deserialization(self):
         """Test model deserialization from dict."""
-        data = {
-            "timestamp": datetime(2025, 1, 15, 14, 30),
-            "content": "Test content"
-        }
+        data = {"timestamp": datetime(2025, 1, 15, 14, 30), "content": "Test content"}
 
         memory = MemoryContent(**data)
 
@@ -119,18 +116,9 @@ class TestMemoryContent:
     def test_multiple_memories_different_timestamps(self):
         """Test creating multiple memories with different timestamps."""
         memories = [
-            MemoryContent(
-                timestamp=datetime(2025, 1, 1, 10, 0),
-                content="First memory"
-            ),
-            MemoryContent(
-                timestamp=datetime(2025, 1, 2, 11, 0),
-                content="Second memory"
-            ),
-            MemoryContent(
-                timestamp=datetime(2025, 1, 3, 12, 0),
-                content="Third memory"
-            ),
+            MemoryContent(timestamp=datetime(2025, 1, 1, 10, 0), content="First memory"),
+            MemoryContent(timestamp=datetime(2025, 1, 2, 11, 0), content="Second memory"),
+            MemoryContent(timestamp=datetime(2025, 1, 3, 12, 0), content="Third memory"),
         ]
 
         formatted = [m.format_for_llm() for m in memories]
@@ -171,4 +159,3 @@ class TestMemoryContent:
         assert "Line 2" in formatted
         assert "Line 3" in formatted
         assert formatted.startswith("[2025-01-15 14:30]")
-

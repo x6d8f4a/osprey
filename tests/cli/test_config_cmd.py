@@ -256,10 +256,9 @@ class TestConfigSetModelsCommand:
                     }
                     mock_update.return_value = ("new content", "preview")
 
-                    result = cli_runner.invoke(set_models, [
-                        "--provider", "anthropic",
-                        "--model", "claude-sonnet-4"
-                    ])
+                    result = cli_runner.invoke(
+                        set_models, ["--provider", "anthropic", "--model", "claude-sonnet-4"]
+                    )
 
                     # Should call update function
                     assert mock_update.called
@@ -290,15 +289,18 @@ class TestConfigSetModelsCommand:
                 mock_resolve.return_value = str(config_file)
                 mock_metadata.return_value = {"anthropic": {"models": []}}
 
-                result = cli_runner.invoke(set_models, [
-                    "--provider", "invalid",
-                    "--model", "some-model"
-                ])
+                result = cli_runner.invoke(
+                    set_models, ["--provider", "invalid", "--model", "some-model"]
+                )
 
                 # Should fail (exit code 2 is Click parameter error, 1 is abort)
                 assert result.exit_code in [1, 2]
                 # May error during parameter validation or during execution
-                assert "Invalid" in result.output or "❌" in result.output or "not found" in result.output.lower()
+                assert (
+                    "Invalid" in result.output
+                    or "❌" in result.output
+                    or "not found" in result.output.lower()
+                )
 
 
 class TestConfigErrorHandling:
@@ -328,4 +330,3 @@ class TestConfigErrorHandling:
             # Should handle missing file
             assert result.exit_code == 1
             assert "not found" in result.output.lower() or "❌" in result.output
-

@@ -78,10 +78,9 @@ class TestChatCommandWithValidSetup:
             with patch("osprey.cli.project_utils.resolve_config_path") as mock_resolve:
                 mock_resolve.return_value = config_file
 
-                cli_runner.invoke(chat, [
-                    "--project", str(project_dir),
-                    "--config", str(config_file)
-                ])
+                cli_runner.invoke(
+                    chat, ["--project", str(project_dir), "--config", str(config_file)]
+                )
 
                 # Should call resolve_config_path with project dir
                 assert mock_resolve.called
@@ -116,6 +115,7 @@ class TestChatCommandWithValidSetup:
 
                 # Track environment variable changes
                 import os
+
                 original_env = os.environ.get("CONFIG_FILE")
 
                 try:

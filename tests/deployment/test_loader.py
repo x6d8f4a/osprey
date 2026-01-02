@@ -504,14 +504,11 @@ class TestComplexScenarios:
     def test_nested_params_with_lists_and_dicts(self):
         """Test complex nested structure with mixed types."""
         data = {
-            "servers": [
-                {"name": "web1", "port": 8080},
-                {"name": "web2", "port": 8081}
-            ],
+            "servers": [{"name": "web1", "port": 8080}, {"name": "web2", "port": 8081}],
             "database": {
                 "primary": {"host": "db1", "port": 5432},
-                "replica": {"host": "db2", "port": 5432}
-            }
+                "replica": {"host": "db2", "port": 5432},
+            },
         }
         params = Params(data, "root")
 
@@ -527,7 +524,7 @@ class TestComplexScenarios:
                 "paths": {
                     "root": "${PROJECT_ROOT}",
                     "data": "${PROJECT_ROOT}/data",
-                    "logs": "${PROJECT_ROOT}/logs"
+                    "logs": "${PROJECT_ROOT}/logs",
                 }
             }
             params = Params(data, "root")
@@ -560,4 +557,3 @@ database:
             assert params.database.port == 5432
             assert params.database.name == "myapp"
             assert params.database.pool_size == 10
-

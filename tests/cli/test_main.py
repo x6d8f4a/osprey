@@ -32,7 +32,7 @@ class TestLazyGroup:
         ctx = mock.Mock()
 
         # Test a known command
-        with mock.patch('importlib.import_module') as mock_import:
+        with mock.patch("importlib.import_module") as mock_import:
             mock_module = mock.Mock()
             mock_module.init = mock.Mock()
             mock_import.return_value = mock_module
@@ -58,7 +58,16 @@ class TestLazyGroup:
         commands = group.list_commands(ctx)
 
         # Verify expected commands are present
-        expected_commands = ["init", "config", "deploy", "chat", "generate", "remove", "health", "workflows"]
+        expected_commands = [
+            "init",
+            "config",
+            "deploy",
+            "chat",
+            "generate",
+            "remove",
+            "health",
+            "workflows",
+        ]
         assert isinstance(commands, list)
         assert len(commands) > 0
         for cmd in expected_commands:
@@ -69,7 +78,7 @@ class TestLazyGroup:
         group = LazyGroup(name="test")
         ctx = mock.Mock()
 
-        with mock.patch('importlib.import_module') as mock_import:
+        with mock.patch("importlib.import_module") as mock_import:
             mock_module = mock.Mock()
             mock_module.config = mock.Mock()
             mock_import.return_value = mock_module
@@ -84,7 +93,7 @@ class TestLazyGroup:
         group = LazyGroup(name="test")
         ctx = mock.Mock()
 
-        with mock.patch('importlib.import_module') as mock_import:
+        with mock.patch("importlib.import_module") as mock_import:
             mock_module = mock.Mock()
             mock_module.export_config = mock.Mock()
             mock_import.return_value = mock_module
@@ -100,21 +109,21 @@ class TestCliGroup:
 
     def test_cli_group_help(self, runner):
         """Test CLI shows help message."""
-        result = runner.invoke(cli, ['--help'])
+        result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert 'osprey' in result.output.lower()
-        assert 'command' in result.output.lower()
+        assert "osprey" in result.output.lower()
+        assert "command" in result.output.lower()
 
     def test_cli_version_option(self, runner):
         """Test --version flag displays version."""
-        result = runner.invoke(cli, ['--version'])
+        result = runner.invoke(cli, ["--version"])
 
         assert result.exit_code == 0
         # Should contain version info
-        assert 'osprey' in result.output.lower() or 'version' in result.output.lower()
+        assert "osprey" in result.output.lower() or "version" in result.output.lower()
 
-    @mock.patch('osprey.cli.interactive_menu.launch_tui')
+    @mock.patch("osprey.cli.interactive_menu.launch_tui")
     def test_cli_without_command_launches_tui(self, mock_launch_tui, runner):
         """Test CLI without command launches interactive menu."""
         runner.invoke(cli, [])
@@ -122,21 +131,21 @@ class TestCliGroup:
         # Should attempt to launch TUI
         assert mock_launch_tui.called
 
-    @mock.patch('osprey.cli.styles.initialize_theme_from_config')
+    @mock.patch("osprey.cli.styles.initialize_theme_from_config")
     def test_cli_initializes_theme(self, mock_init_theme, runner):
         """Test CLI attempts to initialize theme from config."""
-        with mock.patch('osprey.cli.interactive_menu.launch_tui'):
+        with mock.patch("osprey.cli.interactive_menu.launch_tui"):
             runner.invoke(cli, [])
 
         # Should attempt theme initialization (silent failure is OK)
         assert mock_init_theme.called
 
-    @mock.patch('osprey.cli.styles.initialize_theme_from_config')
+    @mock.patch("osprey.cli.styles.initialize_theme_from_config")
     def test_cli_handles_theme_initialization_failure(self, mock_init_theme, runner):
         """Test CLI continues if theme initialization fails."""
         mock_init_theme.side_effect = Exception("Theme loading failed")
 
-        with mock.patch('osprey.cli.interactive_menu.launch_tui'):
+        with mock.patch("osprey.cli.interactive_menu.launch_tui"):
             result = runner.invoke(cli, [])
 
         # Should not crash - silent failure
@@ -146,17 +155,17 @@ class TestCliGroup:
     def test_cli_subcommand_invocation(self, runner):
         """Test CLI can invoke subcommands."""
         # Test with a simple subcommand (health --help should work)
-        result = runner.invoke(cli, ['health', '--help'])
+        result = runner.invoke(cli, ["health", "--help"])
 
         # Should execute subcommand
         assert result.exit_code == 0
-        assert 'health' in result.output.lower()
+        assert "health" in result.output.lower()
 
 
 class TestMainFunction:
     """Test the main entry point function."""
 
-    @mock.patch('osprey.cli.main.cli')
+    @mock.patch("osprey.cli.main.cli")
     def test_main_calls_cli(self, mock_cli):
         """Test main() calls the CLI group."""
         main()
@@ -164,8 +173,8 @@ class TestMainFunction:
         # Should invoke the CLI
         assert mock_cli.called
 
-    @mock.patch('osprey.cli.main.cli')
-    @mock.patch('click.echo')
+    @mock.patch("osprey.cli.main.cli")
+    @mock.patch("click.echo")
     def test_main_handles_keyboard_interrupt(self, mock_echo, mock_cli):
         """Test main handles Ctrl+C gracefully."""
         mock_cli.side_effect = KeyboardInterrupt()
@@ -179,8 +188,8 @@ class TestMainFunction:
         # Should print goodbye message
         assert mock_echo.called
 
-    @mock.patch('osprey.cli.main.cli')
-    @mock.patch('click.echo')
+    @mock.patch("osprey.cli.main.cli")
+    @mock.patch("click.echo")
     def test_main_handles_general_exception(self, mock_echo, mock_cli):
         """Test main handles exceptions gracefully."""
         mock_cli.side_effect = Exception("Test error")
@@ -194,7 +203,7 @@ class TestMainFunction:
         # Should print error message
         assert mock_echo.called
         call_args = str(mock_echo.call_args)
-        assert 'error' in call_args.lower()
+        assert "error" in call_args.lower()
 
 
 class TestLazyLoading:
@@ -219,7 +228,7 @@ class TestLazyLoading:
         for cmd_name in commands:
             # Should be able to get command (even if import fails)
             # This tests the mapping exists
-            with mock.patch('importlib.import_module') as mock_import:
+            with mock.patch("importlib.import_module") as mock_import:
                 mock_module = mock.Mock()
                 setattr(mock_module, cmd_name, mock.Mock())
                 mock_import.return_value = mock_module
@@ -240,7 +249,7 @@ class TestIntegration:
         import time
 
         start = time.time()
-        result = runner.invoke(cli, ['--help'])
+        result = runner.invoke(cli, ["--help"])
         elapsed = time.time() - start
 
         assert result.exit_code == 0
@@ -254,7 +263,7 @@ class TestIntegration:
         assert __version__ is not None
         assert isinstance(__version__, str)
         # Should be semver format
-        assert '.' in __version__
+        assert "." in __version__
 
     def test_cli_as_module(self):
         """Test CLI can be invoked as module."""
@@ -270,7 +279,7 @@ class TestEdgeCases:
 
     def test_cli_with_unknown_command(self, runner):
         """Test CLI handles unknown commands gracefully."""
-        result = runner.invoke(cli, ['unknown_command'])
+        result = runner.invoke(cli, ["unknown_command"])
 
         # Should fail with helpful error
         assert result.exit_code != 0
@@ -283,11 +292,10 @@ class TestEdgeCases:
         group.get_command(None, "init")
         # May return None or command - documenting behavior
 
-    @mock.patch('osprey.cli.interactive_menu.launch_tui')
+    @mock.patch("osprey.cli.interactive_menu.launch_tui")
     def test_cli_invoked_subcommand_skips_tui(self, mock_launch_tui, runner):
         """Test that providing a subcommand skips the TUI."""
-        runner.invoke(cli, ['health', '--help'])
+        runner.invoke(cli, ["health", "--help"])
 
         # TUI should NOT be launched when subcommand is provided
         assert not mock_launch_tui.called
-

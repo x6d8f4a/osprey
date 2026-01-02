@@ -125,9 +125,10 @@ class TestOllamaCreateModel:
         """Test model creation with successful connection."""
         provider = OllamaProviderAdapter()
 
-        with patch.object(
-            OllamaProviderAdapter, "_test_connection", return_value=True
-        ), patch("openai.AsyncOpenAI") as mock_openai:
+        with (
+            patch.object(OllamaProviderAdapter, "_test_connection", return_value=True),
+            patch("openai.AsyncOpenAI") as mock_openai,
+        ):
             mock_client = Mock()
             mock_openai.return_value = mock_client
 
@@ -146,11 +147,14 @@ class TestOllamaCreateModel:
         """Test model creation falls back on connection failure."""
         provider = OllamaProviderAdapter()
 
-        with patch.object(
-            OllamaProviderAdapter,
-            "_test_connection",
-            side_effect=[False, True],  # First fails, second succeeds
-        ), patch("openai.AsyncOpenAI") as mock_openai:
+        with (
+            patch.object(
+                OllamaProviderAdapter,
+                "_test_connection",
+                side_effect=[False, True],  # First fails, second succeeds
+            ),
+            patch("openai.AsyncOpenAI") as mock_openai,
+        ):
             mock_client = Mock()
             mock_openai.return_value = mock_client
 
@@ -182,9 +186,10 @@ class TestOllamaCreateModel:
         """Test model creation adds /v1 to base URL."""
         provider = OllamaProviderAdapter()
 
-        with patch.object(
-            OllamaProviderAdapter, "_test_connection", return_value=True
-        ), patch("openai.AsyncOpenAI") as mock_openai:
+        with (
+            patch.object(OllamaProviderAdapter, "_test_connection", return_value=True),
+            patch("openai.AsyncOpenAI") as mock_openai,
+        ):
             mock_client = Mock()
             mock_openai.return_value = mock_client
 
@@ -205,9 +210,10 @@ class TestOllamaCreateModel:
         provider = OllamaProviderAdapter()
         mock_http_client = Mock()
 
-        with patch.object(
-            OllamaProviderAdapter, "_test_connection", return_value=True
-        ), patch("openai.AsyncOpenAI") as mock_openai:
+        with (
+            patch.object(OllamaProviderAdapter, "_test_connection", return_value=True),
+            patch("openai.AsyncOpenAI") as mock_openai,
+        ):
             mock_client = Mock()
             mock_openai.return_value = mock_client
 
@@ -381,4 +387,3 @@ class TestOllamaHealthCheck:
             )
             assert success is False
             assert "failed" in message.lower()
-

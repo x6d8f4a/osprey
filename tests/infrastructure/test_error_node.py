@@ -470,13 +470,16 @@ class TestGenerateLLMExplanation:
             failed_operation="api_call",
         )
 
-        with patch("osprey.infrastructure.error_node.get_registry") as mock_registry, \
-             patch("osprey.infrastructure.error_node.get_framework_prompts") as mock_prompts, \
-             patch("osprey.infrastructure.error_node.get_chat_completion") as mock_llm, \
-             patch("osprey.infrastructure.error_node.get_model_config") as mock_config:
-
+        with (
+            patch("osprey.infrastructure.error_node.get_registry") as mock_registry,
+            patch("osprey.infrastructure.error_node.get_framework_prompts") as mock_prompts,
+            patch("osprey.infrastructure.error_node.get_chat_completion") as mock_llm,
+            patch("osprey.infrastructure.error_node.get_model_config") as mock_config,
+        ):
             # Mock dependencies
-            mock_registry.return_value.get_capabilities_overview.return_value = "Capabilities overview"
+            mock_registry.return_value.get_capabilities_overview.return_value = (
+                "Capabilities overview"
+            )
 
             mock_builder = Mock()
             mock_builder.get_system_instructions.return_value = "Analysis prompt"
@@ -502,11 +505,12 @@ class TestGenerateLLMExplanation:
             failed_operation="op",
         )
 
-        with patch("osprey.infrastructure.error_node.get_registry"), \
-             patch("osprey.infrastructure.error_node.get_framework_prompts"), \
-             patch("osprey.infrastructure.error_node.get_chat_completion") as mock_llm, \
-             patch("osprey.infrastructure.error_node.get_model_config"):
-
+        with (
+            patch("osprey.infrastructure.error_node.get_registry"),
+            patch("osprey.infrastructure.error_node.get_framework_prompts"),
+            patch("osprey.infrastructure.error_node.get_chat_completion") as mock_llm,
+            patch("osprey.infrastructure.error_node.get_model_config"),
+        ):
             mock_llm.return_value = ""  # Empty response
 
             explanation = _generate_llm_explanation(context)
@@ -553,9 +557,10 @@ class TestGenerateErrorResponse:
             execution_time=3.5,
         )
 
-        with patch("osprey.infrastructure.error_node._build_structured_error_report") as mock_report, \
-             patch("osprey.infrastructure.error_node._generate_llm_explanation") as mock_explain:
-
+        with (
+            patch("osprey.infrastructure.error_node._build_structured_error_report") as mock_report,
+            patch("osprey.infrastructure.error_node._generate_llm_explanation") as mock_explain,
+        ):
             mock_report.return_value = "STRUCTURED REPORT"
             mock_explain.return_value = "LLM ANALYSIS"
 
@@ -617,4 +622,3 @@ class TestCreateFallbackResponse:
         assert "⚠️" in response  # Warning emoji
         lines = response.split("\n")
         assert len(lines) > 3  # Multi-line structure
-

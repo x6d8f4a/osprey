@@ -43,7 +43,6 @@ per COVERAGE_EXPANSION_PLAN.md guidance on "files genuinely hard to test in isol
 """
 
 
-
 class TestAnalysisNodeDocumentation:
     """Document that analysis node is tested via integration tests."""
 
@@ -66,4 +65,3 @@ class TestAnalysisNodeDocumentation:
         # - Pattern detection for control system operations
         # - AST-based code analysis
         assert True, "See integration tests for analysis node coverage"
-

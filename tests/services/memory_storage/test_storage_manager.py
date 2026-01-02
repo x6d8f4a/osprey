@@ -272,9 +272,7 @@ class TestAddMemoryEntry:
         manager = MemoryStorageManager(str(tmp_path))
         user_id = "user123"
 
-        new_entry = MemoryContent(
-            timestamp=datetime(2024, 1, 15, 12, 0), content="New memory"
-        )
+        new_entry = MemoryContent(timestamp=datetime(2024, 1, 15, 12, 0), content="New memory")
 
         success = manager.add_memory_entry(user_id, new_entry)
 
@@ -353,4 +351,3 @@ class TestGetMemoryStorageManager:
 
         assert str(manager.memory_dir) == expected_dir
         mock_get_agent_dir.assert_called_once_with("user_memory_dir")
-
