@@ -86,8 +86,21 @@ def get_task_description(task: str) -> str:
 
 
 def has_claude_integration(task: str) -> bool:
-    """Check if a task has Claude Code integration."""
-    return (get_integrations_root() / "claude_code" / task).exists()
+    """Check if a task has Claude Code integration (custom wrapper or auto-generatable).
+
+    A task is installable as a skill if it either:
+    1. Has a custom wrapper in integrations/claude_code/{task}/
+    2. Has 'skill_description' in its frontmatter (can be auto-generated)
+    """
+    # Check for custom wrapper
+    integration_dir = get_integrations_root() / "claude_code" / task
+    if integration_dir.exists() and any(integration_dir.glob("*.md")):
+        return True
+
+    # Check for auto-generatable (has skill_description in frontmatter)
+    from osprey.cli.claude_cmd import can_generate_skill
+
+    return can_generate_skill(task)
 
 
 def get_instructions_path(task: str) -> Path:

@@ -9,8 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **CLI**: New `osprey tasks` command for browsing AI assistant tasks
+  - `osprey tasks` - Interactive task browser (default)
   - `osprey tasks list` - List all available tasks
-  - `osprey tasks show <task>` - Show task details and available integrations
+  - `osprey tasks show <task>` - Print task instructions to stdout
+  - `osprey tasks copy <task>` - Copy task to project's `.ai-tasks/` directory
+  - `osprey tasks path <task>` - Print path to task's instructions file
 - **CLI**: New `osprey claude` command for Claude Code skill management
   - `osprey claude install <task>` - Install a task as a Claude Code skill
   - `osprey claude list` - List installed and available skills

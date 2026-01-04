@@ -5,6 +5,11 @@ applies_when: [setting_up_channel_finder, choosing_pipeline, building_database]
 estimated_time: 15-30 minutes
 ai_ready: true
 related: [channel-finder-database-builder]
+skill_description: >-
+  Helps select the appropriate Channel Finder pipeline based on channel naming
+  patterns. Use when the user is setting up Channel Finder, choosing between
+  In-Context, Hierarchical, or Middle Layer pipelines, or needs guidance on
+  which pipeline fits their control system's channel naming conventions.
 ---
 
 # Channel Finder: Pipeline Selection Guide

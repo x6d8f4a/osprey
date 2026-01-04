@@ -2,9 +2,14 @@
 workflow: testing-workflow
 category: code-quality
 applies_when: [writing_code, adding_features, fixing_bugs, before_commit]
-estimated_time: varies (unit: seconds, e2e: minutes + cost)
+estimated_time: "varies (unit: seconds, e2e: minutes + cost)"
 ai_ready: true
 related: [pre-merge-cleanup, feature-development, bug-fix]
+skill_description: >-
+  Comprehensive testing guidance for Osprey projects. Use when the user wants
+  to write tests, run tests, understand test strategy, or needs help with
+  unit tests, integration tests, or e2e tests. Covers pytest patterns, markers,
+  fixtures, mocking, async testing, and cost-effective test strategies.
 ---
 
 # Testing Workflow

@@ -64,22 +64,26 @@ The wrapper should be minimal - just metadata + a reference to the instructions.
 
 ## Available Tasks
 
-| Task | Description | Skill Wrapper |
+| Task | Description | Skill Support |
 |------|-------------|---------------|
-| `migrate` | Upgrade downstream projects to newer OSPREY versions | Yes |
-| `testing-workflow` | Comprehensive testing guide (unit, integration, e2e) | No |
-| `commit-organization` | Organize changes into atomic commits | No |
-| `pre-merge-cleanup` | Detect loose ends before merging PRs | No |
-| `ai-code-review` | Review and cleanup AI-generated code | No |
-| `docstrings` | Write clear Sphinx-compatible docstrings | No |
-| `comments` | Write purposeful inline comments | No |
-| `release-workflow` | Create releases with proper versioning | No |
-| `update-documentation` | Keep docs in sync with code changes | No |
-| `channel-finder-database-builder` | Build channel finder databases | No |
-| `channel-finder-pipeline-selection` | Select appropriate CF pipelines | No |
+| `migrate` | Upgrade downstream projects to newer OSPREY versions | Custom |
+| `pre-commit` | Validate code before commits | Custom |
+| `testing-workflow` | Comprehensive testing guide (unit, integration, e2e) | Auto |
+| `create-capability` | Create new capabilities in Osprey apps | Auto |
+| `commit-organization` | Organize changes into atomic commits | Auto |
+| `pre-merge-cleanup` | Detect loose ends before merging PRs | Auto |
+| `ai-code-review` | Review and cleanup AI-generated code | Auto |
+| `docstrings` | Write clear Sphinx-compatible docstrings | Auto |
+| `channel-finder-database-builder` | Build channel finder databases | Auto |
+| `channel-finder-pipeline-selection` | Select appropriate CF pipelines | Auto |
+| `comments` | Write purposeful inline comments | — |
+| `release-workflow` | Create releases with proper versioning | — |
+| `update-documentation` | Keep docs in sync with code changes | — |
 
-Tasks with "Skill Wrapper: Yes" are automatically discovered by Claude Code when installed.
-Tasks with "Skill Wrapper: No" provide instructions that can be referenced manually.
+**Skill Support Legend:**
+- **Custom**: Has a custom SKILL.md wrapper in `integrations/claude_code/`
+- **Auto**: Has `skill_description` in frontmatter, skill is auto-generated on install
+- **—**: Manual use only (reference with `@` mentions)
 
 ## Adding a New Task
 
@@ -91,13 +95,34 @@ mkdir -p src/osprey/assist/tasks/my-task
 
 ### 2. Write `instructions.md`
 
-Create `src/osprey/assist/tasks/my-task/instructions.md` with:
+Create `src/osprey/assist/tasks/my-task/instructions.md` with YAML frontmatter:
 
 ```markdown
+---
+workflow: my-task
+category: code-quality
+applies_when: [scenario1, scenario2]
+estimated_time: 15-30 minutes
+ai_ready: true
+related: [other-task]
+skill_description: >-
+  Description of when Claude should use this skill. Include keywords
+  users might say to trigger it. This enables auto-generation of
+  Claude Code skills without requiring a custom SKILL.md wrapper.
+---
+
 # My Task
 
 ## Overview
 Brief description of what this task accomplishes.
+
+## AI Quick Start
+
+**Paste this prompt to your AI assistant:**
+
+\`\`\`
+Following @src/osprey/assist/tasks/my-task/instructions.md, help me with [task].
+\`\`\`
 
 ## Pre-requisites
 What needs to be true before starting.
@@ -115,15 +140,32 @@ How to verify the task was completed correctly.
 Common issues and solutions.
 ```
 
+**Frontmatter Fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `workflow` | Yes | Machine-readable identifier (matches directory name) |
+| `category` | Yes | Groups tasks (code-quality, documentation, channel-finder) |
+| `applies_when` | Yes | Array of contexts when task is relevant |
+| `estimated_time` | Yes | How long it typically takes |
+| `ai_ready` | Yes | Always `true` for AI-assisted tasks |
+| `related` | No | Related task workflows |
+| `skill_description` | No | **Enables Claude Code skill auto-generation** |
+| `allowed_tools` | No | Custom tools list (defaults to Read, Glob, Grep, Bash, Edit) |
+
 **Guidelines:**
 - Use imperative language ("Run this command", not "You should run")
 - Be specific about file paths, commands, patterns
 - Include examples where helpful
-- No tool-specific syntax (no `@file` references, no skill metadata)
+- No tool-specific syntax in instructions (no `@file` references)
+- Add `skill_description` to enable `osprey claude install <task>`
 
-### 3. Create tool wrappers
+### 3. Create tool wrappers (optional)
 
-For Claude Code, create `src/osprey/assist/integrations/claude_code/my-task/SKILL.md`:
+**If your task has `skill_description` in frontmatter, this step is optional.**
+Skills will be auto-generated from frontmatter when users run `osprey claude install <task>`.
+
+For custom skill wrappers (to add extra quick references or special handling), create `src/osprey/assist/integrations/claude_code/my-task/SKILL.md`:
 
 ```yaml
 ---
@@ -137,12 +179,19 @@ allowed-tools: Read, Glob, Grep, Bash, Edit
 # My Task
 
 Follow the instructions in [instructions.md](../../../tasks/my-task/instructions.md).
+
+## Quick Reference
+[Optional custom quick reference content]
 ```
 
-### 4. Register with CLI (optional)
+Custom wrappers take precedence over auto-generated skills.
 
-Tasks in `src/osprey/assist/tasks/` are automatically discovered by the CLI.
-To add a Claude Code skill wrapper, create the integration in `src/osprey/assist/integrations/claude_code/{task}/SKILL.md`.
+### 4. Automatic discovery
+
+Tasks in `src/osprey/assist/tasks/` are automatically discovered by the CLI:
+- `osprey tasks list` - Shows all available tasks
+- `osprey tasks show <task>` - Displays task instructions
+- `osprey claude install <task>` - Installs as Claude Code skill (if `skill_description` present or custom wrapper exists)
 
 ## Adding a New Tool Integration
 

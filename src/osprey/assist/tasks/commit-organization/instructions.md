@@ -5,6 +5,12 @@ applies_when: [before_commit, multiple_changes, feature_complete]
 estimated_time: 20-30 minutes
 ai_ready: true
 related: [pre-merge-cleanup, release-workflow]
+skill_description: >-
+  Helps organize uncommitted changes into atomic, logical commits. Use when
+  the user has multiple changes to commit, wants to split a large changeset
+  into smaller commits, or needs help structuring commits before pushing.
+  Guides through analyzing changes, grouping related modifications, and
+  creating meaningful commit messages.
 ---
 
 # Commit Organization Workflow

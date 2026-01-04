@@ -188,6 +188,22 @@ Then simply ask Claude to use the skill - it discovers installed skills automati
       comments                         Write purposeful inline comments
       release-workflow                 Create releases with proper versioning
       update-documentation             Keep docs in sync with code changes
+      create-capability                Create new capabilities in Osprey apps
+      channel-finder-pipeline-selection   Select appropriate Channel Finder pipelines
+      channel-finder-database-builder  Build channel finder databases
+
+   **Skill Auto-Generation**
+
+   Tasks with ``skill_description`` in their frontmatter can be installed as
+   Claude Code skills without requiring custom wrappers:
+
+   .. code-block:: bash
+
+      # List installable skills (shows auto-generated)
+      osprey claude list
+
+      # Install any skill-ready task
+      osprey claude install create-capability
 
    **Interactive Menu**
 
@@ -277,6 +293,12 @@ Workflow Catalog
             :link-type: ref
 
             Review AI-generated code for quality and correctness.
+
+         .. grid-item-card:: 🔧 Create Capability
+            :link: create-capability
+            :link-type: ref
+
+            Build new capabilities for Osprey applications.
 
          .. grid-item-card:: 🔍 Channel Finder Pipeline Selection
             :link: channel-finder-pipeline
@@ -466,6 +488,38 @@ Detailed Workflow Guides
 
 ----
 
+.. _create-capability:
+
+🔧 Create Capability
+^^^^^^^^^^^^^^^^^^^^
+
+`View task file <https://github.com/als-apg/osprey/blob/main/src/osprey/assist/tasks/create-capability/instructions.md>`_
+
+**Install as Claude Code skill:**
+
+.. code-block:: bash
+
+   osprey claude install create-capability
+
+**Example:**
+
+.. code-block:: text
+
+   @.ai-tasks/create-capability/instructions.md Help me create a new capability
+
+**What it covers:**
+
+- Requirements gathering (inputs, outputs, dependencies)
+- Context class design (data structures)
+- Capability implementation (business logic)
+- Registry configuration
+- Testing patterns
+
+**Interactive workflow:** The task guides you through questions before writing code,
+ensuring proper design of context classes, error handling, and registry entries.
+
+----
+
 .. _channel-finder-pipeline:
 
 🔍 Channel Finder Pipeline Selection
@@ -537,42 +591,50 @@ Best Practices
 Example: Adding a Capability with AI
 -------------------------------------
 
-**1. Plan the work:**
+**1. Use the create-capability workflow:**
 
 .. code-block:: text
 
-   @.ai-tasks/ + @docs/source/developer-guides/
-   I want to add a capability for archiver data. Help me plan the implementation.
+   @.ai-tasks/create-capability/instructions.md
+   Help me create a new capability for archiver data retrieval.
 
-**2. Write the code and docstrings:**
+Or install as a Claude Code skill for automatic discovery:
 
-.. code-block:: text
+.. code-block:: bash
 
-   @.ai-tasks/docstrings/instructions.md
-   Write a docstring for my new capability class
+   osprey claude install create-capability
 
-**3. Add appropriate tests:**
+Then simply ask Claude: *"Help me create a new capability for archiver data"*
+
+The workflow will guide you through:
+
+- Requirements gathering (what data, inputs, outputs)
+- Context class design
+- Capability implementation
+- Registry configuration
+
+**2. Add appropriate tests:**
 
 .. code-block:: text
 
    @.ai-tasks/testing-workflow/instructions.md
    My capability calls an external API. Should I write unit or integration tests?
 
-**4. Update documentation:**
+**3. Update documentation:**
 
 .. code-block:: text
 
    @.ai-tasks/update-documentation/instructions.md
    I added a new archiver capability. What documentation needs updating?
 
-**5. Pre-commit cleanup:**
+**4. Pre-commit cleanup:**
 
 .. code-block:: text
 
    @.ai-tasks/pre-merge-cleanup/instructions.md
    Scan my uncommitted changes for issues
 
-**6. Organize commits:**
+**5. Organize commits:**
 
 .. code-block:: text
 

@@ -5,6 +5,11 @@ applies_when: [after_ai_generation, before_commit, refactoring]
 estimated_time: 30-60 minutes (often 2x the generation time)
 ai_ready: true
 related: [pre-merge-cleanup, commit-organization, testing-workflow]
+skill_description: >-
+  Reviews and cleans up AI-generated code. Use when the user wants to review
+  code, clean up after AI generation, check for redundancy, find unused functions,
+  identify API inconsistencies, or refactor generated code. Helps catch common
+  AI coding issues before committing.
 ---
 
 # AI Code Review and Refactoring Workflow

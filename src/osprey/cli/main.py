@@ -127,7 +127,8 @@ def cli(ctx):
       osprey deploy up                Start services
       osprey chat                     Interactive conversation
       osprey health                   Check system health
-      osprey workflows export         Export AI workflow files
+      osprey tasks                    Browse AI assistant tasks
+      osprey claude install <task>    Install Claude Code skill
     """
     # Initialize theme from config if available (best-effort, silent failure)
     try:

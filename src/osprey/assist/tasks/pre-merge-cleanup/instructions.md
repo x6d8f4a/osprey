@@ -5,6 +5,11 @@ applies_when: [before_commit, pre_review, before_merge]
 estimated_time: 10-15 minutes
 ai_ready: true
 related: [commit-organization, update-documentation]
+skill_description: >-
+  Detects loose ends before merging PRs or feature branches. Use when the
+  user wants to check for issues before merging, find TODOs or FIXMEs,
+  detect debugging code, check for incomplete implementations, or ensure
+  code quality before review. Systematic cleanup and verification workflow.
 ---
 
 # Pre-Merge Cleanup Guide

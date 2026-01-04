@@ -6,14 +6,157 @@ Claude Code skill installations.
 Commands:
     - claude install: Install a task as a Claude Code skill
     - claude list: List installed skills
+
+Skill Generation:
+    Skills can be auto-generated from task frontmatter if the task includes
+    a 'skill_description' field. This enables any task to be installed as
+    a Claude Code skill without requiring a custom SKILL.md wrapper.
+
+    Frontmatter fields used for skill generation:
+    - workflow: Used for skill name (osprey-{workflow})
+    - skill_description: Description for Claude to decide when to use the skill
+    - allowed_tools: Optional list of allowed tools (defaults to standard set)
 """
 
 import shutil
 from pathlib import Path
+from typing import Any
 
 import click
+import yaml
 
 from osprey.cli.styles import Styles, console
+
+
+# Default tools for auto-generated skills
+DEFAULT_ALLOWED_TOOLS = ["Read", "Glob", "Grep", "Bash", "Edit"]
+
+
+def parse_task_frontmatter(task: str) -> dict[str, Any]:
+    """Parse YAML frontmatter from a task's instructions.md file.
+
+    Args:
+        task: Name of the task
+
+    Returns:
+        Dictionary of frontmatter fields, empty dict if no frontmatter
+    """
+    instructions_file = get_tasks_root() / task / "instructions.md"
+    if not instructions_file.exists():
+        return {}
+
+    content = instructions_file.read_text()
+
+    # Check for frontmatter (starts with ---)
+    if not content.startswith("---"):
+        return {}
+
+    # Find the closing ---
+    end_idx = content.find("---", 3)
+    if end_idx == -1:
+        return {}
+
+    frontmatter_text = content[3:end_idx].strip()
+
+    try:
+        return yaml.safe_load(frontmatter_text) or {}
+    except yaml.YAMLError:
+        return {}
+
+
+def get_task_title(task: str) -> str:
+    """Extract the title (first H1) from a task's instructions.md file.
+
+    Args:
+        task: Name of the task
+
+    Returns:
+        The title text, or a formatted version of the task name
+    """
+    instructions_file = get_tasks_root() / task / "instructions.md"
+    if not instructions_file.exists():
+        return task.replace("-", " ").title()
+
+    content = instructions_file.read_text()
+
+    # Find first H1 header after frontmatter
+    lines = content.split("\n")
+    in_frontmatter = False
+
+    for line in lines:
+        if line.strip() == "---":
+            in_frontmatter = not in_frontmatter
+            continue
+        if in_frontmatter:
+            continue
+        if line.startswith("# "):
+            return line[2:].strip()
+
+    return task.replace("-", " ").title()
+
+
+def can_generate_skill(task: str) -> bool:
+    """Check if a task can have a skill auto-generated from frontmatter.
+
+    A task is skill-ready if it has a 'skill_description' field in its frontmatter.
+
+    Args:
+        task: Name of the task
+
+    Returns:
+        True if skill can be auto-generated
+    """
+    frontmatter = parse_task_frontmatter(task)
+    return bool(frontmatter.get("skill_description"))
+
+
+def generate_skill_content(task: str) -> str:
+    """Generate SKILL.md content from task frontmatter.
+
+    Args:
+        task: Name of the task
+
+    Returns:
+        Generated SKILL.md content
+
+    Raises:
+        ValueError: If task doesn't have skill_description in frontmatter
+    """
+    frontmatter = parse_task_frontmatter(task)
+
+    if not frontmatter.get("skill_description"):
+        raise ValueError(f"Task '{task}' does not have 'skill_description' in frontmatter")
+
+    workflow = frontmatter.get("workflow", task)
+    skill_name = f"osprey-{workflow}"
+    description = frontmatter["skill_description"]
+    allowed_tools = frontmatter.get("allowed_tools", DEFAULT_ALLOWED_TOOLS)
+    title = get_task_title(task)
+
+    # Format allowed_tools as YAML list or single line
+    if isinstance(allowed_tools, list):
+        tools_str = ", ".join(allowed_tools)
+    else:
+        tools_str = str(allowed_tools)
+
+    # Build the SKILL.md content
+    skill_content = f"""---
+name: {skill_name}
+description: >
+  {description}
+allowed-tools: {tools_str}
+---
+
+# {title}
+
+This skill was auto-generated from task frontmatter.
+
+## Instructions
+
+Follow the detailed workflow in [instructions.md](./instructions.md).
+"""
+
+    return skill_content
 
 
 def get_tasks_root() -> Path:
@@ -83,7 +226,11 @@ def claude(ctx):
 def install_skill(task: str, force: bool):
     """Install a task as a Claude Code skill.
 
-    Copies the skill files to .claude/skills/<task>/ in the current directory.
+    Skills are installed to .claude/skills/<task>/ in the current directory.
+
+    Skills can come from two sources:
+    1. Custom skill wrappers in integrations/claude_code/<task>/
+    2. Auto-generated from task frontmatter (if skill_description is present)
 
     Examples:
 
@@ -103,10 +250,20 @@ def install_skill(task: str, force: bool):
 
     # Check if Claude Code integration exists for this task
     integration_dir = get_integrations_root() / "claude_code" / task
-    if not integration_dir.exists():
+    has_custom_wrapper = integration_dir.exists() and any(integration_dir.glob("*.md"))
+    can_auto_generate = can_generate_skill(task)
+
+    if not has_custom_wrapper and not can_auto_generate:
         console.print(
             f"[warning]⚠[/warning]  No Claude Code skill available for '{task}'",
         )
+        console.print("\nTo make this task installable as a skill, add 'skill_description'")
+        console.print("to its frontmatter in instructions.md:")
+        console.print("\n  [dim]---[/dim]")
+        console.print("  [dim]workflow: " + task + "[/dim]")
+        console.print("  [dim]skill_description: >-[/dim]")
+        console.print("  [dim]  Description of when Claude should use this skill.[/dim]")
+        console.print("  [dim]---[/dim]")
         console.print("\nThe task instructions can still be used directly:")
         instructions_path = get_tasks_root() / task / "instructions.md"
         console.print(f"  [path]@{instructions_path}[/path]")
@@ -116,7 +273,7 @@ def install_skill(task: str, force: bool):
     dest_dir = get_claude_skills_dir() / task
 
     # Check if already installed
-    if dest_dir.exists() and not force:
+    if dest_dir.exists() and any(dest_dir.glob("*.md")) and not force:
         console.print(
             f"[warning]⚠[/warning]  Skill already installed at: {dest_dir.relative_to(Path.cwd())}"
         )
@@ -128,15 +285,26 @@ def install_skill(task: str, force: bool):
 
     console.print(f"\n[bold]Installing Claude Code skill: {task}[/bold]\n")
 
-    # Copy skill files (SKILL.md and any other .md files)
     files_copied = 0
-    for source_file in integration_dir.glob("*.md"):
-        dest_file = dest_dir / source_file.name
-        shutil.copy2(source_file, dest_file)
-        console.print(f"  [success]✓[/success] {dest_file.relative_to(Path.cwd())}")
+
+    if has_custom_wrapper:
+        # Use custom wrapper: copy skill files (SKILL.md and any other .md files)
+        console.print("[dim]Using custom skill wrapper[/dim]\n")
+        for source_file in integration_dir.glob("*.md"):
+            dest_file = dest_dir / source_file.name
+            shutil.copy2(source_file, dest_file)
+            console.print(f"  [success]✓[/success] {dest_file.relative_to(Path.cwd())}")
+            files_copied += 1
+    else:
+        # Auto-generate SKILL.md from frontmatter
+        console.print("[dim]Auto-generating skill from frontmatter[/dim]\n")
+        skill_content = generate_skill_content(task)
+        skill_file = dest_dir / "SKILL.md"
+        skill_file.write_text(skill_content)
+        console.print(f"  [success]✓[/success] {skill_file.relative_to(Path.cwd())} [dim](generated)[/dim]")
         files_copied += 1
 
-    # Also copy the instructions.md for reference
+    # Always copy instructions.md
     instructions_source = get_tasks_root() / task / "instructions.md"
     if instructions_source.exists():
         instructions_dest = dest_dir / "instructions.md"
@@ -144,18 +312,50 @@ def install_skill(task: str, force: bool):
         console.print(f"  [success]✓[/success] {instructions_dest.relative_to(Path.cwd())}")
         files_copied += 1
 
+    # Copy any additional task files (e.g., migrate has versions/, schema.yml)
+    task_dir = get_tasks_root() / task
+    for item in task_dir.iterdir():
+        if item.name == "instructions.md":
+            continue  # Already copied
+        if item.is_file():
+            dest_file = dest_dir / item.name
+            shutil.copy2(item, dest_file)
+            console.print(f"  [success]✓[/success] {dest_file.relative_to(Path.cwd())}")
+            files_copied += 1
+        elif item.is_dir():
+            dest_subdir = dest_dir / item.name
+            if dest_subdir.exists():
+                shutil.rmtree(dest_subdir)
+            shutil.copytree(item, dest_subdir)
+            console.print(f"  [success]✓[/success] {dest_subdir.relative_to(Path.cwd())}/ [dim](directory)[/dim]")
+            files_copied += 1
+
     console.print(f"\n[success]✓ Installed {files_copied} files[/success]\n")
 
-    # Show usage
+    # Show usage hints based on frontmatter
+    frontmatter = parse_task_frontmatter(task)
     console.print("[bold]Usage:[/bold]")
-    if task == "pre-commit":
+
+    # Try to extract usage hints from skill_description or use defaults
+    skill_desc = frontmatter.get("skill_description", "")
+    if "commit" in task.lower() or "commit" in skill_desc.lower():
         console.print('  Ask Claude: "Run pre-commit checks"')
         console.print('  Or: "Validate my changes before committing"')
-    elif task == "migrate":
-        console.print('  Ask Claude: "Upgrade my project to OSPREY 0.9.6"')
-        console.print('  Or: "Help me migrate to the latest OSPREY version"')
+    elif "migrate" in task.lower() or "upgrade" in skill_desc.lower():
+        console.print('  Ask Claude: "Upgrade my project to the latest OSPREY version"')
+        console.print('  Or: "Help me migrate my OSPREY project"')
+    elif "capability" in task.lower():
+        console.print('  Ask Claude: "Help me create a new capability"')
+        console.print('  Or: "Guide me through building a capability for my Osprey app"')
+    elif "test" in task.lower():
+        console.print('  Ask Claude: "Help me write tests for this feature"')
+        console.print('  Or: "Run the testing workflow"')
+    elif "review" in task.lower():
+        console.print('  Ask Claude: "Review my code changes"')
+        console.print('  Or: "Run an AI code review"')
     else:
         console.print(f'  Ask Claude to help with the "{task}" task')
+
     console.print()
 
 
@@ -163,7 +363,9 @@ def install_skill(task: str, force: bool):
 def list_skills():
     """List installed Claude Code skills.
 
-    Shows skills installed in the current project's .claude/skills/ directory.
+    Shows skills installed in the current project's .claude/skills/ directory,
+    as well as tasks available for installation (either with custom wrappers
+    or auto-generated from frontmatter).
     """
     installed = get_installed_skills()
     available = get_available_tasks()
@@ -179,26 +381,37 @@ def list_skills():
     # Show available but not installed
     not_installed = [t for t in available if t not in installed]
     if not_installed:
-        # Check which have Claude integrations
-        with_integration = []
-        without_integration = []
+        # Categorize tasks by their skill availability
+        with_custom_wrapper = []
+        with_auto_generate = []
+        without_skill = []
+
         for task in not_installed:
             integration_dir = get_integrations_root() / "claude_code" / task
-            if integration_dir.exists():
-                with_integration.append(task)
-            else:
-                without_integration.append(task)
+            has_custom = integration_dir.exists() and any(integration_dir.glob("*.md"))
+            can_auto = can_generate_skill(task)
 
-        if with_integration:
+            if has_custom:
+                with_custom_wrapper.append(task)
+            elif can_auto:
+                with_auto_generate.append(task)
+            else:
+                without_skill.append(task)
+
+        # Show installable skills (custom + auto-generate)
+        installable = with_custom_wrapper + with_auto_generate
+        if installable:
             console.print("[dim]Available to install:[/dim]")
-            for task in with_integration:
+            for task in with_custom_wrapper:
                 console.print(f"  [info]○[/info] {task}")
+            for task in with_auto_generate:
+                console.print(f"  [info]○[/info] {task} [dim](auto-generated)[/dim]")
             console.print()
             console.print("Install with: [command]osprey claude install <skill>[/command]\n")
 
-        if without_integration:
-            console.print("[dim]Tasks without Claude integration (use @-mention):[/dim]")
-            for task in without_integration:
+        if without_skill:
+            console.print("[dim]Tasks without skill support (use @-mention or add skill_description):[/dim]")
+            for task in without_skill:
                 console.print(f"  [dim]- {task}[/dim]")
             console.print()
     elif not installed:
