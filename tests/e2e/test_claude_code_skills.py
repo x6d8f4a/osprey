@@ -66,7 +66,7 @@ pytestmark = [
 # 2. Claude Code can read the installed instructions
 # The magic number 42857 proves Claude read our specific instructions.
 
-MOCK_SKILL_MD = '''---
+MOCK_SKILL_MD = """---
 name: osprey-test-verification
 description: >
   Test skill for verifying OSPREY skill installation works correctly.
@@ -77,9 +77,9 @@ allowed-tools: Read
 # Test Verification Skill
 
 Follow the instructions in instructions.md EXACTLY.
-'''
+"""
 
-MOCK_INSTRUCTIONS_MD = '''# OSPREY Installation Verification
+MOCK_INSTRUCTIONS_MD = """# OSPREY Installation Verification
 
 ## Purpose
 
@@ -100,7 +100,7 @@ MAGIC_NUMBER: 42857
 
 The magic number 42857 is required to prove you read these instructions.
 Do not output anything else before or after this block.
-'''
+"""
 
 
 class TestOspreySkillInstallationWorkflow:
@@ -176,20 +176,17 @@ class TestOspreySkillInstallationWorkflow:
             assert len(instructions_content) > 100, "instructions.md appears empty"
 
     @pytest.mark.e2e_smoke
-    def test_osprey_claude_install_with_mock_skill(
-        self, cli_runner, tmp_path, mock_skill_source
-    ):
+    def test_osprey_claude_install_with_mock_skill(self, cli_runner, tmp_path, mock_skill_source):
         """Test that `osprey claude install` works with a mocked skill source.
 
         This verifies our mocking strategy works before using it in API tests.
         """
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # Patch the source directories to include our mock skill
-            with patch(
-                "osprey.cli.claude_cmd.get_tasks_root"
-            ) as mock_tasks, patch(
-                "osprey.cli.claude_cmd.get_integrations_root"
-            ) as mock_int:
+            with (
+                patch("osprey.cli.claude_cmd.get_tasks_root") as mock_tasks,
+                patch("osprey.cli.claude_cmd.get_integrations_root") as mock_int,
+            ):
                 mock_tasks.return_value = mock_skill_source["tasks_root"]
                 mock_int.return_value = mock_skill_source["integrations_root"]
 
@@ -213,9 +210,7 @@ class TestOspreySkillInstallationWorkflow:
         not has_anthropic_api_key(),
         reason="ANTHROPIC_API_KEY not set",
     )
-    def test_full_workflow_install_and_invoke_skill(
-        self, cli_runner, tmp_path, mock_skill_source
-    ):
+    def test_full_workflow_install_and_invoke_skill(self, cli_runner, tmp_path, mock_skill_source):
         """E2E test: Install skill via OSPREY, then verify Claude Code reads it.
 
         This is the KEY test that proves the full workflow works:
@@ -228,11 +223,10 @@ class TestOspreySkillInstallationWorkflow:
         """
         with cli_runner.isolated_filesystem(temp_dir=tmp_path):
             # Step 1: Install the mock skill using OSPREY's CLI
-            with patch(
-                "osprey.cli.claude_cmd.get_tasks_root"
-            ) as mock_tasks, patch(
-                "osprey.cli.claude_cmd.get_integrations_root"
-            ) as mock_int:
+            with (
+                patch("osprey.cli.claude_cmd.get_tasks_root") as mock_tasks,
+                patch("osprey.cli.claude_cmd.get_integrations_root") as mock_int,
+            ):
                 mock_tasks.return_value = mock_skill_source["tasks_root"]
                 mock_int.return_value = mock_skill_source["integrations_root"]
 

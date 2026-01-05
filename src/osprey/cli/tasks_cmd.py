@@ -209,7 +209,9 @@ def open_in_editor(file_path: Path) -> bool:
 
     cmd, _ = editor
     try:
-        subprocess.Popen([cmd, str(file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            [cmd, str(file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         return True
     except Exception:
         return False
@@ -343,9 +345,7 @@ def _show_task_actions(task: str, custom_style) -> str:
         if editor:
             choices.append(Choice("[>] Open in editor", value="open"))
         else:
-            choices.append(
-                Choice("[>] Open in editor (not found)", value=None, disabled=True)
-            )
+            choices.append(Choice("[>] Open in editor (not found)", value=None, disabled=True))
 
         # Copy to project (.ai-tasks/) - works with any AI tool
         if is_task_in_project(task):

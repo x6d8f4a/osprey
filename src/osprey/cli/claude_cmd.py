@@ -27,7 +27,6 @@ import yaml
 
 from osprey.cli.styles import Styles, console
 
-
 # Default tools for auto-generated skills
 DEFAULT_ALLOWED_TOOLS = ["Read", "Glob", "Grep", "Bash", "Edit"]
 
@@ -301,7 +300,9 @@ def install_skill(task: str, force: bool):
         skill_content = generate_skill_content(task)
         skill_file = dest_dir / "SKILL.md"
         skill_file.write_text(skill_content)
-        console.print(f"  [success]✓[/success] {skill_file.relative_to(Path.cwd())} [dim](generated)[/dim]")
+        console.print(
+            f"  [success]✓[/success] {skill_file.relative_to(Path.cwd())} [dim](generated)[/dim]"
+        )
         files_copied += 1
 
     # Always copy instructions.md
@@ -327,7 +328,9 @@ def install_skill(task: str, force: bool):
             if dest_subdir.exists():
                 shutil.rmtree(dest_subdir)
             shutil.copytree(item, dest_subdir)
-            console.print(f"  [success]✓[/success] {dest_subdir.relative_to(Path.cwd())}/ [dim](directory)[/dim]")
+            console.print(
+                f"  [success]✓[/success] {dest_subdir.relative_to(Path.cwd())}/ [dim](directory)[/dim]"
+            )
             files_copied += 1
 
     console.print(f"\n[success]✓ Installed {files_copied} files[/success]\n")
@@ -410,7 +413,9 @@ def list_skills():
             console.print("Install with: [command]osprey claude install <skill>[/command]\n")
 
         if without_skill:
-            console.print("[dim]Tasks without skill support (use @-mention or add skill_description):[/dim]")
+            console.print(
+                "[dim]Tasks without skill support (use @-mention or add skill_description):[/dim]"
+            )
             for task in without_skill:
                 console.print(f"  [dim]- {task}[/dim]")
             console.print()

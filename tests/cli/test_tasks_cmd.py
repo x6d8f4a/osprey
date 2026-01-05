@@ -64,15 +64,26 @@ def mock_tasks_path(tmp_path):
     incomplete_dir.mkdir()
     (incomplete_dir / "notes.txt").write_text("This task has no instructions.md")
 
+    # Create comments task (no skill_description, for testing no-integration case)
+    comments_dir = tasks_dir / "comments"
+    comments_dir.mkdir()
+    (comments_dir / "instructions.md").write_text(
+        "# Comments Guidelines\n\nWrite purposeful inline comments.\n"
+    )
+
     # Create integrations directory
     integrations_dir = tmp_path / "integrations"
     integrations_dir.mkdir()
 
-    # Create claude_code integration for migrate and pre-commit
+    # Create claude_code integration for migrate and pre-commit (with SKILL.md files)
     claude_code_dir = integrations_dir / "claude_code"
     claude_code_dir.mkdir()
-    (claude_code_dir / "migrate").mkdir()
-    (claude_code_dir / "pre-commit").mkdir()
+    migrate_int_dir = claude_code_dir / "migrate"
+    migrate_int_dir.mkdir()
+    (migrate_int_dir / "SKILL.md").write_text("# Migrate Skill\n")
+    precommit_int_dir = claude_code_dir / "pre-commit"
+    precommit_int_dir.mkdir()
+    (precommit_int_dir / "SKILL.md").write_text("# Pre-commit Skill\n")
 
     return tmp_path
 
@@ -185,20 +196,37 @@ class TestGetTaskDescription:
 class TestHasClaudeIntegration:
     """Test the has_claude_integration() function."""
 
+    @patch("osprey.cli.claude_cmd.can_generate_skill")
     @patch("osprey.cli.tasks_cmd.get_integrations_root")
-    def test_returns_true_when_integration_exists(self, mock_root, mock_tasks_path):
-        """Test that function returns True when Claude integration exists."""
+    def test_returns_true_when_custom_wrapper_exists(
+        self, mock_root, mock_can_gen, mock_tasks_path
+    ):
+        """Test that function returns True when custom Claude integration exists."""
         mock_root.return_value = mock_tasks_path / "integrations"
+        mock_can_gen.return_value = False  # No auto-generation
 
         assert has_claude_integration("migrate") is True
         assert has_claude_integration("pre-commit") is True
 
+    @patch("osprey.cli.claude_cmd.can_generate_skill")
     @patch("osprey.cli.tasks_cmd.get_integrations_root")
-    def test_returns_false_when_no_integration(self, mock_root, mock_tasks_path):
+    def test_returns_true_when_auto_generatable(self, mock_root, mock_can_gen, mock_tasks_path):
+        """Test that function returns True when task has skill_description."""
+        mock_root.return_value = mock_tasks_path / "integrations"
+        mock_can_gen.return_value = True  # Has skill_description
+
+        # testing-workflow has no custom wrapper but can be auto-generated
+        assert has_claude_integration("testing-workflow") is True
+
+    @patch("osprey.cli.claude_cmd.can_generate_skill")
+    @patch("osprey.cli.tasks_cmd.get_integrations_root")
+    def test_returns_false_when_no_integration(self, mock_root, mock_can_gen, mock_tasks_path):
         """Test that function returns False when no Claude integration."""
         mock_root.return_value = mock_tasks_path / "integrations"
+        mock_can_gen.return_value = False  # No auto-generation
 
-        assert has_claude_integration("testing-workflow") is False
+        # comments has no custom wrapper and no skill_description
+        assert has_claude_integration("comments") is False
 
 
 class TestGetInstructionsPath:
