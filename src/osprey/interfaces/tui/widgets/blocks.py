@@ -547,6 +547,8 @@ class ProcessingStep(Static):
         self._input_set: bool = False
         # Output message for display
         self._output_message: str = ""
+        # Track last error message (for compatibility with ProcessingBlock)
+        self._last_error_msg: str = ""
         # LLM prompt and response storage (dict for multi-capability support)
         self._llm_prompts: dict[str, str] = {}
         self._llm_responses: dict[str, str] = {}
@@ -791,6 +793,7 @@ class ProcessingStep(Static):
             # Track last error for potential display
             if status == "error":
                 self._output_message = message
+                self._last_error_msg = message
 
     def _get_output_width(self) -> int:
         """Get the actual width available for output text wrapping.
