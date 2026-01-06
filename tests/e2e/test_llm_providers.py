@@ -217,6 +217,44 @@ def skip_if_model_unavailable(provider_name: str, model_id: str):
     return config
 
 
+def handle_quota_errors(func):
+    """Decorator to convert API quota/rate limit errors to pytest warnings.
+
+    This prevents transient rate limiting from failing the test suite while
+    still reporting the issue for visibility.
+    """
+    import functools
+    import warnings
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            error_str = str(e).lower()
+            # Check for common quota/rate limit error indicators
+            quota_indicators = [
+                "quota",
+                "rate limit",
+                "rate_limit",
+                "ratelimit",
+                "too many requests",
+                "429",
+                "resource_exhausted",
+                "resourceexhausted",
+            ]
+            if any(indicator in error_str for indicator in quota_indicators):
+                warnings.warn(
+                    f"API quota/rate limit hit (test skipped): {e}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                pytest.skip(f"API quota/rate limit: {type(e).__name__}")
+            raise
+
+    return wrapper
+
+
 def get_matrix_params():
     """Generate pytest parameters for full matrix."""
     params = []
@@ -351,6 +389,7 @@ class TestProviderAvailability:
 class TestExtendedThinking:
     """Test Anthropic extended thinking (provider-specific feature)."""
 
+    @handle_quota_errors
     def test_anthropic_extended_thinking(self, setup_llm_test_environment):
         """Test extended thinking returns thinking blocks."""
         config = skip_if_provider_unavailable("anthropic")
@@ -381,6 +420,7 @@ class TestLLMMatrix:
     """Matrix tests across provider × model combinations."""
 
     @pytest.mark.parametrize("provider_name,model_id", get_matrix_params())
+    @handle_quota_errors
     def test_completion(self, provider_name: str, model_id: str, setup_llm_test_environment):
         """Test basic completion works for each model."""
         config = skip_if_model_unavailable(provider_name, model_id)
@@ -401,6 +441,7 @@ class TestLLMMatrix:
         assert "4" in response
 
     @pytest.mark.parametrize("provider_name,model_id", get_structured_output_params())
+    @handle_quota_errors
     def test_structured_output(self, provider_name: str, model_id: str, setup_llm_test_environment):
         """Test structured output with Pydantic model."""
         config = skip_if_model_unavailable(provider_name, model_id)
@@ -429,6 +470,7 @@ class TestLLMMatrix:
             pytest.param("cborg", "anthropic/claude-sonnet", id="cborg-sonnet"),
         ],
     )
+    @handle_quota_errors
     def test_react_agent(self, provider_name: str, model_id: str, setup_llm_test_environment):
         """Test ReAct agent: planning, tool use, and final answer in one flow."""
         config = skip_if_model_unavailable(provider_name, model_id)

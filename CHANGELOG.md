@@ -76,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Provider × model × task matrix approach (anthropic, openai, google, cborg, ollama, vllm)
   - Tests basic completion, structured output (Pydantic), and ReAct agent workflows
   - Auto-skips unavailable providers/models based on environment
+  - Graceful handling of API quota/rate limit errors (skips with warning instead of failing)
 
 ### Changed
 - **Models**: Migrated all LLM provider implementations to LiteLLM unified interface (#23)
