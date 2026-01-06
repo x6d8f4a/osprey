@@ -1066,13 +1066,7 @@ class OspreyTUI(App):
 
         # Create block if not exists (first event for this step)
         if block_key not in display._current_blocks:
-            block = ExecutionStep(capability=component)
-            display._current_blocks[block_key] = block
-            display.mount(block)
-            block.set_active()
-            display.scroll_end(animate=True)
-
-            # Update progress: mount TodoUpdateStep showing current step
+            # Mount TodoUpdateStep FIRST - show progress before execution
             if display._plan_steps:
                 # Update states: mark previous as done, current as active
                 for i in range(step_index):
@@ -1080,10 +1074,16 @@ class OspreyTUI(App):
                         display._plan_step_states[i] = "done"
                 if step_index < len(display._plan_step_states):
                     display._plan_step_states[step_index] = "current"
-                # Mount TodoUpdateStep (flow-style updates)
                 update_step = TodoUpdateStep()
                 display.mount(update_step)
                 update_step.set_todos(display._plan_steps, display._plan_step_states)
+
+            # Mount ExecutionStep SECOND - then execute capability
+            block = ExecutionStep(capability=component)
+            display._current_blocks[block_key] = block
+            display.mount(block)
+            block.set_active()
+            display.scroll_end(animate=True)
 
         # Get block for LOG updates
         block = display._current_blocks.get(block_key)
@@ -1175,15 +1175,6 @@ class OspreyTUI(App):
                         result = step_results.get(context_key, {})
                         success = result.get("success", True)
                         block.set_output("Completed", status="success" if success else "error")
-
-        # Mount final TodoUpdateStep with all steps marked done
-        if display._plan_steps and steps:
-            for i in range(len(display._plan_step_states)):
-                display._plan_step_states[i] = "done"
-            update_step = TodoUpdateStep()
-            display.mount(update_step)
-            update_step.set_todos(display._plan_steps, display._plan_step_states)
-            display.scroll_end(animate=False)
 
     def _show_final_response(self, state: dict, chat_display: ChatDisplay) -> None:
         """Show final AI response.
