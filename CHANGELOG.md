@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Only `README.md` deprecation notice remains in workflows directory
 
 ### Added
+- **Models**: LangChain model factory for full LangGraph ReAct agent support
+  - `get_langchain_model()` creates BaseChatModel instances from osprey config
+  - Supports all 8 providers: anthropic, openai, google, ollama, cborg, vllm, stanford, argo
+  - Native integration with `create_react_agent` and other LangGraph workflows
+  - Automatic configuration loading from osprey's config system
 - **Models**: New vLLM provider adapter for high-throughput local inference
   - Uses LiteLLM's OpenAI-compatible interface
   - Auto-detects served models via `/models` endpoint

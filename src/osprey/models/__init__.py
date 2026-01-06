@@ -6,17 +6,32 @@ extended thinking, structured outputs, and automatic TypedDict to Pydantic conve
 
 Key features:
 - Direct inference via LiteLLM (100+ provider support)
+- LangChain model factory for LangGraph integration
 - Extended thinking for Anthropic and Google models
 - Structured output generation with Pydantic models or TypedDict
 - HTTP proxy support via environment variables
 - Automatic provider configuration loading
 
 .. seealso::
-   :func:`get_chat_completion` : Direct chat completion requests
+   :func:`get_chat_completion` : Direct chat completion requests (LiteLLM-based)
+   :func:`get_langchain_model` : LangChain model factory for LangGraph
    :mod:`configs.config` : Provider configuration management
 """
 
 from .completion import get_chat_completion
+from .langchain import (
+    SUPPORTED_PROVIDERS,
+    get_langchain_model,
+    get_langchain_model_from_name,
+    list_supported_providers,
+)
 from .logging import set_api_call_context
 
-__all__ = ["get_chat_completion", "set_api_call_context"]
+__all__ = [
+    "get_chat_completion",
+    "get_langchain_model",
+    "get_langchain_model_from_name",
+    "list_supported_providers",
+    "set_api_call_context",
+    "SUPPORTED_PROVIDERS",
+]
