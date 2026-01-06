@@ -34,10 +34,7 @@ from osprey.interfaces.cli.direct_conversation import run_cli
     help="Configuration file (default: config.yml in project directory)",
 )
 @click.option(
-    "--tui",
-    is_flag=True,
-    default=False,
-    help="Launch Terminal User Interface (TUI) instead of CLI"
+    "--tui", is_flag=True, default=False, help="Launch Terminal User Interface (TUI) instead of CLI"
 )
 def chat(project: str, config: str, tui: bool):
     """Start interactive conversation interface (CLI or TUI).
@@ -108,14 +105,15 @@ def chat(project: str, config: str, tui: bool):
 
             try:
                 from osprey.interfaces.tui import run_tui
+
                 asyncio.run(run_tui(config_path=config_path))
             except ImportError as e:
                 console.print(
                     f"\n❌ TUI not available: {e}\n"
                     "   Install with: pip install osprey-framework[tui]",
-                    style=Styles.ERROR
+                    style=Styles.ERROR,
                 )
-                raise click.Abort()
+                raise click.Abort() from e
         else:
             # Launch CLI interface (original behavior)
             console.print("Starting Osprey CLI interface...")

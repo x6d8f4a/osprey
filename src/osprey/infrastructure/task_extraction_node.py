@@ -303,7 +303,9 @@ class TaskExtractionNode(BaseInfrastructureNode):
                     f" * Builds on previous context: {processed_task.depends_on_chat_history}"
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
-                logger.success("Task extraction bypassed - full context ready", task=processed_task.task)
+                logger.success(
+                    "Task extraction bypassed - full context ready", task=processed_task.task
+                )
             else:
                 logger.info(f" * Extracted: '{processed_task.task[:100]}...'")
                 logger.info(

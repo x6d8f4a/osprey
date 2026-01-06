@@ -191,11 +191,13 @@ class ChatInput(TextArea):
         """Reset status panel to default tips."""
         status = self._get_status_panel()
         if status:
-            status.set_tips([
-                ("/", "for commands"),
-                ("option + ⏎", "for newline"),
-                ("↑↓", "for history"),
-            ])
+            status.set_tips(
+                [
+                    ("/", "for commands"),
+                    ("option + ⏎", "for newline"),
+                    ("↑↓", "for history"),
+                ]
+            )
 
     def _on_key(self, event: Key) -> None:
         """Handle key events - Enter submits, Option+Enter for newline."""

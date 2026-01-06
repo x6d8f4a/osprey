@@ -27,7 +27,6 @@ from osprey.interfaces.tui.widgets import (
     CommandDropdown,
     CommandPalette,
     ExecutionStep,
-    OrchestrationBlock,
     OrchestrationStep,
     ProcessingBlock,
     ProcessingStep,

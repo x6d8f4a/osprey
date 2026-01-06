@@ -25,9 +25,7 @@ class ContentViewer(ModalScreen[None]):
 
     AUTO_FOCUS = "#content-viewer-content"
 
-    def __init__(
-        self, title: str, content: str | dict[str, str], language: str | None = None
-    ):
+    def __init__(self, title: str, content: str | dict[str, str], language: str | None = None):
         """Initialize the content viewer.
 
         Args:
@@ -116,9 +114,7 @@ class ContentViewer(ModalScreen[None]):
                 with Horizontal(id="content-viewer-tabs"):
                     for i, tab_name in enumerate(self._tabs):
                         cls = "tab-active" if i == 0 else "tab-inactive"
-                        yield Static(
-                            tab_name, id=f"tab-{i}", classes=f"content-tab {cls}"
-                        )
+                        yield Static(tab_name, id=f"tab-{i}", classes=f"content-tab {cls}")
 
             with ScrollableContainer(id="content-viewer-content"):
                 content = self._get_current_content()

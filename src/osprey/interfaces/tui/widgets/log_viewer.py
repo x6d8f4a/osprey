@@ -155,15 +155,11 @@ class LogViewer(ModalScreen[None]):
     def on_key(self, event: Key) -> None:
         """Handle key events - Space/b to scroll."""
         if event.key == "space":
-            content = self.query_one(
-                "#log-viewer-content", ScrollableContainer
-            )
+            content = self.query_one("#log-viewer-content", ScrollableContainer)
             content.scroll_page_down(animate=False)
             event.stop()
         elif event.key == "b":
-            content = self.query_one(
-                "#log-viewer-content", ScrollableContainer
-            )
+            content = self.query_one("#log-viewer-content", ScrollableContainer)
             content.scroll_page_up(animate=False)
             event.stop()
 

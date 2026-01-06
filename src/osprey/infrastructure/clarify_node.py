@@ -206,7 +206,9 @@ def _generate_clarifying_questions(state, task_objective: str) -> ClarifyingQues
     )
 
     # Log response for TUI display (convert Pydantic model to JSON string)
-    logger.info("LLM response received", extra={"llm_response": result.model_dump_json(), "stream": False})
+    logger.info(
+        "LLM response received", extra={"llm_response": result.model_dump_json(), "stream": False}
+    )
 
     return result
 

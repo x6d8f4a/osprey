@@ -26,7 +26,7 @@ class WelcomeBanner(Static):
     """Welcome banner with ASCII art and version number."""
 
     COMPONENT_CLASSES: ClassVar[set[str]] = {
-        "banner--muted",   # for "os"
+        "banner--muted",  # for "os"
         "banner--normal",  # for "prey"
     }
 

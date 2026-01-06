@@ -67,9 +67,7 @@ class ChatDisplay(ScrollableContainer):
             self.scroll_end(animate=False)
         return self._debug_block
 
-    def add_message(
-        self, content: str, role: str = "user", message_type: str = ""
-    ) -> None:
+    def add_message(self, content: str, role: str = "user", message_type: str = "") -> None:
         """Add a message to the chat display.
 
         Args:

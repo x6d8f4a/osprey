@@ -7,9 +7,7 @@ from textual.widgets import Markdown, Static
 class ChatMessage(Static):
     """A single chat message widget styled as a card/block."""
 
-    def __init__(
-        self, content: str, role: str = "user", message_type: str = "", **kwargs
-    ):
+    def __init__(self, content: str, role: str = "user", message_type: str = "", **kwargs):
         """Initialize a chat message.
 
         Args:

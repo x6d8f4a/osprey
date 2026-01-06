@@ -137,7 +137,7 @@ class ThemePicker(ModalScreen[str | None]):
             current_idx += 1
 
             # Theme options - use from_markup for CSS variable resolution
-            for name, theme in sorted(theme_list, key=lambda x: x[0]):
+            for name, _theme in sorted(theme_list, key=lambda x: x[0]):
                 if name == current_theme:
                     content = Content.from_markup(f"[$accent]● [/]{name}")
                 else:
