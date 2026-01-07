@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graceful handling of API quota/rate limit errors (skips with warning instead of failing)
 
 ### Changed
+- **Capabilities**: Support direct chat execution mode in capability decorator
+  - Creates synthetic execution step when no execution plan exists
+  - Skips step progression in direct chat mode
+  - Changed classifier missing log from warning to debug (expected for direct-chat-only capabilities)
 - **Logging**: Reduced verbose third-party logging for cleaner CLI output
   - Added quiet_logging() context manager for temporary log suppression
   - Suppressed LiteLLM debug messages
