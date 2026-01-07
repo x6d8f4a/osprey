@@ -76,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - read_context, list_available_context, save_result_to_context
   - remove_context, clear_context_type, get_context_summary
   - Enables agents to manage accumulated context during direct chat
+- **Capabilities**: StateManager capability for interactive state management
+  - Natural language interface for context and agent settings
+  - State inspection tools: session info, execution status, capability list, settings
+  - State modification tools: clear session, modify agent settings
+  - Registered as framework-level capability (/chat:state_manager)
 - **Models**: LangChain model factory for full LangGraph ReAct agent support
   - `get_langchain_model()` creates BaseChatModel instances from osprey config
   - Supports all 8 providers: anthropic, openai, google, ollama, cborg, vllm, stanford, argo
