@@ -87,6 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `/exit` returns to normal mode (adds transition marker for context)
   - Dynamic prompt shows current mode (normal vs capability name)
   - Quieter logging during direct chat for cleaner experience
+- **Generators**: Direct chat mode support in MCP capability generator
+  - Generated capabilities have direct_chat_enabled=True by default
+  - Adds context management tools when in direct chat mode
+  - Handles both orchestrated and direct chat execution modes
+  - Updated docstrings with direct chat usage examples
 - **Models**: LangChain model factory for full LangGraph ReAct agent support
   - `get_langchain_model()` creates BaseChatModel instances from osprey config
   - Supports all 8 providers: anthropic, openai, google, ollama, cborg, vllm, stanford, argo
