@@ -1,73 +1,56 @@
-# Osprey Framework - Latest Release (v0.9.10)
+# Osprey Framework - Latest Release (v0.10.0)
 
-🎉 **Modular Prompts & Production Hardening** - Channel Finder Customization & Massive Test Coverage Expansion
+🎉 **Terminal User Interface & AI Assistant Tasks** - Full-screen TUI experience and new developer tooling
 
-## What's New in v0.9.10
+## What's New in v0.10.0
 
-### 🚀 Channel Finder Enhancements
+### 🖥️ Terminal User Interface (TUI)
 
-#### Modular Prompt Structure
-- **Simplified Customization**: Split monolithic `system.py` into focused modules
-  - `facility_description.py` (REQUIRED) - Your facility-specific content
-  - `matching_rules.py` (OPTIONAL) - Custom matching logic
-  - `system.py` auto-combines modules - no manual editing needed
-- **Query Splitter Enhancement**: Now accepts `facility_name` parameter for better context
-- **All Pipelines Updated**: Hierarchical, in-context, and middle layer all use modular structure
+A brand new full-screen terminal interface for interacting with your Osprey agents!
 
-#### Explicit Detection
-- **New Detection Module**: `explicit_detection.py` identifies explicit channel/PV/IOC names in queries
-  - Catches direct references before semantic search
-  - Works across all pipeline implementations
-  - `build_result()` helper method in BasePipeline for consistent result construction
+- **Launch with**: `osprey chat --tui` (or select "chat (tui)" from interactive menu)
+- **Real-time Streaming**: Watch agent responses appear character-by-character
+- **Step Visualization**: See Task Extraction → Classification → Orchestration → Execution in real-time
+- **15+ Built-in Themes**: Switch themes instantly with Ctrl+T
+- **Command Palette**: Quick access to all actions with Ctrl+P
+- **Slash Commands**: `/exit`, `/caps:on`, `/caps:off`, and more
+- **Query History**: Navigate previous queries with up/down arrows
+- **Content Viewer**: Multi-tab view for prompts and responses with markdown rendering
+- **Todo Visualization**: See agent planning progress as it happens
 
-#### Query Splitting Control
-- **New Parameter**: `query_splitting` for hierarchical and middle_layer pipelines
-  - Disable for facility-specific terminology that shouldn't be split
-  - Enabled by default for backward compatibility
+**Install TUI support**: `pip install osprey-framework[tui]`
 
-### 🧪 Production Hardening (~500+ New Tests)
+### 🤖 AI Assistant Integration (Assist System)
 
-#### Test Coverage Expansion
-Major test coverage improvements across the codebase:
+New commands for working with AI coding assistants like Claude Code:
 
-| Module | Before | After |
-|--------|--------|-------|
-| Ollama provider | 24.2% | 96.0% |
-| Memory provider | 32.2% | 94.9% |
-| Error node | 33.6% | 91.8% |
-| CLI main | 28.6% | 95.2% |
-| YAML loader | 0% | 86.6% |
-| Preview styles | 0% | 88.1% |
-| Health cmd | 0% | 69.6% |
-| Memory capability | 37.7% | 62.4% |
+#### `osprey tasks` - Browse AI Assistant Tasks
+- `osprey tasks` - Interactive task browser
+- `osprey tasks list` - List all available tasks
+- `osprey tasks show <task>` - Print task instructions
+- `osprey tasks copy <task>` - Copy task to project's `.ai-tasks/`
 
-#### New Test Suites
-- **CLI Commands**: chat, config, deploy, generate, remove, registry, health
-- **Infrastructure**: error_node, respond_node, task_extraction_node, orchestration_node, classification_node
-- **Models**: generators, memory_storage, completion, logging
-- **Providers**: Anthropic, Ollama, ARGO
+#### `osprey claude` - Claude Code Skill Management
+- `osprey claude install <task>` - Install a task as a Claude Code skill
+- `osprey claude list` - List installed and available skills
 
-### 🐛 Bug Fixes
+#### Available Tasks
+- **pre-commit** - Validate code before commits
+- **migrate** - Upgrade downstream OSPREY projects
+- **release-workflow** - Guide through releases
+- **testing-workflow** - Smart test selection
+- **commit-organization** - Create atomic commits
+- And more!
 
-- **Channel Finder**: Fixed `AttributeError` - `query_splitting` attribute initialization in HierarchicalPipeline
-- **CLI**: Fixed broken imports in `config_cmd.py` (incorrect function names)
+### 🔧 Code Generation Enhancements
 
-### 🔧 Quality of Life
+- **Environment Variables**: `claude_code_generator` now supports custom env vars in config
+- **ARGO Support**: Added ARGO endpoint configuration to generator template
 
-- **Control Assistant Template**: Write access now enabled by default for mock connector
-  - Simplifies tutorial experience
-  - Production deployments should review before enabling
-- **License**: Added explicit "BSD 3-Clause License" header
-- **Benchmark Dataset**: Renamed `in_context_main.json` → `in_context_benchmark.json` for consistency
+### 📋 Changed
 
-### 📚 Documentation
-
-- Updated Hello World tutorial for current weather capability implementation
-- Fixed version picker 404 errors in documentation
-- Fixed image path typos for channel finder CLI screenshots
-- Added "Viewing Exported Workflows" section to AI-assisted development guide
-- Removed obsolete v0.9.2+ migration guide (no longer needed)
-- Added academic reference (Hellert et al. 2025, arXiv:2512.18779)
+- **CLI**: `osprey workflows` deprecated → use `osprey tasks` instead
+- **Logging**: Enhanced logging system embeds streaming data for TUI consumption
 
 ---
 
