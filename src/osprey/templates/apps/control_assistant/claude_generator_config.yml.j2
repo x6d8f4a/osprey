@@ -44,6 +44,7 @@
 # CBORG routes to Anthropic's Claude models - fully compatible!
 api_config:
   provider: "cborg"
+  api_key: ${CBORG_API_KEY}
   base_url: "https://api.cborg.lbl.gov"
   # Set your CBORG API key in .env: CBORG_API_KEY=your-key
   # The generator will automatically configure:
@@ -52,13 +53,29 @@ api_config:
   #   - Proper model names for CBORG routing
 
   # CBORG-specific optimizations:
+  anthropic_model: "anthropic/claude-sonnet"
+  anthropic_small_fast_model: "anthropic/claude-haiku"
   disable_non_essential_model_calls: true  # Recommended for CBORG
   disable_telemetry: true                  # Recommended for CBORG
   max_output_tokens: 8192                  # Recommended to reduce throttling
+{% elif default_provider == 'argo' %}
+# ARGO (Argonne National Lab Model Routing)
+# ARGO routes to Anthropic's Claude models - Proxy needed!
+api_config:
+  provider: "argo"
+  api_key: ${ARGO_API_KEY}
+  # Make sure claude-compatible argo proxy is running locally, change port if needed
+  base_url: "http://localhost:8082" 
+  disable_non_essential_model_calls: true
+  disable_telemetry: true
+  max_output_tokens: 8192
+  anthropic_model: "claudesonnet45"
+  anthropic_small_fast_model: "claudehaiku45"
 {% elif default_provider == 'anthropic' %}
 # Direct Anthropic API Access
 api_config:
   provider: "anthropic"
+  api_key: ${ANTHROPIC_API_KEY}
   # Set your API key in .env: ANTHROPIC_API_KEY=your-key
   # Uses Anthropic's direct API endpoint
 {% else %}
@@ -72,6 +89,7 @@ api_config:
 # Alternative: Switch to CBORG provider for unified key management.
 api_config:
   provider: "anthropic"
+  api_key: ${ANTHROPIC_API_KEY}
   # Set your API key in .env: ANTHROPIC_API_KEY=your-key
   # This is separate from your {{ default_provider }} configuration
 {% endif %}

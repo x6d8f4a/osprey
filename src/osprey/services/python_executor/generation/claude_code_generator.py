@@ -547,7 +547,7 @@ class ClaudeCodeGenerator:
            This provides explicit API configuration instead of relying on
            system environment variables, making the setup more portable and
            explicit. Supports both direct Anthropic API and proxy services
-           like CBORG.
+           like CBORG and ARGO.
 
         Configuration Examples::
 
@@ -563,45 +563,42 @@ class ClaudeCodeGenerator:
               disable_telemetry: true
               max_output_tokens: 8192
         """
-        import os
 
         api_config = self.config.get("api_config", {})
         provider = api_config.get("provider", "anthropic")
         env = {}
 
-        if provider == "cborg":
-            # CBORG configuration (Lawrence Berkeley Lab model routing)
-            logger.info("Claude_Code_Generator: Using CBORG API configuration")
+        logger.info(f"Claude_Code_Generator: Using {provider} API configuration")
 
-            base_url = api_config.get("base_url", "https://api.cborg.lbl.gov")
+        # Set base URL if provided
+        base_url = api_config.get("base_url")
+        if base_url:
             env["ANTHROPIC_BASE_URL"] = base_url
 
-            # Use CBORG_API_KEY if available, otherwise fall back to ANTHROPIC_API_KEY
-            cborg_key = os.environ.get("CBORG_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-            if cborg_key:
-                env["ANTHROPIC_AUTH_TOKEN"] = cborg_key
+        # Set API key from api_config
+        api_key = api_config.get("api_key")
+        if api_key:
+            env["ANTHROPIC_AUTH_TOKEN"] = api_key
 
-            # Set model names for CBORG (uses anthropic/model-name format)
-            env["ANTHROPIC_MODEL"] = "anthropic/claude-sonnet"
-            env["ANTHROPIC_SMALL_FAST_MODEL"] = "anthropic/claude-haiku"
+        # Set model names from api_config
+        anthropic_model = api_config.get("anthropic_model")
+        if anthropic_model:
+            env["ANTHROPIC_MODEL"] = anthropic_model
 
-            # Optional CBORG-specific settings
-            if api_config.get("disable_non_essential_model_calls", False):
-                env["DISABLE_NON_ESSENTIAL_MODEL_CALLS"] = "1"
+        anthropic_small_fast_model = api_config.get("anthropic_small_fast_model")
+        if anthropic_small_fast_model:
+            env["ANTHROPIC_SMALL_FAST_MODEL"] = anthropic_small_fast_model
 
-            if api_config.get("disable_telemetry", False):
-                env["DISABLE_TELEMETRY"] = "1"
+        # Optional settings
+        if api_config.get("disable_non_essential_model_calls", False):
+            env["DISABLE_NON_ESSENTIAL_MODEL_CALLS"] = "1"
 
-            max_tokens = api_config.get("max_output_tokens")
-            if max_tokens:
-                env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = str(max_tokens)
+        if api_config.get("disable_telemetry", False):
+            env["DISABLE_TELEMETRY"] = "1"
 
-        else:
-            # Direct Anthropic API (default)
-            logger.info("Claude_Code_Generator: Using direct Anthropic API")
-
-            # Use ANTHROPIC_API_KEY from environment
-            # No need to set base_url - SDK will use default Anthropic endpoint
+        max_tokens = api_config.get("max_output_tokens")
+        if max_tokens:
+            env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = str(max_tokens)
 
         return env
 
