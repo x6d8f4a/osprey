@@ -270,7 +270,13 @@ def capability_node(cls):
 
             # Handle state updates for step progression
             state_updates = _handle_capability_state_updates(
-                state, result, step, capability_name, start_time, execution_time, logger,
+                state,
+                result,
+                step,
+                capability_name,
+                start_time,
+                execution_time,
+                logger,
                 direct_chat_mode=direct_chat_mode,
             )
 

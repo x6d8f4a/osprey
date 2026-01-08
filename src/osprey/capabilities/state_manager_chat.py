@@ -71,7 +71,9 @@ class StateManagerChatCapability(BaseCapability):
         return None
 
     # System prompt defining the scope and boundaries of state_manager
-    SYSTEM_PROMPT: ClassVar[str] = """You are the State Manager, a specialized administrative tool for managing the Osprey agent's internal state and accumulated context data.
+    SYSTEM_PROMPT: ClassVar[
+        str
+    ] = """You are the State Manager, a specialized administrative tool for managing the Osprey agent's internal state and accumulated context data.
 
 ## YOUR SCOPE - What You CAN Do
 

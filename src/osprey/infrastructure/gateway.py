@@ -218,7 +218,9 @@ class Gateway:
             session_state = {**session_state, **session_state_changes}
 
         in_direct_chat = session_state.get("direct_chat_capability") is not None
-        entering_direct_chat = session_state_changes and "direct_chat_capability" in session_state_changes
+        entering_direct_chat = (
+            session_state_changes and "direct_chat_capability" in session_state_changes
+        )
 
         # Mode switch only: entering direct chat with no actual message
         if entering_direct_chat and not cleaned_message.strip():
