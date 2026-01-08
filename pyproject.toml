@@ -146,6 +146,11 @@ dev = [
     "pyepics",  # EPICS connector support for testing
 ]
 
+# Terminal User Interface
+tui = [
+    "textual>=0.70.0",
+]
+
 # Natural language processing
 nlp = [
     "nltk>=3.8.1",
@@ -158,7 +163,7 @@ utils = [
 
 # All optional dependencies for complete installation
 all = [
-    "osprey-framework[docs,scientific,databases,postgres,memory,dev,nlp,utils]"
+    "osprey-framework[docs,scientific,databases,postgres,memory,dev,tui,nlp,utils]"
 ]
 
 [project.urls]

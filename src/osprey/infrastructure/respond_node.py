@@ -119,6 +119,9 @@ class RespondCapability(BaseCapability):
             # Build prompt dynamically based on available information
             prompt = _get_base_system_prompt(response_context.current_task, response_context)
 
+            # Log prompt for TUI display
+            logger.info("LLM prompt built", llm_prompt=prompt, stream=False)
+
             # Set caller context for API call logging (propagates through asyncio.to_thread)
             from osprey.models import set_api_call_context
 
@@ -145,6 +148,9 @@ class RespondCapability(BaseCapability):
                 response_text = "\n".join(text_parts) if text_parts else str(response)
             else:
                 raise Exception("No response from LLM, please try again.")
+
+            # Log response for TUI display
+            logger.info("LLM response received", llm_response=response_text, stream=False)
 
             logger.status("Response generated")
 

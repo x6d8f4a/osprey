@@ -424,6 +424,9 @@ class OrchestrationNode(BaseInfrastructureNode):
         model_config = get_model_config("orchestrator")
         message = f"{system_prompt}\n\nTASK TO PLAN: {current_task}"
 
+        # Log the prompt for TUI visibility
+        logger.info("LLM prompt built", llm_prompt=message, stream=False)
+
         # Set caller context for API call logging (propagates through asyncio.to_thread)
         from osprey.models import set_api_call_context
 
@@ -445,6 +448,10 @@ class OrchestrationNode(BaseInfrastructureNode):
         execution_time = time.time() - plan_start_time
         logger.info(f"Orchestrator LLM execution time: {execution_time:.2f} seconds")
 
+        # Log the response for TUI visibility
+        response_json = json.dumps(execution_plan, indent=2)
+        logger.info("LLM response received", llm_response=response_json, stream=False)
+
         # =====================================================================
         # STEP 3.5: VALIDATE AND FIX EXECUTION PLAN
         # =====================================================================
@@ -457,7 +464,8 @@ class OrchestrationNode(BaseInfrastructureNode):
             _log_execution_plan(execution_plan, logger)
 
             logger.success(
-                f"Final execution plan ready with {len(execution_plan.get('steps', []))} steps"
+                f"Final execution plan ready with {len(execution_plan.get('steps', []))} steps",
+                steps=execution_plan.get("steps", []),
             )
 
         except ValueError as e:

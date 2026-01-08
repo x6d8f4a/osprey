@@ -175,7 +175,10 @@ class ClassificationNode(BaseInfrastructureNode):
             registry = get_registry()
             active_capabilities = registry.get_stats()["capability_names"]
 
-            logger.success(f"Bypass mode: activated all {len(active_capabilities)} capabilities")
+            logger.success(
+                f"Bypass mode: activated all {len(active_capabilities)} capabilities",
+                capability_names=active_capabilities,
+            )
 
             # Return standardized classification result
             return _create_classification_result(
@@ -216,7 +219,8 @@ class ClassificationNode(BaseInfrastructureNode):
         )
 
         logger.success(
-            f"Classification completed with {len(active_capabilities)} active capabilities"
+            f"Classification completed with {len(active_capabilities)} active capabilities",
+            capability_names=active_capabilities,
         )
         logger.debug(f"Active capabilities: {active_capabilities}")
 
@@ -382,6 +386,13 @@ class CapabilityClassifier:
             f"\n\nTask Analyzer System Prompt for capability '{capability.name}':\n{message}\n\n"
         )
 
+        # Log prompt for TUI display
+        self.logger.info(
+            f"Classification prompt for {capability.name}",
+            llm_prompt={capability.name: message},
+            stream=False,
+        )
+
         # Execute classification
         try:
             # Set caller context for API call logging (propagates through asyncio.to_thread)
@@ -400,6 +411,17 @@ class CapabilityClassifier:
                 model_config=get_model_config("classifier"),
                 message=message,
                 output_model=CapabilityMatch,
+            )
+
+            # Log response for TUI display
+            if isinstance(response_data, CapabilityMatch):
+                response_json = response_data.model_dump_json()
+            else:
+                response_json = str(response_data)
+            self.logger.info(
+                f"Classification result for {capability.name}",
+                llm_response={capability.name: response_json},
+                stream=False,
             )
 
             result = self._process_classification_response(capability, response_data)

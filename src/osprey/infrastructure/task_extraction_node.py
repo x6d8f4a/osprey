@@ -132,11 +132,18 @@ def _extract_task(messages: list[BaseMessage], retrieval_result, logger) -> Extr
 
     prompt = _build_task_extraction_prompt(messages, retrieval_result)
 
+    # Log the prompt for TUI visibility
+    logger.info("LLM prompt built", llm_prompt=prompt, stream=False)
+
     # Use structured LLM generation for task extraction
     task_extraction_config = get_model_config("task_extraction")
     response = get_chat_completion(
         message=prompt, model_config=task_extraction_config, output_model=ExtractedTask
     )
+
+    # Log the response for TUI visibility
+    response_json = response.model_dump_json(indent=2)
+    logger.info("LLM response received", llm_response=response_json, stream=False)
 
     return response
 
@@ -296,14 +303,16 @@ class TaskExtractionNode(BaseInfrastructureNode):
                     f" * Builds on previous context: {processed_task.depends_on_chat_history}"
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
-                logger.success("Task extraction bypassed - full context ready")
+                logger.success(
+                    "Task extraction bypassed - full context ready", task=processed_task.task
+                )
             else:
                 logger.info(f" * Extracted: '{processed_task.task[:100]}...'")
                 logger.info(
                     f" * Builds on previous context: {processed_task.depends_on_chat_history}"
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
-                logger.success("Task extraction completed")
+                logger.success("Task extraction completed", task=processed_task.task)
 
             # Create direct state update with correct field names
             return {
