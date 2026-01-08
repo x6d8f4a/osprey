@@ -600,7 +600,7 @@ def get_model_config(model_name: str, config_path: str | None = None) -> dict[st
     Examples:
         Default config (searches current directory):
             >>> get_model_config("orchestrator")
-            {'provider': 'anthropic', 'model_id': 'claude-3-5-sonnet-20241022', ...}
+            {'provider': 'anthropic', 'model_id': 'claude-haiku-4-5-20251001', ...}
 
         Multi-project workflow:
             >>> get_model_config("orchestrator", config_path="~/other-project/config.yml")
@@ -610,10 +610,10 @@ def get_model_config(model_name: str, config_path: str | None = None) -> dict[st
         models:
           orchestrator:
             provider: anthropic
-            model_id: claude-3-5-sonnet-20241022
+            model_id: claude-haiku-4-5-20251001
           classifier:
             provider: anthropic
-            model_id: claude-3-5-haiku-20241022
+            model_id: claude-haiku-4-5-20251001
     """
     configurable = _get_configurable(config_path)
     model_configs = configurable.get("model_configs", {})

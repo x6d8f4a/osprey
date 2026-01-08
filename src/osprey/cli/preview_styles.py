@@ -281,7 +281,7 @@ def show_table_example():
     table.add_column("Status", justify="center")
 
     table.add_row("Provider", "anthropic", f"[{Styles.SUCCESS}]✓[/{Styles.SUCCESS}]")
-    table.add_row("Model", "claude-3-5-sonnet", f"[{Styles.SUCCESS}]✓[/{Styles.SUCCESS}]")
+    table.add_row("Model", "claude-haiku-4-5", f"[{Styles.SUCCESS}]✓[/{Styles.SUCCESS}]")
     table.add_row("API Key", "sk-***", f"[{Styles.WARNING}]⚠[/{Styles.WARNING}]")
     table.add_row("Database", "postgres", f"[{Styles.ERROR}]✗[/{Styles.ERROR}]")
 

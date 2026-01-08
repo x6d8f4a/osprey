@@ -643,7 +643,7 @@ The model factory integrates with the configuration system following the same pr
    # Direct model configuration for development/testing
    model = get_model(
        provider="anthropic",
-       model_id="claude-3-5-sonnet-20241022",
+       model_id="claude-haiku-4-5-20251001",
        api_key="explicit-key-for-testing"
    )
 

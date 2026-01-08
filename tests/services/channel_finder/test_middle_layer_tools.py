@@ -454,7 +454,7 @@ def sample_middle_layer_pipeline(
     # Create pipeline with minimal config (no LLM needed for tool tests)
     model_config = {
         "provider": "anthropic",
-        "model_id": "claude-3-5-sonnet-20241022",
+        "model_id": "claude-haiku-4-5-20251001",
         "api_key": "test-key",  # Not used in tool tests
         "max_tokens": 4096,
     }
