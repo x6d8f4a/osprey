@@ -46,7 +46,6 @@ dependencies = [
     "rich>=14.0.0",
     "click>=8.1.0",
     "questionary>=2.0.0",
-    "pydantic-ai>=0.2.11",
     "python-dotenv>=1.1.0",
     "PyYAML>=6.0.2",
     "Jinja2>=3.1.6",
@@ -63,6 +62,7 @@ dependencies = [
     "nbclient",
 
     # AI/ML provider integrations
+    "litellm>=1.56.0",  # Unified LLM provider interface (100+ providers)
     "openai",
     "anthropic",
     "google-generativeai",
@@ -264,6 +264,7 @@ module = [
     "anthropic.*",
     "google.*",
     "ollama.*",
+    "litellm.*",
     "pandas.*",
     "numpy.*",
     "matplotlib.*",

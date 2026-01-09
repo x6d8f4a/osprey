@@ -461,7 +461,7 @@ except ImportError:
     )
 
 # Get model for ReAct agent
-from osprey.utils.config import get_model_config, get_provider_config
+from osprey.utils.config import get_model_config
 
 
 # =============================================================================
@@ -590,33 +590,13 @@ class {class_name}(BaseCapability):
                         f"Please configure a model in config.yml under models section."
                     )
 
-                provider_config = get_provider_config(provider)
-
-                # Create LangChain ChatModel based on provider
-                if provider == "anthropic":
-                    from langchain_anthropic import ChatAnthropic
-                    llm = ChatAnthropic(
-                        model=model_id,
-                        anthropic_api_key=provider_config.get("api_key"),
-                        max_tokens=model_config.get("max_tokens", 4096)
-                    )
-                elif provider == "openai":
-                    from langchain_openai import ChatOpenAI
-                    llm = ChatOpenAI(
-                        model=model_id,
-                        api_key=provider_config.get("api_key"),
-                        max_tokens=model_config.get("max_tokens", 4096)
-                    )
-                elif provider == "cborg":
-                    from langchain_openai import ChatOpenAI
-                    llm = ChatOpenAI(
-                        model=model_id,
-                        api_key=provider_config.get("api_key"),
-                        base_url=provider_config.get("base_url"),
-                        max_tokens=model_config.get("max_tokens", 4096)
-                    )
-                else:
-                    raise ValueError(f"Provider {{provider}} not supported")
+                # Create LangChain model using osprey's unified factory
+                from osprey.models import get_langchain_model
+                llm = get_langchain_model(
+                    provider=provider,
+                    model_id=model_id,
+                    max_tokens=model_config.get("max_tokens", 4096)
+                )
 
                 # Create ReAct agent
                 cls._react_agent = create_react_agent(llm, tools)

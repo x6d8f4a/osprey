@@ -337,42 +337,19 @@ class MiddleLayerPipeline(BasePipeline):
             tools = self._create_tools()
 
             # Get LLM instance for ReAct agent - use model_config passed to __init__
+            # Create LangChain model using osprey's unified factory
             # model_config already contains provider, model_id, api_key, base_url, etc.
-            provider = self.model_config.get("provider")
-            model_id = self.model_config.get("model_id")
-            api_key = self.model_config.get("api_key")
-            max_tokens = self.model_config.get("max_tokens", 4096)
+            from osprey.models import get_langchain_model
 
-            if not provider:
-                raise ValueError(
-                    "No provider configured for channel finder model. "
-                    "Please configure a model in config.yml"
-                )
-
-            # Create LangChain ChatModel based on provider
-            # Use api_key from model_config instead of calling get_provider_config()
-            # which requires registry initialization
-            if provider == "anthropic":
-                from langchain_anthropic import ChatAnthropic
-
-                llm = ChatAnthropic(
-                    model=model_id, anthropic_api_key=api_key, max_tokens=max_tokens
-                )
-            elif provider == "openai":
-                from langchain_openai import ChatOpenAI
-
-                llm = ChatOpenAI(model=model_id, api_key=api_key, max_tokens=max_tokens)
-            elif provider == "cborg":
-                from langchain_openai import ChatOpenAI
-
-                llm = ChatOpenAI(
-                    model=model_id,
-                    api_key=api_key,
-                    base_url=self.model_config.get("base_url"),
-                    max_tokens=max_tokens,
-                )
-            else:
-                raise ValueError(f"Provider {provider} not supported")
+            llm = get_langchain_model(
+                provider=self.model_config.get("provider"),
+                model_id=self.model_config.get("model_id"),
+                provider_config={
+                    "api_key": self.model_config.get("api_key"),
+                    "base_url": self.model_config.get("base_url"),
+                },
+                max_tokens=self.model_config.get("max_tokens", 4096),
+            )
 
             # Create ReAct agent with LangGraph
             self._agent = create_react_agent(llm, tools)
