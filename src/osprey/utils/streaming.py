@@ -6,6 +6,12 @@ Streaming Event Helper for LangGraph
    Use ``self.get_logger()`` in capabilities or ``get_logger(component, state=state)``
    for automatic streaming support. See :class:`osprey.utils.logger.ComponentLogger`.
 
+.. deprecated:: 0.10.0
+   For typed event streaming, use the new :mod:`osprey.events` package which provides:
+   - Typed dataclass events (StatusEvent, CapabilityStartEvent, etc.)
+   - Pattern matching in handlers for clean event routing
+   - Multi-mode streaming with LLM token support
+
 Legacy streaming API that provides a separate streaming interface from logging.
 This has been replaced by the unified logging system which automatically handles
 both CLI output and web UI streaming through a single API.
@@ -19,21 +25,41 @@ both CLI output and web UI streaming through a single API.
     streamer = get_streamer("orchestrator", state)
     streamer.status("Creating execution plan...")
 
-**New Pattern (Recommended):**
+**New Pattern (Recommended for Logging):**
 
 .. code-block:: python
 
     # In capabilities
     logger = self.get_logger()
-    logger.status("Creating execution plan...")  # Logs + streams automatically
+    logger.status("Creating execution plan...")  # Logs + streams typed events
 
     # In other nodes with state
     logger = get_logger("orchestrator", state=state)
     logger.status("Creating execution plan...")
 
+**New Pattern (Typed Events):**
+
+.. code-block:: python
+
+    # For custom typed events
+    from osprey.events import PhaseStartEvent
+
+    logger = self.get_logger()
+    logger.emit_event(PhaseStartEvent(phase="planning", description="Creating plan"))
+
+    # For consuming events in UIs
+    from osprey.events import parse_event, StatusEvent
+
+    async for chunk in graph.astream(..., stream_mode="custom"):
+        event = parse_event(chunk)
+        match event:
+            case StatusEvent(message=msg):
+                display(msg)
+
 .. seealso::
    :class:`osprey.utils.logger.ComponentLogger` : Unified logging with automatic streaming
    :meth:`osprey.base.capability.BaseCapability.get_logger` : Recommended logger API
+   :mod:`osprey.events` : Typed event streaming system
 """
 
 import time

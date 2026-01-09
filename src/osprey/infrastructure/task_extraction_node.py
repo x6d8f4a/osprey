@@ -248,10 +248,23 @@ class TaskExtractionNode(BaseInfrastructureNode):
         :return: Dictionary of state updates to apply
         :rtype: Dict[str, Any]
         """
+        import time
+
+        from osprey.events import PhaseCompleteEvent, PhaseStartEvent
+
         state = self._state
+        start_time = time.time()
 
         # Get unified logger with automatic streaming support
         logger = self.get_logger()
+
+        # Emit phase start event
+        logger.emit_event(
+            PhaseStartEvent(
+                phase="task_extraction",
+                description="Extracting actionable task from conversation",
+            )
+        )
 
         # Get native LangGraph messages from flat state structure (move outside try block)
         messages = state["messages"]
@@ -314,6 +327,16 @@ class TaskExtractionNode(BaseInfrastructureNode):
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
                 logger.success("Task extraction completed", task=processed_task.task)
 
+            # Emit phase complete event
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.emit_event(
+                PhaseCompleteEvent(
+                    phase="task_extraction",
+                    duration_ms=duration_ms,
+                    success=True,
+                )
+            )
+
             # Create direct state update with correct field names
             return {
                 "task_current_task": processed_task.task,
@@ -322,6 +345,16 @@ class TaskExtractionNode(BaseInfrastructureNode):
             }
 
         except Exception as e:
+            # Emit phase complete event with failure
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.emit_event(
+                PhaseCompleteEvent(
+                    phase="task_extraction",
+                    duration_ms=duration_ms,
+                    success=False,
+                )
+            )
+
             # Task extraction failed - error() automatically streams
             logger.error(f"Task extraction failed: {e}")
             raise e  # Raise original error for better debugging

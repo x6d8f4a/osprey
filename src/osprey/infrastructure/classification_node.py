@@ -150,15 +150,33 @@ class ClassificationNode(BaseInfrastructureNode):
         :return: Dictionary of state updates for LangGraph
         :rtype: Dict[str, Any]
         """
+        import time
+
+        from osprey.events import PhaseCompleteEvent, PhaseStartEvent
+
         state = self._state
+        start_time = time.time()
 
         # Get unified logger with automatic streaming support
         logger = self.get_logger()
+
+        # Emit phase start event
+        logger.emit_event(
+            PhaseStartEvent(
+                phase="classification",
+                description="Analyzing task requirements and selecting capabilities",
+            )
+        )
 
         # Get the current task from state
         current_task = state.get("task_current_task")
 
         if not current_task:
+            # Emit phase complete with failure
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.emit_event(
+                PhaseCompleteEvent(phase="classification", duration_ms=duration_ms, success=False)
+            )
             logger.error("No current task found in state")
             raise ReclassificationRequiredError("No current task found")
 
@@ -178,6 +196,12 @@ class ClassificationNode(BaseInfrastructureNode):
             logger.success(
                 f"Bypass mode: activated all {len(active_capabilities)} capabilities",
                 capability_names=active_capabilities,
+            )
+
+            # Emit phase complete event
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.emit_event(
+                PhaseCompleteEvent(phase="classification", duration_ms=duration_ms, success=True)
             )
 
             # Return standardized classification result
@@ -223,6 +247,12 @@ class ClassificationNode(BaseInfrastructureNode):
             capability_names=active_capabilities,
         )
         logger.debug(f"Active capabilities: {active_capabilities}")
+
+        # Emit phase complete event
+        duration_ms = int((time.time() - start_time) * 1000)
+        logger.emit_event(
+            PhaseCompleteEvent(phase="classification", duration_ms=duration_ms, success=True)
+        )
 
         # Return standardized classification result
         return _create_classification_result(

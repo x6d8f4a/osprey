@@ -7,11 +7,12 @@ Provides colored logging for Osprey and application components with:
 - Graceful fallbacks when configuration is unavailable
 - Simple, clear interface
 - Optional LangGraph streaming support via lazy initialization
+- Typed event emission for structured streaming (OspreyEvent types)
 
 Usage:
     # Components with streaming (via BaseCapability.get_logger())
     logger = self.get_logger()
-    logger.status("Creating execution plan...")  # Logs + streams
+    logger.status("Creating execution plan...")  # Logs + streams typed event
     logger.info("Active capabilities: [...]")   # Logs only
 
     # Module-level (no streaming)
@@ -29,16 +30,24 @@ Usage:
 
     # Custom loggers with explicit parameters
     logger = get_logger(name="custom_component", color="blue")
+
+    # Emit typed events directly (for infrastructure nodes)
+    from osprey.events import PhaseStartEvent
+    logger.emit_event(PhaseStartEvent(phase="task_extraction"))
 """
 
 import logging
 from contextlib import contextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.logging import RichHandler
 
+from osprey.events import ErrorEvent, EventEmitter, OspreyEvent, StatusEvent
 from osprey.utils.config import get_config_value
+
+if TYPE_CHECKING:
+    pass  # For future type-only imports
 
 
 @contextmanager
@@ -109,6 +118,9 @@ class ComponentLogger:
         self._stream_writer_attempted = False
         self._step_info = None
 
+        # Typed event emitter for the new event streaming system
+        self._event_emitter = EventEmitter(component_name)
+
     def _get_stream_writer(self):
         """Lazy initialization of stream writer (only when first needed)."""
         if not self._stream_writer_attempted:
@@ -170,30 +182,80 @@ class ComponentLogger:
         }
 
     def _emit_stream_event(self, message: str, event_type: str = "status", **kwargs):
-        """Emit streaming event if writer available."""
-        writer = self._get_stream_writer()  # Lazy init
-        if not writer:
-            return  # Silently skip if no stream available
+        """Emit streaming event as typed OspreyEvent.
+
+        Uses the EventEmitter to emit typed StatusEvent or ErrorEvent instances.
+        The emitter handles LangGraph streaming and fallback handlers automatically.
+        """
+        # Extract step info for the event (lazy init if needed)
+        if self._step_info is None:
+            self._step_info = self._extract_step_info(self._state)
+
+        step_info = self._step_info or {}
 
         try:
-            import time
+            # Create typed event based on event_type
+            if event_type == "error" or kwargs.get("error"):
+                event = ErrorEvent(
+                    component=self.component_name,
+                    error_type=kwargs.get("error_type", "ExecutionError"),
+                    error_message=message,
+                    recoverable=kwargs.get("recoverable", False),
+                    stack_trace=kwargs.get("stack_trace"),
+                )
+            else:
+                # Map event_type to StatusEvent level
+                level_map = {
+                    "status": "status",
+                    "info": "info",
+                    "debug": "debug",
+                    "warning": "warning",
+                    "success": "success",
+                    "key_info": "info",
+                    "timing": "info",
+                    "approval": "info",
+                    "resume": "info",
+                }
+                level = level_map.get(event_type, "info")
 
-            event = {
-                "event_type": event_type,
-                "message": message,
-                "component": self.component_name,
-                "timestamp": time.time(),
-                **(self._step_info or {}),
-                **kwargs,
-            }
+                event = StatusEvent(
+                    component=self.component_name,
+                    message=message,
+                    level=level,
+                    phase=step_info.get("phase"),
+                    step=step_info.get("step"),
+                    total_steps=step_info.get("total_steps"),
+                )
 
-            # Clean up None values
-            event = {k: v for k, v in event.items() if v is not None}
+            # Emit via the typed event system
+            self._event_emitter.emit(event)
 
-            writer(event)
-        except Exception as e:
+        except Exception:
             # Don't crash logging just because streaming failed
-            self.debug(f"Failed to emit stream event: {e}")
+            # Avoid recursive debug() call that could cause infinite loop
+            pass
+
+    def emit_event(self, event: OspreyEvent) -> None:
+        """Emit a typed OspreyEvent directly.
+
+        Use this for structured events like PhaseStartEvent, CapabilityStartEvent, etc.
+        that don't fit the standard logging pattern.
+
+        Args:
+            event: The typed event to emit
+
+        Example:
+            from osprey.events import PhaseStartEvent
+            logger.emit_event(PhaseStartEvent(
+                phase="task_extraction",
+                description="Extracting task from query"
+            ))
+        """
+        # Ensure component is set if not already
+        if not event.component:
+            event.component = self.component_name
+
+        self._event_emitter.emit(event)
 
     def _format_message(self, message: str, style: str, emoji: str = "") -> str:
         """Format message with Rich markup and emoji prefix."""

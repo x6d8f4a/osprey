@@ -15,9 +15,11 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.widgets import TextArea
 
+from osprey.events import parse_event
 from osprey.graph import create_graph
 from osprey.infrastructure.gateway import Gateway
 from osprey.interfaces.tui.constants import EXEC_STEP_PATTERN, TASK_PREP_COMPONENTS
+from osprey.interfaces.tui.event_handler import TUIEventHandler
 from osprey.interfaces.tui.handlers import QueueLogHandler
 from osprey.interfaces.tui.widgets import (
     ChatDisplay,
@@ -592,8 +594,10 @@ class OspreyTUI(App):
     async def _consume_events(self, user_query: str, chat_display: ChatDisplay) -> None:
         """Event consumer - single gateway for all TUI block updates.
 
-        SINGLE-CHANNEL ARCHITECTURE: Only processes log events (event_type == "log").
-        Stream events from Gateway are ignored - all data comes from Python logs.
+        ARCHITECTURE: Supports both legacy dict events and new typed OspreyEvents.
+
+        Legacy dict events (event_type == "log") are processed directly.
+        New typed events (event_class field) are parsed and routed via TUIEventHandler.
 
         Block lifecycle: Open on first log, close when DIFFERENT component arrives.
         Only one Task Preparation block is active at any time.
@@ -601,6 +605,17 @@ class OspreyTUI(App):
         Args:
             user_query: The original user query.
             chat_display: The chat display widget.
+
+        Note:
+            The typed event system (osprey.events) is available for gradual migration.
+            Use parse_event() to convert dict events to typed OspreyEvents, then
+            route through TUIEventHandler for pattern-matching based processing.
+
+            Migration path:
+            1. Typed events are emitted by infrastructure nodes and capabilities
+            2. parse_event() reconstructs typed events from serialized dicts
+            3. TUIEventHandler uses match/case for clean event routing
+            4. Eventually replace dict-based processing entirely
         """
         # Track single active block (for Task Preparation phase)
         current_component: str | None = None
@@ -610,13 +625,26 @@ class OspreyTUI(App):
         current_capability: str | None = None
         current_execution_step = 1
 
+        # Initialize typed event handler for new event system
+        typed_handler = TUIEventHandler(chat_display, self._shared_data)
+
         while True:
             try:
                 chunk = await chat_display._event_queue.get()
 
+                # Try to parse as typed OspreyEvent first (new system)
+                typed_event = parse_event(chunk) if isinstance(chunk, dict) else None
+                if typed_event:
+                    # Route typed events through the new handler
+                    await typed_handler.handle(typed_event)
+                    # Also extract shared data for cross-block communication
+                    typed_handler.extract_shared_data(typed_event)
+                    chat_display._event_queue.task_done()
+                    continue
+
                 event_type = chunk.get("event_type", "")
 
-                # SINGLE-CHANNEL: Only process log events - ignore stream events
+                # Legacy path: Only process log events - ignore stream events
                 if event_type != "log":
                     chat_display._event_queue.task_done()
                     continue

@@ -47,6 +47,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from osprey.base.errors import ErrorSeverity
+from osprey.events import CapabilityCompleteEvent, CapabilityStartEvent, EventEmitter
 from osprey.utils.logger import get_logger
 
 try:
@@ -215,8 +216,8 @@ def capability_node(cls):
     async def langgraph_node(state: "AgentState", **kwargs) -> dict[str, Any]:
         """LangGraph-native node function with manual retry handling via router."""
 
-        # Get streaming capability for status updates
-        streaming = get_stream_writer() if get_stream_writer else None
+        # Create event emitter for typed events
+        emitter = EventEmitter(capability_name)
 
         # Check if in direct chat mode (bypasses orchestration, no execution plan)
         session_state = state.get("session_state", {})
@@ -232,20 +233,27 @@ def capability_node(cls):
                 "inputs": {},
                 "description": f"Direct chat with {capability_name}",
             }
+            step_number = 1
+            total_steps = 1
         else:
             step = StateManager.get_current_step(state)
+            step_number = StateManager.get_current_step_index(state) + 1
+            execution_plan = state.get("planning_execution_plan", {})
+            total_steps = len(execution_plan.get("steps", [])) if execution_plan else 1
+
         start_time = time.time()
 
-        try:
-            if streaming:
-                streaming(
-                    {
-                        "event_type": "status",
-                        "message": f"Executing {capability_name}...",
-                        "progress": 0.1,
-                    }
-                )
+        # Emit CapabilityStartEvent
+        emitter.emit(
+            CapabilityStartEvent(
+                capability_name=capability_name,
+                step_number=step_number,
+                total_steps=total_steps,
+                description=step.get("task_objective", f"Executing {capability_name}"),
+            )
+        )
 
+        try:
             logger.info(f"Executing capability: {capability_name}")
 
             # Execute based on method type
@@ -267,6 +275,16 @@ def capability_node(cls):
                 result = await instance.execute()
 
             execution_time = time.time() - start_time
+            duration_ms = int(execution_time * 1000)
+
+            # Emit CapabilityCompleteEvent on success
+            emitter.emit(
+                CapabilityCompleteEvent(
+                    capability_name=capability_name,
+                    success=True,
+                    duration_ms=duration_ms,
+                )
+            )
 
             # Handle state updates for step progression
             state_updates = _handle_capability_state_updates(
@@ -284,6 +302,7 @@ def capability_node(cls):
 
         except Exception as exc:
             execution_time = time.time() - start_time
+            duration_ms = int(execution_time * 1000)
 
             # Check for development mode - re-raise original exception for debugging
             try:
@@ -293,6 +312,15 @@ def capability_node(cls):
                     if configurable.get("development", {}).get("raise_raw_errors", False):
                         logger.error(
                             "Development mode: Re-raising original exception directly for debugging"
+                        )
+                        # Emit failure event before re-raising
+                        emitter.emit(
+                            CapabilityCompleteEvent(
+                                capability_name=capability_name,
+                                success=False,
+                                duration_ms=duration_ms,
+                                error_message=str(exc),
+                            )
                         )
                         raise exc
             except (RuntimeError, ImportError, AttributeError, KeyError):
@@ -305,6 +333,16 @@ def capability_node(cls):
                     f"GraphInterrupt detected in {capability_name} - re-raising for LangGraph to handle"
                 )
                 raise exc
+
+            # Emit CapabilityCompleteEvent on failure
+            emitter.emit(
+                CapabilityCompleteEvent(
+                    capability_name=capability_name,
+                    success=False,
+                    duration_ms=duration_ms,
+                    error_message=str(exc),
+                )
+            )
 
             # Get step info (use synthetic step in direct chat mode)
             if direct_chat_mode:
