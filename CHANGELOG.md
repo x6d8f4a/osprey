@@ -61,6 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Content consolidated into `src/osprey/assist/tasks/{name}/instructions.md`
   - Only `README.md` deprecation notice remains in workflows directory
 
+### Fixed
+- **Code Generation**: Fix `${VAR}` environment variable expansion in `claude_code_generator`
+
 ## [0.9.10] - 2025-01-03
 
 ### Fixed

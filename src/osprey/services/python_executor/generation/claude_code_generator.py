@@ -133,6 +133,7 @@ Examples:
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -576,8 +577,10 @@ class ClaudeCodeGenerator:
             env["ANTHROPIC_BASE_URL"] = base_url
 
         # Set API key from api_config
+        # Expand environment variable references like ${CBORG_API_KEY} or ${ANTHROPIC_API_KEY}
         api_key = api_config.get("api_key")
         if api_key:
+            api_key = os.path.expandvars(api_key)
             env["ANTHROPIC_AUTH_TOKEN"] = api_key
 
         # Set model names from api_config
