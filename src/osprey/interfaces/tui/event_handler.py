@@ -91,6 +91,9 @@ class TUIEventHandler:
         self.current_blocks: dict[str, Any] = {}
         self.current_phase: str | None = None
         self._phase_start_times: dict[str, float] = {}
+        # Capability context tracking for log routing
+        self._current_capability: str | None = None
+        self._current_step_number: int | None = None
 
     async def handle(self, event: OspreyEvent) -> None:
         """Process a typed event using pattern matching.
@@ -354,6 +357,11 @@ class TUIEventHandler:
         self.display.mount(block)
         block.set_active()
 
+        # Track current capability context for log routing
+        self._current_capability = name
+        self._current_step_number = step
+        self.current_phase = "execution"
+
     async def _handle_capability_complete(
         self, name: str, success: bool, duration_ms: int, error_message: str | None
     ) -> None:
@@ -380,10 +388,20 @@ class TUIEventHandler:
                 output_text = error_message or "Execution failed"
             block.set_output(output_text, status=status)
 
+        # Clear capability context (will be set again if another capability starts)
+        self._current_capability = None
+        self._current_step_number = None
+
     async def _handle_status(
         self, component: str, message: str, level: str, phase: str | None, step: int | None
     ) -> None:
         """Handle status event - add log to current block.
+
+        Uses priority-based lookup to find the correct block:
+        1. If capability executing, use execution_{capability}_{step} key
+        2. Try component/phase mapping (for T/C/O phases)
+        3. Fall back to current phase block
+        4. Fall back to any block containing component name
 
         Args:
             component: Component that emitted the status
@@ -392,19 +410,33 @@ class TUIEventHandler:
             phase: Current phase (if available)
             step: Current step number (if available)
         """
-        # Determine which block to update
         block = None
 
-        # First try to find by component/phase mapping
-        mapped_phase = COMPONENT_PHASE_MAP.get(component)
-        if mapped_phase and mapped_phase in self.current_blocks:
-            block = self.current_blocks[mapped_phase]
+        # PRIORITY 1: If capability is executing, route to its execution block
+        if self._current_capability and self._current_step_number:
+            # Use step from event if available, otherwise use tracked step
+            step_num = step if step is not None else self._current_step_number
+            block_key = f"execution_{self._current_capability}_{step_num}"
+            block = self.current_blocks.get(block_key)
 
-        # Fall back to current phase block
-        if not block and self.current_phase:
+            # Also try matching by capability name in case step differs
+            if not block:
+                for key, b in self.current_blocks.items():
+                    if key.startswith(f"execution_{self._current_capability}_"):
+                        block = b
+                        break
+
+        # PRIORITY 2: Try component/phase mapping (for T/C/O phases)
+        if not block:
+            mapped_phase = COMPONENT_PHASE_MAP.get(component)
+            if mapped_phase and mapped_phase in self.current_blocks:
+                block = self.current_blocks[mapped_phase]
+
+        # PRIORITY 3: Fall back to current phase block (but not for execution)
+        if not block and self.current_phase and self.current_phase != "execution":
             block = self.current_blocks.get(self.current_phase)
 
-        # Fall back to any execution block for the component
+        # PRIORITY 4: Fall back to any block containing the component name
         if not block:
             for key, b in self.current_blocks.items():
                 if component in key:
@@ -494,22 +526,42 @@ class TUIEventHandler:
     def _find_block_for_component(self, component: str) -> Any | None:
         """Find the current block for a given component.
 
+        Uses priority-based lookup to find the correct block:
+        1. If capability executing, use execution_{capability}_{step} key
+        2. Try component/phase mapping (for T/C/O phases)
+        3. Fall back to current phase block
+        4. Fall back to any block containing component name
+
         Args:
             component: Component name to find block for
 
         Returns:
             The block if found, None otherwise
         """
-        # First try direct phase mapping
+        # PRIORITY 1: If capability is executing, check for execution block
+        if self._current_capability and self._current_step_number:
+            # Component might be the capability name itself
+            if component == self._current_capability:
+                block_key = f"execution_{self._current_capability}_{self._current_step_number}"
+                if block_key in self.current_blocks:
+                    return self.current_blocks[block_key]
+
+            # Also check for any execution block for this capability
+            for key, block in self.current_blocks.items():
+                if key.startswith(f"execution_{component}_"):
+                    return block
+
+        # PRIORITY 2: Direct phase mapping (for T/C/O phases)
         mapped_phase = COMPONENT_PHASE_MAP.get(component)
         if mapped_phase and mapped_phase in self.current_blocks:
             return self.current_blocks[mapped_phase]
 
-        # Fall back to current phase
-        if self.current_phase and self.current_phase in self.current_blocks:
-            return self.current_blocks[self.current_phase]
+        # PRIORITY 3: Fall back to current phase (but not for execution)
+        if self.current_phase and self.current_phase != "execution":
+            if self.current_phase in self.current_blocks:
+                return self.current_blocks[self.current_phase]
 
-        # Fall back to any block containing the component name
+        # PRIORITY 4: Fall back to any block containing the component name
         for key, block in self.current_blocks.items():
             if component in key:
                 return block
