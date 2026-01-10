@@ -145,7 +145,6 @@ class AskSageProviderAdapter(BaseProvider):
 
         asksage_body_args = {
             "system_prompt": "-",
-            "persona": 382,  # this is the blank2 persona
             "dataset": "none",
             "live": 0,
             "limit_references": 0,
