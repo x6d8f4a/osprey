@@ -132,8 +132,8 @@ def _extract_task(messages: list[BaseMessage], retrieval_result, logger) -> Extr
 
     prompt = _build_task_extraction_prompt(messages, retrieval_result)
 
-    # Log the prompt for TUI visibility
-    logger.info("LLM prompt built", llm_prompt=prompt, stream=False)
+    # Emit LLM prompt event for TUI display
+    logger.emit_llm_request(prompt)
 
     # Use structured LLM generation for task extraction
     task_extraction_config = get_model_config("task_extraction")
@@ -141,9 +141,9 @@ def _extract_task(messages: list[BaseMessage], retrieval_result, logger) -> Extr
         message=prompt, model_config=task_extraction_config, output_model=ExtractedTask
     )
 
-    # Log the response for TUI visibility
+    # Emit LLM response event for TUI display
     response_json = response.model_dump_json(indent=2)
-    logger.info("LLM response received", llm_response=response_json, stream=False)
+    logger.emit_llm_response(response_json)
 
     return response
 

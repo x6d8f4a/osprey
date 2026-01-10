@@ -212,12 +212,14 @@ class LLMRequestEvent(BaseEvent):
         prompt_length: Total length of the prompt in characters
         model: Model identifier (e.g., "gpt-4", "claude-3-opus")
         provider: Provider name (e.g., "openai", "anthropic")
+        full_prompt: Complete prompt text for TUI display
     """
 
     prompt_preview: str = ""
     prompt_length: int = 0
     model: str = ""
     provider: str = ""
+    full_prompt: str = ""
 
 
 @dataclass
@@ -234,6 +236,7 @@ class LLMResponseEvent(BaseEvent):
         thinking_tokens: Number of thinking tokens (for reasoning models)
         cost_usd: Estimated cost in USD
         duration_ms: How long the request took in milliseconds
+        full_response: Complete response text for TUI display
     """
 
     response_preview: str = ""
@@ -243,6 +246,7 @@ class LLMResponseEvent(BaseEvent):
     thinking_tokens: int | None = None
     cost_usd: float | None = None
     duration_ms: int = 0
+    full_response: str = ""
 
 
 # -----------------------------------------------------------------------------

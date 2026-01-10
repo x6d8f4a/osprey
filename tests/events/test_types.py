@@ -331,16 +331,19 @@ class TestLLMRequestEvent:
 
     def test_creation_with_all_fields(self):
         """Test LLMRequestEvent with all fields."""
+        full_prompt = "What is the meaning of life, the universe, and everything?"
         event = LLMRequestEvent(
             prompt_preview="What is the meaning of...",
             prompt_length=100,
             model="gpt-4",
             provider="openai",
+            full_prompt=full_prompt,
         )
         assert event.prompt_preview == "What is the meaning of..."
         assert event.prompt_length == 100
         assert event.model == "gpt-4"
         assert event.provider == "openai"
+        assert event.full_prompt == full_prompt
 
     def test_default_values(self):
         """Test LLMRequestEvent default values."""
@@ -349,6 +352,7 @@ class TestLLMRequestEvent:
         assert event.prompt_length == 0
         assert event.model == ""
         assert event.provider == ""
+        assert event.full_prompt == ""
 
 
 class TestLLMResponseEvent:
@@ -356,6 +360,7 @@ class TestLLMResponseEvent:
 
     def test_creation_with_tokens(self):
         """Test LLMResponseEvent with token counts."""
+        full_response = "The meaning of life is 42, according to Douglas Adams."
         event = LLMResponseEvent(
             response_preview="The meaning of...",
             response_length=500,
@@ -364,11 +369,13 @@ class TestLLMResponseEvent:
             thinking_tokens=100,
             cost_usd=0.05,
             duration_ms=2000,
+            full_response=full_response,
         )
         assert event.input_tokens == 50
         assert event.output_tokens == 200
         assert event.thinking_tokens == 100
         assert event.cost_usd == 0.05
+        assert event.full_response == full_response
 
     def test_default_values(self):
         """Test LLMResponseEvent default values."""
@@ -378,6 +385,7 @@ class TestLLMResponseEvent:
         assert event.output_tokens == 0
         assert event.thinking_tokens is None
         assert event.cost_usd is None
+        assert event.full_response == ""
 
 
 # =============================================================================

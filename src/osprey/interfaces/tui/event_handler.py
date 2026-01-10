@@ -25,6 +25,8 @@ from osprey.events import (
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     ErrorEvent,
+    LLMRequestEvent,
+    LLMResponseEvent,
     OspreyEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
@@ -146,6 +148,13 @@ class TUIEventHandler:
             # Error events
             case ErrorEvent(error_type=err_type, error_message=msg, recoverable=recoverable):
                 await self._handle_error(err_type, msg, recoverable)
+
+            # LLM events
+            case LLMRequestEvent(full_prompt=prompt, component=component):
+                await self._handle_llm_request(prompt, component)
+
+            case LLMResponseEvent(full_response=response, component=component):
+                await self._handle_llm_response(response, component)
 
             case _:
                 # Unknown event type - log and skip
@@ -447,6 +456,53 @@ class TUIEventHandler:
                 if hasattr(block, "set_output"):
                     block.set_output(error_message, status="error")
                 break
+
+    async def _handle_llm_request(self, prompt: str, component: str) -> None:
+        """Handle LLM request event - set prompt in current block.
+
+        Args:
+            prompt: The full LLM prompt text
+            component: Component that emitted the event
+        """
+        block = self._find_block_for_component(component)
+        if block and hasattr(block, "set_llm_prompt"):
+            block.set_llm_prompt(prompt)
+
+    async def _handle_llm_response(self, response: str, component: str) -> None:
+        """Handle LLM response event - set response in current block.
+
+        Args:
+            response: The full LLM response text
+            component: Component that emitted the event
+        """
+        block = self._find_block_for_component(component)
+        if block and hasattr(block, "set_llm_response"):
+            block.set_llm_response(response)
+
+    def _find_block_for_component(self, component: str) -> Any | None:
+        """Find the current block for a given component.
+
+        Args:
+            component: Component name to find block for
+
+        Returns:
+            The block if found, None otherwise
+        """
+        # First try direct phase mapping
+        mapped_phase = COMPONENT_PHASE_MAP.get(component)
+        if mapped_phase and mapped_phase in self.current_blocks:
+            return self.current_blocks[mapped_phase]
+
+        # Fall back to current phase
+        if self.current_phase and self.current_phase in self.current_blocks:
+            return self.current_blocks[self.current_phase]
+
+        # Fall back to any block containing the component name
+        for key, block in self.current_blocks.items():
+            if component in key:
+                return block
+
+        return None
 
     def handle_legacy_event(self, chunk: dict[str, Any]) -> OspreyEvent | None:
         """Convert legacy dict event to typed event if possible.

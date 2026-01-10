@@ -197,18 +197,16 @@ def _generate_clarifying_questions(state, task_objective: str) -> ClarifyingQues
     # and composes the complete prompt with PRIMARY TASK prioritization
     message = clarification_builder.get_system_instructions(state, task_objective)
 
-    # Log prompt for TUI display
-    logger.info("LLM prompt built", extra={"llm_prompt": message, "stream": False})
+    # Emit LLM prompt event for TUI display
+    logger.emit_llm_request(message)
 
     response_config = get_model_config("response")
     result = get_chat_completion(
         message=message, model_config=response_config, output_model=ClarifyingQuestionsResponse
     )
 
-    # Log response for TUI display (convert Pydantic model to JSON string)
-    logger.info(
-        "LLM response received", extra={"llm_response": result.model_dump_json(), "stream": False}
-    )
+    # Emit LLM response event for TUI display
+    logger.emit_llm_response(result.model_dump_json())
 
     return result
 

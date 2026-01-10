@@ -434,12 +434,8 @@ class CapabilityClassifier:
             f"\n\nTask Analyzer System Prompt for capability '{capability.name}':\n{message}\n\n"
         )
 
-        # Log prompt for TUI display
-        self.logger.info(
-            f"Classification prompt for {capability.name}",
-            llm_prompt={capability.name: message},
-            stream=False,
-        )
+        # Emit LLM prompt event for TUI display
+        self.logger.emit_llm_request(message)
 
         # Execute classification
         try:
@@ -461,16 +457,12 @@ class CapabilityClassifier:
                 output_model=CapabilityMatch,
             )
 
-            # Log response for TUI display
+            # Emit LLM response event for TUI display
             if isinstance(response_data, CapabilityMatch):
                 response_json = response_data.model_dump_json()
             else:
                 response_json = str(response_data)
-            self.logger.info(
-                f"Classification result for {capability.name}",
-                llm_response={capability.name: response_json},
-                stream=False,
-            )
+            self.logger.emit_llm_response(response_json)
 
             result = self._process_classification_response(capability, response_data)
             self.logger.info(f" >>> Capability '{capability.name}' >>> {result}")

@@ -257,6 +257,54 @@ class ComponentLogger:
 
         self._event_emitter.emit(event)
 
+    def emit_llm_request(self, prompt: str, model: str = "", provider: str = "") -> None:
+        """Emit LLMRequestEvent with full prompt for TUI display.
+
+        Args:
+            prompt: The complete LLM prompt text
+            model: Model identifier (e.g., "gpt-4", "claude-3-opus")
+            provider: Provider name (e.g., "openai", "anthropic")
+        """
+        from osprey.events import LLMRequestEvent
+
+        event = LLMRequestEvent(
+            component=self.component_name,
+            prompt_preview=prompt[:200] + "..." if len(prompt) > 200 else prompt,
+            prompt_length=len(prompt),
+            model=model,
+            provider=provider,
+            full_prompt=prompt,
+        )
+        self._event_emitter.emit(event)
+
+    def emit_llm_response(
+        self,
+        response: str,
+        duration_ms: int = 0,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+    ) -> None:
+        """Emit LLMResponseEvent with full response for TUI display.
+
+        Args:
+            response: The complete LLM response text
+            duration_ms: How long the request took in milliseconds
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+        """
+        from osprey.events import LLMResponseEvent
+
+        event = LLMResponseEvent(
+            component=self.component_name,
+            response_preview=response[:200] + "..." if len(response) > 200 else response,
+            response_length=len(response),
+            duration_ms=duration_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            full_response=response,
+        )
+        self._event_emitter.emit(event)
+
     def _format_message(self, message: str, style: str, emoji: str = "") -> str:
         """Format message with Rich markup and emoji prefix."""
         try:
