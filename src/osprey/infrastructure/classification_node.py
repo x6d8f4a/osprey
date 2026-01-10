@@ -152,7 +152,7 @@ class ClassificationNode(BaseInfrastructureNode):
         """
         import time
 
-        from osprey.events import PhaseCompleteEvent, PhaseStartEvent
+        from osprey.events import CapabilitiesSelectedEvent, PhaseCompleteEvent, PhaseStartEvent
 
         state = self._state
         start_time = time.time()
@@ -196,6 +196,14 @@ class ClassificationNode(BaseInfrastructureNode):
             logger.success(
                 f"Bypass mode: activated all {len(active_capabilities)} capabilities",
                 capability_names=active_capabilities,
+            )
+
+            # Emit data event with selected capabilities
+            logger.emit_event(
+                CapabilitiesSelectedEvent(
+                    capability_names=active_capabilities,
+                    all_capability_names=active_capabilities,  # In bypass mode, all are selected
+                )
             )
 
             # Emit phase complete event
@@ -247,6 +255,16 @@ class ClassificationNode(BaseInfrastructureNode):
             capability_names=active_capabilities,
         )
         logger.debug(f"Active capabilities: {active_capabilities}")
+
+        # Emit data event with selected capabilities
+        # Get all available capability names for UI display
+        all_capability_names = [cap.name for cap in available_capabilities]
+        logger.emit_event(
+            CapabilitiesSelectedEvent(
+                capability_names=active_capabilities,
+                all_capability_names=all_capability_names,
+            )
+        )
 
         # Emit phase complete event
         duration_ms = int((time.time() - start_time) * 1000)

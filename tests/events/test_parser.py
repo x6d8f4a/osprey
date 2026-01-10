@@ -3,13 +3,16 @@
 from datetime import datetime
 
 from osprey.events import (
+    CapabilitiesSelectedEvent,
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     ErrorEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
+    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
+    TaskExtractedEvent,
     is_osprey_event,
     parse_event,
 )
@@ -156,6 +159,62 @@ class TestParseEvent:
         assert isinstance(event, ResultEvent)
         assert event.success is True
         assert event.capabilities_used == ["python_executor", "search"]
+
+    def test_parse_task_extracted_event(self):
+        """Test parsing TaskExtractedEvent from dict."""
+        data = {
+            "event_class": "TaskExtractedEvent",
+            "task": "Generate a summary report",
+            "depends_on_chat_history": True,
+            "depends_on_user_memory": False,
+            "component": "task_extraction",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        event = parse_event(data)
+
+        assert isinstance(event, TaskExtractedEvent)
+        assert event.task == "Generate a summary report"
+        assert event.depends_on_chat_history is True
+        assert event.depends_on_user_memory is False
+        assert event.component == "task_extraction"
+
+    def test_parse_capabilities_selected_event(self):
+        """Test parsing CapabilitiesSelectedEvent from dict."""
+        data = {
+            "event_class": "CapabilitiesSelectedEvent",
+            "capability_names": ["python_executor", "search"],
+            "all_capability_names": ["python_executor", "search", "web_browser"],
+            "component": "classifier",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        event = parse_event(data)
+
+        assert isinstance(event, CapabilitiesSelectedEvent)
+        assert event.capability_names == ["python_executor", "search"]
+        assert event.all_capability_names == ["python_executor", "search", "web_browser"]
+        assert event.component == "classifier"
+
+    def test_parse_plan_created_event(self):
+        """Test parsing PlanCreatedEvent from dict."""
+        steps = [
+            {"capability": "python_executor", "context_key": "step_1"},
+            {"capability": "respond", "context_key": "step_2"},
+        ]
+        data = {
+            "event_class": "PlanCreatedEvent",
+            "steps": steps,
+            "component": "orchestrator",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        event = parse_event(data)
+
+        assert isinstance(event, PlanCreatedEvent)
+        assert len(event.steps) == 2
+        assert event.steps[0]["capability"] == "python_executor"
+        assert event.component == "orchestrator"
 
 
 # =============================================================================
@@ -393,6 +452,9 @@ class TestEventClassesRegistry:
             "StatusEvent",
             "PhaseStartEvent",
             "PhaseCompleteEvent",
+            "TaskExtractedEvent",
+            "CapabilitiesSelectedEvent",
+            "PlanCreatedEvent",
             "CapabilityStartEvent",
             "CapabilityCompleteEvent",
             "LLMRequestEvent",
@@ -414,5 +476,8 @@ class TestEventClassesRegistry:
         """Verify registry maps to correct classes."""
         assert EVENT_CLASSES["StatusEvent"] == StatusEvent
         assert EVENT_CLASSES["PhaseStartEvent"] == PhaseStartEvent
+        assert EVENT_CLASSES["TaskExtractedEvent"] == TaskExtractedEvent
+        assert EVENT_CLASSES["CapabilitiesSelectedEvent"] == CapabilitiesSelectedEvent
+        assert EVENT_CLASSES["PlanCreatedEvent"] == PlanCreatedEvent
         assert EVENT_CLASSES["ErrorEvent"] == ErrorEvent
         assert EVENT_CLASSES["ResultEvent"] == ResultEvent

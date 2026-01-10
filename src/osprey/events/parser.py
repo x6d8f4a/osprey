@@ -23,6 +23,7 @@ from typing import Any
 from .types import (
     ApprovalReceivedEvent,
     ApprovalRequiredEvent,
+    CapabilitiesSelectedEvent,
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     CodeExecutedEvent,
@@ -33,8 +34,10 @@ from .types import (
     OspreyEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
+    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
+    TaskExtractedEvent,
     ToolResultEvent,
     ToolUseEvent,
 )
@@ -44,6 +47,9 @@ EVENT_CLASSES: dict[str, type] = {
     "StatusEvent": StatusEvent,
     "PhaseStartEvent": PhaseStartEvent,
     "PhaseCompleteEvent": PhaseCompleteEvent,
+    "TaskExtractedEvent": TaskExtractedEvent,
+    "CapabilitiesSelectedEvent": CapabilitiesSelectedEvent,
+    "PlanCreatedEvent": PlanCreatedEvent,
     "CapabilityStartEvent": CapabilityStartEvent,
     "CapabilityCompleteEvent": CapabilityCompleteEvent,
     "LLMRequestEvent": LLMRequestEvent,

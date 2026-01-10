@@ -4,7 +4,6 @@ A Terminal User Interface for the Osprey Agent Framework built with Textual.
 """
 
 import asyncio
-import logging
 import uuid
 from typing import Any
 
@@ -18,9 +17,7 @@ from textual.widgets import TextArea
 from osprey.events import parse_event
 from osprey.graph import create_graph
 from osprey.infrastructure.gateway import Gateway
-from osprey.interfaces.tui.constants import EXEC_STEP_PATTERN, TASK_PREP_COMPONENTS
 from osprey.interfaces.tui.event_handler import TUIEventHandler
-from osprey.interfaces.tui.handlers import QueueLogHandler
 from osprey.interfaces.tui.widgets import (
     ChatDisplay,
     ChatInput,
@@ -328,16 +325,9 @@ class OspreyTUI(App):
         # Focus the welcome input field
         self.query_one("#welcome-input", ChatInput).focus()
 
-        # Set up log handler to capture Python logs via single-channel architecture
-        chat_display = self.query_one("#chat-display", ChatDisplay)
-        # All logs from ComponentLogger include raw_message and log_type in extra dict
-        loop = asyncio.get_event_loop()
-        self._log_handler = QueueLogHandler(chat_display._event_queue, loop)
-        self._log_handler.setLevel(logging.DEBUG)  # Capture all levels
-
-        # Attach to root logger - captures ALL logs from any component
-        # QueueLogHandler.emit() filters to only ComponentLogger logs (via raw_message check)
-        logging.getLogger().addHandler(self._log_handler)
+        # Note: QueueLogHandler removed as part of Phase 4 migration.
+        # TUI now relies solely on typed events via LangGraph streaming.
+        # See EVENT_STREAMING.md for architecture details.
 
     def on_chat_input_submitted(self, event: ChatInput.Submitted) -> None:
         """Handle input submission.
@@ -592,151 +582,47 @@ class OspreyTUI(App):
             )
 
     async def _consume_events(self, user_query: str, chat_display: ChatDisplay) -> None:
-        """Event consumer - single gateway for all TUI block updates.
+        """Event consumer - processes typed OspreyEvents from LangGraph streaming.
 
-        ARCHITECTURE: Supports both legacy dict events and new typed OspreyEvents.
+        ARCHITECTURE: Phase 4 migration complete - uses typed events exclusively.
 
-        Legacy dict events (event_type == "log") are processed directly.
-        New typed events (event_class field) are parsed and routed via TUIEventHandler.
-
-        Block lifecycle: Open on first log, close when DIFFERENT component arrives.
-        Only one Task Preparation block is active at any time.
+        Typed events (with event_class field) are parsed and routed via TUIEventHandler.
+        Block lifecycle is managed entirely through typed events:
+        - PhaseStartEvent → Create block
+        - StatusEvent → Add logs to block
+        - Data events (TaskExtractedEvent, etc.) → Set block output
+        - PhaseCompleteEvent → Finalize block
+        - CapabilityStartEvent/CapabilityCompleteEvent → Execution blocks
 
         Args:
             user_query: The original user query.
             chat_display: The chat display widget.
 
-        Note:
-            The typed event system (osprey.events) is available for gradual migration.
-            Use parse_event() to convert dict events to typed OspreyEvents, then
-            route through TUIEventHandler for pattern-matching based processing.
-
-            Migration path:
-            1. Typed events are emitted by infrastructure nodes and capabilities
-            2. parse_event() reconstructs typed events from serialized dicts
-            3. TUIEventHandler uses match/case for clean event routing
-            4. Eventually replace dict-based processing entirely
+        See EVENT_STREAMING.md for architecture details.
         """
-        # Track single active block (for Task Preparation phase)
-        current_component: str | None = None
-        current_block: ProcessingBlock | None = None
-        # Track execution state for routing capability logs to correct step block
-        execution_started = False
-        current_capability: str | None = None
-        current_execution_step = 1
-
-        # Initialize typed event handler for new event system
+        # Initialize typed event handler
         typed_handler = TUIEventHandler(chat_display, self._shared_data)
 
         while True:
             try:
                 chunk = await chat_display._event_queue.get()
 
-                # Try to parse as typed OspreyEvent first (new system)
+                # Parse as typed OspreyEvent
                 typed_event = parse_event(chunk) if isinstance(chunk, dict) else None
                 if typed_event:
-                    # Route typed events through the new handler
+                    # Route typed events through the handler
                     await typed_handler.handle(typed_event)
-                    # Also extract shared data for cross-block communication
+                    # Extract shared data for cross-block communication
                     typed_handler.extract_shared_data(typed_event)
-                    chat_display._event_queue.task_done()
-                    continue
 
-                event_type = chunk.get("event_type", "")
-
-                # Legacy path: Only process log events - ignore stream events
-                if event_type != "log":
-                    chat_display._event_queue.task_done()
-                    continue
-
-                component = chunk.get("component", "")
-                level = chunk.get("level", "info")
-                msg = chunk.get("message", "")
-                phase = chunk.get("phase", "")
-
-                # Skip if no component
-                if not component:
-                    chat_display._event_queue.task_done()
-                    continue
-
-                # DEBUG: Log events to debug block (if enabled)
-                debug_block = chat_display.get_or_create_debug_block()
-                if debug_block:
-                    debug_block.add_event(chunk)
-
-                # Determine phase using allowlist approach
-                # Only known components create blocks; skip infrastructure logs
-                if not phase:
-                    if component in TASK_PREP_COMPONENTS:
-                        phase = "Task Preparation"
-                    elif component == "router":
-                        # Router needs special handling below (EXEC_STEP_PATTERN)
-                        pass
-                    elif execution_started and component == current_capability:
-                        # Capability logs for active execution step
-                        phase = "Execution"
-                    else:
-                        # Skip infrastructure/unknown components (gateway, cli, etc.)
-                        chat_display._event_queue.task_done()
-                        continue
-
-                # Handle router messages - only process execution step patterns
-                if component == "router":
-                    if msg:
-                        match = EXEC_STEP_PATTERN.search(msg)
-                        if match:
-                            phase = "Execution"
-                            # Parse step info for _handle_execution_event
-                            step_num = int(match.group(1))
-                            chunk["step"] = step_num
-                            chunk["total_steps"] = int(match.group(2))
-                            component = match.group(3)  # Use capability as component
-                            # Track execution state for subsequent capability logs
-                            execution_started = True
-                            current_capability = component  # e.g., "current_weather"
-                            current_execution_step = step_num
-                        else:
-                            # Skip router messages that don't match execution step pattern
-                            chat_display._event_queue.task_done()
-                            continue
-                    else:
-                        # Skip router messages with no message
-                        chat_display._event_queue.task_done()
-                        continue
-
-                # Route by phase
-                if phase == "Task Preparation":
-                    current_component, current_block = self._consume_task_prep_log(
-                        chunk,
-                        component,
-                        level,
-                        msg,
-                        user_query,
-                        chat_display,
-                        current_component,
-                        current_block,
-                    )
-                elif phase == "Execution":
-                    # Close last Task Prep block when Execution starts
-                    if current_block and current_component in (
-                        "task_extraction",
-                        "classifier",
-                        "orchestrator",
-                    ):
-                        self._close_task_prep_block(current_block, current_component)
-                        current_component, current_block = None, None
-                    # Inject current step for capability logs that don't have step field
-                    if "step" not in chunk:
-                        chunk["step"] = current_execution_step
-                    # Execution phase uses different approach (multiple step blocks)
-                    is_complete = (level == "success") or chunk.get("complete", False)
-                    self._handle_execution_event(chunk, component, is_complete, level, chat_display)
+                # DEBUG: Log raw events to debug block (if enabled)
+                if isinstance(chunk, dict):
+                    debug_block = chat_display.get_or_create_debug_block()
+                    if debug_block:
+                        debug_block.add_event(chunk)
 
                 chat_display._event_queue.task_done()
             except asyncio.CancelledError:
-                # Close last active block when stream ends
-                if current_block:
-                    self._close_task_prep_block(current_block, current_component)
                 break
 
     def _consume_task_prep_log(
@@ -862,6 +748,9 @@ class OspreyTUI(App):
         Handles retry numbering by checking existing blocks in display.
         Task extraction uses minimal step widget, others use full blocks.
 
+        If a block was already created by TUIEventHandler (via typed events),
+        returns that existing block instead of creating a duplicate.
+
         Args:
             component: The component name.
             user_query: The original user query.
@@ -876,11 +765,21 @@ class OspreyTUI(App):
         # Check if we need to increment (existing block is complete)
         block_key = f"{component}_{attempt_idx}"
         existing = display._current_blocks.get(block_key)
+
+        # If block exists and is still active (pending/active), return it
+        # This handles blocks created by TUIEventHandler via typed events
+        if existing and existing._status not in ("success", "error"):
+            return existing
+
         if existing and existing._status in ("success", "error"):
             # Previous block exists and is complete - increment for retry
             attempt_idx += 1
             display._component_attempt_index[component] = attempt_idx
             block_key = f"{component}_{attempt_idx}"
+            # Check again if a block exists at the new key (from TUIEventHandler)
+            existing = display._current_blocks.get(block_key)
+            if existing and existing._status not in ("success", "error"):
+                return existing
 
         # Determine block/step class and title
         # Task extraction, classification, and orchestration use minimal step widgets

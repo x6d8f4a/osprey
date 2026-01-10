@@ -250,7 +250,7 @@ class TaskExtractionNode(BaseInfrastructureNode):
         """
         import time
 
-        from osprey.events import PhaseCompleteEvent, PhaseStartEvent
+        from osprey.events import PhaseCompleteEvent, PhaseStartEvent, TaskExtractedEvent
 
         state = self._state
         start_time = time.time()
@@ -326,6 +326,15 @@ class TaskExtractionNode(BaseInfrastructureNode):
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
                 logger.success("Task extraction completed", task=processed_task.task)
+
+            # Emit data event with extracted task output
+            logger.emit_event(
+                TaskExtractedEvent(
+                    task=processed_task.task,
+                    depends_on_chat_history=processed_task.depends_on_chat_history,
+                    depends_on_user_memory=processed_task.depends_on_user_memory,
+                )
+            )
 
             # Emit phase complete event
             duration_ms = int((time.time() - start_time) * 1000)

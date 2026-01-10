@@ -74,6 +74,7 @@ from .types import (
     ApprovalReceivedEvent,
     ApprovalRequiredEvent,
     BaseEvent,
+    CapabilitiesSelectedEvent,
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     CodeExecutedEvent,
@@ -84,8 +85,10 @@ from .types import (
     OspreyEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
+    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
+    TaskExtractedEvent,
     ToolResultEvent,
     ToolUseEvent,
 )
@@ -99,6 +102,10 @@ __all__ = [
     # Phase Lifecycle
     "PhaseStartEvent",
     "PhaseCompleteEvent",
+    # Data Output
+    "TaskExtractedEvent",
+    "CapabilitiesSelectedEvent",
+    "PlanCreatedEvent",
     # Capability
     "CapabilityStartEvent",
     "CapabilityCompleteEvent",

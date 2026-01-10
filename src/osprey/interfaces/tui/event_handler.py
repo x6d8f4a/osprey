@@ -21,14 +21,17 @@ Usage:
 from typing import TYPE_CHECKING, Any
 
 from osprey.events import (
+    CapabilitiesSelectedEvent,
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     ErrorEvent,
     OspreyEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
+    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
+    TaskExtractedEvent,
     parse_event,
 )
 
@@ -51,6 +54,13 @@ COMPONENT_PHASE_MAP = {
     "classifier": "classification",
     "orchestrator": "planning",
     "router": "execution",
+}
+
+# Phase to component mapping (for block registration)
+PHASE_TO_COMPONENT = {
+    "task_extraction": "task_extraction",
+    "classification": "classifier",
+    "planning": "orchestrator",
 }
 
 
@@ -95,6 +105,22 @@ class TUIEventHandler:
 
             case PhaseCompleteEvent(phase=phase, success=success, duration_ms=duration):
                 await self._handle_phase_complete(phase, success, duration, event.component)
+
+            # Data output events
+            case TaskExtractedEvent(
+                task=task,
+                depends_on_chat_history=depends_on_hist,
+                depends_on_user_memory=depends_on_mem,
+            ):
+                await self._handle_task_extracted(task, depends_on_hist, depends_on_mem)
+
+            case CapabilitiesSelectedEvent(
+                capability_names=caps, all_capability_names=all_caps
+            ):
+                await self._handle_capabilities_selected(caps, all_caps)
+
+            case PlanCreatedEvent(steps=steps):
+                await self._handle_plan_created(steps)
 
             # Capability execution events
             case CapabilityStartEvent(
@@ -169,6 +195,15 @@ class TUIEventHandler:
 
         if block:
             self.current_blocks[phase] = block
+
+            # Register block in ChatDisplay's unified registry to prevent legacy path
+            # from creating duplicate blocks
+            comp_name = PHASE_TO_COMPONENT.get(phase, phase)
+            if hasattr(self.display, "_current_blocks"):
+                attempt_idx = self.display._component_attempt_index.get(comp_name, 0)
+                block_key = f"{comp_name}_{attempt_idx}"
+                self.display._current_blocks[block_key] = block
+
             self.display.mount(block)
             block.set_active()
 
@@ -186,11 +221,91 @@ class TUIEventHandler:
         block = self.current_blocks.get(phase)
         if block:
             status = "success" if success else "error"
-            # Get any accumulated output
-            output_text = block._data.get("output", "")
-            if not output_text:
+            # Check if data event already set the output
+            if block._data.get("output_set"):
+                # Just update status, don't override output
+                block._status = status
+            else:
+                # No data event set output, use default
                 output_text = f"Completed in {duration_ms}ms" if success else "Failed"
-            block.set_output(output_text, status=status)
+                block.set_output(output_text, status=status)
+
+    async def _handle_task_extracted(
+        self, task: str, depends_on_hist: bool, depends_on_mem: bool
+    ) -> None:
+        """Handle task extraction data - update block and shared data.
+
+        Args:
+            task: The extracted actionable task string
+            depends_on_hist: Whether task references prior conversation
+            depends_on_mem: Whether task uses user memory/preferences
+        """
+        # Update shared data for use by subsequent phases
+        self.shared_data["task"] = task
+        self.shared_data["depends_on_chat_history"] = depends_on_hist
+        self.shared_data["depends_on_user_memory"] = depends_on_mem
+
+        # Update the task_extraction block with the extracted task
+        block = self.current_blocks.get("task_extraction")
+        if block:
+            block._data["task"] = task
+            block._data["output_set"] = True
+            # Set output to display the extracted task
+            block.set_output(task)
+
+    async def _handle_capabilities_selected(
+        self, caps: list[str], all_caps: list[str]
+    ) -> None:
+        """Handle capability selection data - update block and shared data.
+
+        Args:
+            caps: List of selected capability names
+            all_caps: List of all available capability names
+        """
+        # Update shared data for use by subsequent phases
+        self.shared_data["capability_names"] = caps
+        self.shared_data["all_capability_names"] = all_caps
+
+        # Update the classification block with capabilities
+        block = self.current_blocks.get("classification")
+        if block:
+            block._data["capability_names"] = caps
+            block._data["all_capability_names"] = all_caps
+            block._data["output_set"] = True
+            # Use set_capabilities if available, otherwise set_output
+            if hasattr(block, "set_capabilities"):
+                block.set_capabilities(all_caps, caps)
+            else:
+                # Format capabilities for display
+                output = f"Selected: {', '.join(caps)}"
+                block.set_output(output)
+
+    async def _handle_plan_created(self, steps: list[dict]) -> None:
+        """Handle execution plan data - update block and shared data.
+
+        Args:
+            steps: List of execution steps (each a dict with capability_name, etc.)
+        """
+        # Update shared data for use by subsequent phases
+        self.shared_data["steps"] = steps
+
+        # Initialize plan tracking for TodoUpdateStep during execution
+        self.display._plan_steps = steps
+        self.display._plan_step_states = ["pending"] * len(steps)
+
+        # Update the planning block with the plan
+        block = self.current_blocks.get("planning")
+        if block:
+            block._data["steps"] = steps
+            block._data["output_set"] = True
+            # Use set_plan if available, otherwise set_output
+            if hasattr(block, "set_plan"):
+                block.set_plan(steps)
+            else:
+                # Format plan for display
+                step_names = [s.get("capability", s.get("context_key", "unknown")) for s in steps]
+                output = f"Plan: {' -> '.join(step_names)}"
+                block.set_output(output)
 
     async def _handle_capability_start(
         self, name: str, step: int, total: int, description: str

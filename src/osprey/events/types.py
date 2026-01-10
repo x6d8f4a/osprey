@@ -104,6 +104,56 @@ class PhaseCompleteEvent(BaseEvent):
 
 
 # -----------------------------------------------------------------------------
+# Data Output Events
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class TaskExtractedEvent(BaseEvent):
+    """Task extraction completed with output.
+
+    Emitted when task extraction produces an actionable task.
+
+    Attributes:
+        task: The extracted actionable task string
+        depends_on_chat_history: Whether task references prior conversation
+        depends_on_user_memory: Whether task uses user memory/preferences
+    """
+
+    task: str = ""
+    depends_on_chat_history: bool = False
+    depends_on_user_memory: bool = False
+
+
+@dataclass
+class CapabilitiesSelectedEvent(BaseEvent):
+    """Capability classification completed with output.
+
+    Emitted when classification selects active capabilities.
+
+    Attributes:
+        capability_names: List of selected capability names
+        all_capability_names: List of all available capability names (for UI)
+    """
+
+    capability_names: list[str] = field(default_factory=list)
+    all_capability_names: list[str] = field(default_factory=list)
+
+
+@dataclass
+class PlanCreatedEvent(BaseEvent):
+    """Orchestration completed with execution plan.
+
+    Emitted when orchestration creates an execution plan.
+
+    Attributes:
+        steps: List of execution steps (each a dict with capability_name, etc.)
+    """
+
+    steps: list[dict[str, Any]] = field(default_factory=list)
+
+
+# -----------------------------------------------------------------------------
 # Capability Events
 # -----------------------------------------------------------------------------
 
@@ -354,6 +404,9 @@ OspreyEvent = (
     StatusEvent
     | PhaseStartEvent
     | PhaseCompleteEvent
+    | TaskExtractedEvent
+    | CapabilitiesSelectedEvent
+    | PlanCreatedEvent
     | CapabilityStartEvent
     | CapabilityCompleteEvent
     | LLMRequestEvent

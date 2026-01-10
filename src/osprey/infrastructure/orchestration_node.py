@@ -246,7 +246,7 @@ class OrchestrationNode(BaseInfrastructureNode):
         :return: Dictionary of state updates for LangGraph
         :rtype: Dict[str, Any]
         """
-        from osprey.events import PhaseCompleteEvent, PhaseStartEvent
+        from osprey.events import PhaseCompleteEvent, PhaseStartEvent, PlanCreatedEvent
 
         state = self._state
         start_time = time.time()
@@ -283,6 +283,11 @@ class OrchestrationNode(BaseInfrastructureNode):
                 # Clean up processed plan files
                 _cleanup_processed_plan_files(logger=logger)
 
+                # Emit data event with execution plan
+                logger.emit_event(
+                    PlanCreatedEvent(steps=approved_plan.get("steps", []))
+                )
+
                 # Emit phase complete event
                 duration_ms = int((time.time() - start_time) * 1000)
                 logger.emit_event(
@@ -302,6 +307,11 @@ class OrchestrationNode(BaseInfrastructureNode):
                 if approved_plan:
                     logger.warning(
                         f"File loading failed ({file_load_result.get('error')}), using in-memory plan"
+                    )
+
+                    # Emit data event with execution plan
+                    logger.emit_event(
+                        PlanCreatedEvent(steps=approved_plan.get("steps", []))
                     )
 
                     # Emit phase complete event
@@ -535,6 +545,11 @@ class OrchestrationNode(BaseInfrastructureNode):
         logger.status("Execution plan created")
 
         logger.key_info("Orchestration processing completed")
+
+        # Emit data event with execution plan
+        logger.emit_event(
+            PlanCreatedEvent(steps=execution_plan.get("steps", []))
+        )
 
         # Emit phase complete event
         duration_ms = int((time.time() - start_time) * 1000)

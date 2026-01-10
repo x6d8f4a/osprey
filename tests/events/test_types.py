@@ -6,6 +6,7 @@ from osprey.events import (
     ApprovalReceivedEvent,
     ApprovalRequiredEvent,
     BaseEvent,
+    CapabilitiesSelectedEvent,
     CapabilityCompleteEvent,
     CapabilityStartEvent,
     CodeExecutedEvent,
@@ -15,8 +16,10 @@ from osprey.events import (
     LLMResponseEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
+    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
+    TaskExtractedEvent,
     ToolResultEvent,
     ToolUseEvent,
 )
@@ -144,6 +147,113 @@ class TestPhaseCompleteEvent:
         assert event.phase == "execution"
         assert event.duration_ms == 0
         assert event.success is True
+
+
+# =============================================================================
+# Test Data Output Events
+# =============================================================================
+
+
+class TestTaskExtractedEvent:
+    """Test TaskExtractedEvent dataclass."""
+
+    def test_creation_with_all_fields(self):
+        """Test TaskExtractedEvent with all fields."""
+        event = TaskExtractedEvent(
+            task="Generate a summary report",
+            depends_on_chat_history=True,
+            depends_on_user_memory=False,
+            component="task_extraction",
+        )
+        assert event.task == "Generate a summary report"
+        assert event.depends_on_chat_history is True
+        assert event.depends_on_user_memory is False
+        assert event.component == "task_extraction"
+
+    def test_default_values(self):
+        """Test TaskExtractedEvent default values."""
+        event = TaskExtractedEvent()
+        assert event.task == ""
+        assert event.depends_on_chat_history is False
+        assert event.depends_on_user_memory is False
+
+    def test_long_task_string(self):
+        """Test TaskExtractedEvent with long task description."""
+        long_task = "Analyze the data and " * 50
+        event = TaskExtractedEvent(task=long_task)
+        assert event.task == long_task
+
+
+class TestCapabilitiesSelectedEvent:
+    """Test CapabilitiesSelectedEvent dataclass."""
+
+    def test_creation_with_all_fields(self):
+        """Test CapabilitiesSelectedEvent with all fields."""
+        event = CapabilitiesSelectedEvent(
+            capability_names=["python_executor", "search"],
+            all_capability_names=["python_executor", "search", "web_browser", "file_manager"],
+            component="classifier",
+        )
+        assert event.capability_names == ["python_executor", "search"]
+        assert event.all_capability_names == ["python_executor", "search", "web_browser", "file_manager"]
+        assert event.component == "classifier"
+
+    def test_default_values(self):
+        """Test CapabilitiesSelectedEvent default values."""
+        event = CapabilitiesSelectedEvent()
+        assert event.capability_names == []
+        assert event.all_capability_names == []
+
+    def test_empty_selection(self):
+        """Test CapabilitiesSelectedEvent with no capabilities selected."""
+        event = CapabilitiesSelectedEvent(
+            capability_names=[],
+            all_capability_names=["python_executor", "search"],
+        )
+        assert event.capability_names == []
+        assert len(event.all_capability_names) == 2
+
+
+class TestPlanCreatedEvent:
+    """Test PlanCreatedEvent dataclass."""
+
+    def test_creation_with_steps(self):
+        """Test PlanCreatedEvent with execution steps."""
+        steps = [
+            {"capability": "python_executor", "context_key": "step_1", "task_objective": "Run code"},
+            {"capability": "respond", "context_key": "step_2", "task_objective": "Respond to user"},
+        ]
+        event = PlanCreatedEvent(steps=steps, component="orchestrator")
+        assert len(event.steps) == 2
+        assert event.steps[0]["capability"] == "python_executor"
+        assert event.steps[1]["capability"] == "respond"
+        assert event.component == "orchestrator"
+
+    def test_default_values(self):
+        """Test PlanCreatedEvent default values."""
+        event = PlanCreatedEvent()
+        assert event.steps == []
+
+    def test_empty_plan(self):
+        """Test PlanCreatedEvent with empty plan."""
+        event = PlanCreatedEvent(steps=[])
+        assert event.steps == []
+
+    def test_complex_step_structure(self):
+        """Test PlanCreatedEvent with complex step data."""
+        steps = [
+            {
+                "capability": "python_executor",
+                "context_key": "analysis_result",
+                "task_objective": "Analyze the dataset",
+                "expected_output": "analysis_summary",
+                "success_criteria": "Complete analysis without errors",
+                "inputs": ["data_source"],
+            }
+        ]
+        event = PlanCreatedEvent(steps=steps)
+        assert event.steps[0]["inputs"] == ["data_source"]
+        assert event.steps[0]["expected_output"] == "analysis_summary"
 
 
 # =============================================================================
@@ -488,6 +598,9 @@ class TestOspreyEventUnionType:
             StatusEvent(message="test"),
             PhaseStartEvent(phase="execution"),
             PhaseCompleteEvent(phase="execution"),
+            TaskExtractedEvent(task="test"),
+            CapabilitiesSelectedEvent(capability_names=["test"]),
+            PlanCreatedEvent(steps=[]),
             CapabilityStartEvent(capability_name="test"),
             CapabilityCompleteEvent(capability_name="test"),
             LLMRequestEvent(model="gpt-4"),
@@ -502,8 +615,8 @@ class TestOspreyEventUnionType:
             ErrorEvent(error_type="TestError"),
         ]
 
-        # All should be valid and constructible
-        assert len(events) == 15
+        # All should be valid and constructible (15 original + 3 new data events)
+        assert len(events) == 18
 
     def test_timestamp_auto_generated_for_all_types(self):
         """Verify timestamp is auto-generated for all event types."""
@@ -511,6 +624,9 @@ class TestOspreyEventUnionType:
             StatusEvent(),
             PhaseStartEvent(),
             PhaseCompleteEvent(),
+            TaskExtractedEvent(),
+            CapabilitiesSelectedEvent(),
+            PlanCreatedEvent(),
             CapabilityStartEvent(),
             CapabilityCompleteEvent(),
             LLMRequestEvent(),
