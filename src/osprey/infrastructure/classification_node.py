@@ -17,6 +17,7 @@ from osprey.base import BaseCapability, CapabilityMatch, ClassifierExample
 from osprey.base.decorators import infrastructure_node
 from osprey.base.errors import ErrorClassification, ErrorSeverity, ReclassificationRequiredError
 from osprey.base.nodes import BaseInfrastructureNode
+from osprey.events import EventEmitter, StatusEvent
 from osprey.models import get_chat_completion
 from osprey.prompts.loader import get_framework_prompts
 from osprey.registry import get_registry
@@ -27,6 +28,7 @@ from osprey.utils.logger import get_logger
 
 # Module-level logger for helper functions
 logger = get_logger("classifier")
+emitter = EventEmitter("classifier")
 
 
 @infrastructure_node
@@ -186,8 +188,7 @@ class ClassificationNode(BaseInfrastructureNode):
         )
 
         if bypass_enabled:
-            logger.info("Capability selection bypass enabled - activating all capabilities")
-            logger.status("Bypassing capability selection - activating all capabilities")
+            logger.status("Capability selection bypass enabled - activating all capabilities")
 
             # Get all capability names directly from registry
             registry = get_registry()
@@ -233,7 +234,7 @@ class ClassificationNode(BaseInfrastructureNode):
         else:
             logger.status("Analyzing task requirements...")
 
-        logger.info(f"Classifying task: {current_task}")
+        logger.status(f"Classifying task: {current_task}")
 
         # Get available capabilities from capability registry
         registry = get_registry()
@@ -315,8 +316,12 @@ def _create_classification_result(
     # Only increment and clear error state if this is actually a reclassification
     if previous_failure:
         reclassification_count += 1
-        logger.info(
-            f"Incremented reclassification count to {reclassification_count} due to previous failure: {previous_failure}"
+        emitter.emit(
+            StatusEvent(
+                component="classifier",
+                message=f"Incremented reclassification count to {reclassification_count} due to previous failure: {previous_failure}",
+                level="info",
+            )
         )
 
         # Clear error state since we're handling the reclassification
@@ -465,7 +470,7 @@ class CapabilityClassifier:
             self.logger.emit_llm_response(response_json, key=capability.name)
 
             result = self._process_classification_response(capability, response_data)
-            self.logger.info(f" >>> Capability '{capability.name}' >>> {result}")
+            self.logger.status(f" >>> Capability '{capability.name}' >>> {result}")
             return result
 
         except Exception as e:
@@ -563,7 +568,7 @@ async def select_capabilities(
         classification_config = get_classification_config()
         max_concurrent = classification_config["max_concurrent_classifications"]
 
-        logger.info(
+        logger.status(
             f"Classifying {len(remaining_capabilities)} capabilities with max {max_concurrent} concurrent requests"
         )
 
@@ -590,5 +595,5 @@ async def select_capabilities(
             elif result is True:
                 active_capabilities.append(capability.name)
 
-    logger.info(f"{len(active_capabilities)} capabilities required: {active_capabilities}")
+    logger.status(f"{len(active_capabilities)} capabilities required: {active_capabilities}")
     return active_capabilities

@@ -43,7 +43,7 @@ from osprey.infrastructure.gateway import Gateway
 from osprey.interfaces.cli.event_handler import CLIEventHandler
 from osprey.registry import get_registry, initialize_registry
 from osprey.utils.config import get_full_configuration
-from osprey.utils.logger import get_logger
+from osprey.utils.logger import get_logger, quiet_logging
 
 # Load environment variables after imports
 load_dotenv()
@@ -175,15 +175,12 @@ class CLI:
 
         # TypedEventHandler for processing all events (both streaming and fallback)
         self._event_handler = CLIEventHandler(
-            console=self.console,
-            verbose=self.show_streaming_updates
+            console=self.console, verbose=self.show_streaming_updates
         )
 
         # Register fallback TRANSPORT for outside-graph events
         # This routes events to the same TypedEventHandler used during streaming
-        self._unregister_fallback = register_fallback_handler(
-            self._route_fallback_event
-        )
+        self._unregister_fallback = register_fallback_handler(self._route_fallback_event)
 
     def _route_fallback_event(self, event_dict: dict) -> None:
         """Route events from fallback transport to TypedEventHandler.
@@ -615,18 +612,17 @@ class CLI:
             # Resume commands come from gateway - execute with streaming
             try:
                 # Create typed event handler for resume execution
-                handler = CLIEventHandler(
-                    console=self.console,
-                    verbose=self.show_streaming_updates
-                )
+                handler = CLIEventHandler(console=self.console, verbose=self.show_streaming_updates)
 
-                async for chunk in self.graph.astream(
-                    result.resume_command, config=self.base_config, stream_mode="custom"
-                ):
-                    # Parse and handle typed events
-                    event = parse_event(chunk)
-                    if event:
-                        await handler.handle(event)
+                # Suppress Python logging - TypedEvents are the only output channel
+                with quiet_logging():
+                    async for chunk in self.graph.astream(
+                        result.resume_command, config=self.base_config, stream_mode="custom"
+                    ):
+                        # Parse and handle typed events
+                        event = parse_event(chunk)
+                        if event:
+                            await handler.handle(event)
 
                 # After resuming, check if there are more interrupts or if execution completed
                 state = self.graph.get_state(config=self.base_config)
@@ -725,19 +721,18 @@ class CLI:
         """
         try:
             # Create typed event handler for this execution
-            handler = CLIEventHandler(
-                console=self.console,
-                verbose=self.show_streaming_updates
-            )
+            handler = CLIEventHandler(console=self.console, verbose=self.show_streaming_updates)
 
             # Stream events and process through handler
-            async for chunk in self.graph.astream(
-                input_data, config=self.base_config, stream_mode="custom"
-            ):
-                # Parse and handle typed events
-                event = parse_event(chunk)
-                if event:
-                    await handler.handle(event)
+            # Suppress Python logging - TypedEvents are the only output channel
+            with quiet_logging():
+                async for chunk in self.graph.astream(
+                    input_data, config=self.base_config, stream_mode="custom"
+                ):
+                    # Parse and handle typed events
+                    event = parse_event(chunk)
+                    if event:
+                        await handler.handle(event)
 
             # After streaming completes, check for interrupts
             state = self.graph.get_state(config=self.base_config)

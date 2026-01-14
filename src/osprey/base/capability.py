@@ -501,7 +501,8 @@ class BaseCapability(ABC):
             async def execute(self) -> dict[str, Any]:
                 # Get task objective with automatic fallback
                 task = self.get_task_objective()
-                logger.info(f"Starting: {task}")
+                logger = self.get_logger()
+                logger.status(f"Starting: {task}")  # Emits StatusEvent
 
                 # Or with custom default
                 task = self.get_task_objective(default="unknown task")
@@ -804,9 +805,16 @@ class BaseCapability(ABC):
            :meth:`get_required_contexts` : Automatic context extraction
            :meth:`store_output_context` : Automatic context storage
         """
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            "⚠️  Capability is using the empty base execute() - consider implementing execute() for proper functionality."
+        # Emit warning via TypedEvent system
+        from osprey.events import EventEmitter, StatusEvent
+
+        emitter = EventEmitter(self.name if hasattr(self, "name") and self.name else "unknown")
+        emitter.emit(
+            StatusEvent(
+                component=self.name if hasattr(self, "name") and self.name else "unknown",
+                message="Capability is using empty base execute() - consider implementing execute() for proper functionality",
+                level="warning",
+            )
         )
         pass
 
@@ -970,11 +978,16 @@ class BaseCapability(ABC):
                     example_usage="For 'show me data from last week' or 'yesterday's performance'"
                 )
         """
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            f"⚠️  Capability '{self.name}' is using base _create_orchestrator_guide() - "
-            "this may cause orchestrator hallucination. Consider implementing "
-            "_create_orchestrator_guide() for proper integration."
+        # Emit warning via TypedEvent system
+        from osprey.events import EventEmitter, StatusEvent
+
+        emitter = EventEmitter(self.name)
+        emitter.emit(
+            StatusEvent(
+                component=self.name,
+                message=f"Capability '{self.name}' is using base _create_orchestrator_guide() - consider implementing for proper integration",
+                level="warning",
+            )
         )
         return None
 
@@ -1012,11 +1025,16 @@ class BaseCapability(ABC):
         :return: Classifier guide for capability selection, or None if not needed
         :rtype: Optional[TaskClassifierGuide]
         """
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            f"⚠️  Capability '{self.name}' is using base _create_classifier_guide() - "
-            "this may cause classification issues. Consider implementing "
-            "_create_classifier_guide() for proper task classification."
+        # Emit warning via TypedEvent system
+        from osprey.events import EventEmitter, StatusEvent
+
+        emitter = EventEmitter(self.name)
+        emitter.emit(
+            StatusEvent(
+                component=self.name,
+                message=f"Capability '{self.name}' is using base _create_classifier_guide() - consider implementing for proper task classification",
+                level="warning",
+            )
         )
         return None
 

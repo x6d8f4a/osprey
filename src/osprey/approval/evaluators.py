@@ -46,6 +46,8 @@ Examples:
 import logging
 from typing import NamedTuple
 
+from osprey.events import EventEmitter, StatusEvent
+
 from .config_models import ApprovalMode, MemoryApprovalConfig, PythonExecutionApprovalConfig
 
 logger = logging.getLogger(__name__)
@@ -232,8 +234,13 @@ class PythonExecutionApprovalEvaluator:
 
         else:
             # Fail-safe to approval required for unknown modes to maintain security
-            logger.warning(
-                f"Unknown approval mode: {self.config.mode}, defaulting to approval required"
+            emitter = EventEmitter("approval_evaluator")
+            emitter.emit(
+                StatusEvent(
+                    component="approval_evaluator",
+                    message=f"Unknown approval mode: {self.config.mode}, defaulting to approval required",
+                    level="warning",
+                )
             )
             return ApprovalDecision(
                 needs_approval=True, reasoning=f"Unknown approval mode: {self.config.mode}"

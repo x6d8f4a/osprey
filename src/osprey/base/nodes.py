@@ -101,18 +101,22 @@ class BaseInfrastructureNode(ABC):
 
             @staticmethod
             async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
-                # Explicit logger retrieval - professional practice
+                # Get unified logger for TypedEvent emission
                 from osprey.utils.logger import get_logger
                 logger = get_logger("task_extraction")
 
-                # Use logger.status() for typed event streaming
-                logger.status("Extracting task...")
-                logger.info("Starting task extraction")
+                # All methods emit TypedEvents for unified streaming
+                logger.status("Extracting task...")  # StatusEvent(level="status")
+                logger.emit_event(StatusEvent(
+                    component="task_extraction",
+                    message="Starting task extraction",
+                    level="info"
+                ))
 
                 # Extract and process task from flat state structure
                 task = state.get("task_current_task", "")
 
-                logger.status("Task extraction complete")
+                logger.status("Task extraction complete")  # StatusEvent(level="status")
 
                 # Return state updates for flat structure
                 return {

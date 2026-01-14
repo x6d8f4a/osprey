@@ -85,10 +85,10 @@ class ClarifyCapability(BaseCapability):
         # Extract task objective using helper method
         task_objective = self.get_task_objective(default="unknown")
 
-        logger.info(f"Clarification task objective: {task_objective}")
+        logger.status(f"Clarification task objective: {task_objective}")
 
         try:
-            logger.info("Starting clarification generation")
+            logger.status("Starting clarification generation")
             logger.status("Analyzing query for clarification...")
 
             # Generate clarifying questions using LLM completion
@@ -104,7 +104,7 @@ class ClarifyCapability(BaseCapability):
 
             logger.status("Clarification ready")
 
-            logger.info(f"Generated {len(questions_response.questions)} clarifying questions")
+            logger.status(f"Generated {len(questions_response.questions)} clarifying questions")
 
             # Return clarifying questions using native LangGraph pattern
             return {"messages": [AIMessage(content=formatted_questions)]}

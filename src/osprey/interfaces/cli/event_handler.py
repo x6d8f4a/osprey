@@ -145,19 +145,23 @@ class CLIEventHandler:
                     self.console.print(f"[red]   FAILED: {err or 'Unknown error'}[/red]")
                 self._current_capability = None
 
-            # Status updates (verbose only, or errors always)
+            # Status updates (CLI shows ALL for debugging)
             case StatusEvent(message=msg, level="error"):
                 self.console.print(f"[red]   Error: {msg}[/red]")
 
             case StatusEvent(message=msg, level="warning"):
                 self.console.print(f"[yellow]   Warning: {msg}[/yellow]")
 
-            case StatusEvent(message=msg, level=level) if self.verbose:
-                # Show other status updates only in verbose mode
-                if level == "success":
-                    self.console.print(f"[green]   {msg}[/green]")
-                else:
-                    self.console.print(f"[dim]   {msg}[/dim]")
+            case StatusEvent(message=msg, level="success"):
+                self.console.print(f"[green]   {msg}[/green]")
+
+            case StatusEvent(message=msg, level="info"):
+                # Show info messages (infrastructure, approval, etc.)
+                self.console.print(f"[dim cyan]   {msg}[/dim cyan]")
+
+            case StatusEvent(message=msg, level=level):
+                # Show all other status updates
+                self.console.print(f"[dim]   {msg}[/dim]")
 
             # Result events (always shown)
             case ResultEvent(response=response, success=success):
@@ -260,11 +264,16 @@ class CLIEventHandler:
             case StatusEvent(message=msg, level="warning"):
                 self.console.print(f"[yellow]   Warning: {msg}[/yellow]")
 
-            case StatusEvent(message=msg, level=level) if self.verbose:
-                if level == "success":
-                    self.console.print(f"[green]   {msg}[/green]")
-                else:
-                    self.console.print(f"[dim]   {msg}[/dim]")
+            case StatusEvent(message=msg, level="success"):
+                self.console.print(f"[green]   {msg}[/green]")
+
+            case StatusEvent(message=msg, level="info"):
+                # Show info messages (infrastructure, approval, etc.)
+                self.console.print(f"[dim cyan]   {msg}[/dim cyan]")
+
+            case StatusEvent(message=msg, level=level):
+                # Show all other status updates
+                self.console.print(f"[dim]   {msg}[/dim]")
 
             case ResultEvent(response=response, success=success):
                 if success:

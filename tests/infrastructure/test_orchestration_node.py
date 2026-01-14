@@ -346,9 +346,8 @@ class TestHelperFunctions:
 
         _log_execution_plan(plan, logger)
 
-        # Verify logger was called
-        assert logger.key_info.called
-        assert logger.info.called
+        # Verify logger.status was called (all execution plan logs now use status())
+        assert logger.status.called
 
     def test_save_execution_plan_to_file_success(self, tmp_path):
         """Test saving execution plan to file."""
