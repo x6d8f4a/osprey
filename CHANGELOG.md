@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Tooling**: Consolidated formatting/linting to Ruff, removed Black and Isort (#80)
+  - Ruff now handles both linting and formatting as a single tool
+  - Updated scripts, docs, and templates to reference only Ruff
+
 ### Fixed
 - **Gateway**: `/chat` without arguments no longer triggers graph execution
   - Displays available capabilities table correctly, then returns immediately
   - New check for locally-handled commands with no remaining message
   - CLI handles state-only updates with no agent_state gracefully
+- **Orchestrator**: Use descriptive context keys to prevent incorrect time range reuse (#90)
+  - Similar time ranges (e.g., 12/5-12/10 vs 12/5-12/8) no longer incorrectly reuse old context
+  - Context keys now encode actual dates (tr_MMDD_MMDD format) for proper comparison
+- **Approval**: Fix KeyError when optional approval config keys are omitted (#79)
+  - Logger now uses initialized config object instead of raw dict keys
+- **Templates**: Include deployment infrastructure config for all templates (#85)
+  - Fixes `osprey deploy up` failures for hello_world_weather template
+  - Jupyter kernel templates now render correctly with execution.modes section
 
 ## [0.10.1] - 2026-01-09
 
