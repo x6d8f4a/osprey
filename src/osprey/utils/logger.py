@@ -214,7 +214,7 @@ class ComponentLogger:
                     "debug": "debug",
                     "warning": "warning",
                     "success": "success",
-                    "key_info": "info",
+                    "key_info": "key_info",
                     "timing": "timing",
                     "approval": "approval",
                     "resume": "resume",

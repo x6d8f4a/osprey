@@ -56,7 +56,7 @@ class StatusEvent(BaseEvent):
     """
 
     message: str = ""
-    level: Literal["info", "warning", "error", "debug", "success", "status"] = "info"
+    level: Literal["info", "warning", "error", "debug", "success", "status", "key_info"] = "info"
     phase: str | None = None
     step: int | None = None
     total_steps: int | None = None
