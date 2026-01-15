@@ -99,6 +99,15 @@ def create_app(
         except Exception:
             return {"project_name": "unknown", "agent_name": "unknown"}
 
+    @app.get("/api/colors")
+    async def get_colors():
+        """Return logging_colors from config for component styling."""
+        try:
+            colors = get_config_value("display.logging_colors", {})
+            return {"colors": colors}
+        except Exception:
+            return {"colors": {}}
+
     @app.websocket("/ws/events")
     async def websocket_events(websocket: WebSocket):
         """WebSocket endpoint for streaming events.
