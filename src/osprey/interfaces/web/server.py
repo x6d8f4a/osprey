@@ -103,7 +103,7 @@ def create_app(
     async def get_colors():
         """Return logging_colors from config for component styling."""
         try:
-            colors = get_config_value("display.logging_colors", {})
+            colors = get_config_value("logging.logging_colors", {})
             return {"colors": colors}
         except Exception:
             return {"colors": {}}

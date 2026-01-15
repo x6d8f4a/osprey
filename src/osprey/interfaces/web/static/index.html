@@ -213,6 +213,7 @@
             <label>Component:</label>
             <select id="componentFilter"><option value="">All</option></select>
         </div>
+        <button id="resetFiltersBtn">Reset</button>
     </div>
 
     <div class="timeline" id="timeline">
@@ -232,6 +233,8 @@
         let typeFilter = '';
         let componentFilter = '';
         let componentColors = {};
+        let colorsReady = false;
+        let wsReady = false;
 
         // Rich color names to CSS hex values
         const richColorToHex = {
@@ -293,6 +296,7 @@
         const eventCount = document.getElementById('eventCount');
         const filteredCount = document.getElementById('filteredCount');
         const themeToggle = document.getElementById('themeToggle');
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 
         // Theme toggle
         function initTheme() {
@@ -310,6 +314,15 @@
         };
         initTheme();
 
+        // Check if fully ready (colors + WebSocket)
+        function checkReady() {
+            if (colorsReady && wsReady) {
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Ready';
+                executeBtn.disabled = false;
+            }
+        }
+
         // Fetch component colors from config
         async function fetchColors() {
             try {
@@ -319,8 +332,9 @@
             } catch (e) {
                 componentColors = {};
             }
+            colorsReady = true;
+            checkReady();
         }
-        fetchColors();
 
         // Get CSS color for a component
         function getComponentColor(component) {
@@ -331,17 +345,17 @@
             return richColorToHex[colorName] || colorName;
         }
 
-        // Connect
+        // Connect to WebSocket
         function connect() {
             const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${location.host}/ws/events`);
 
             ws.onopen = () => {
-                statusDot.classList.add('connected');
-                statusText.textContent = 'Connected';
-                executeBtn.disabled = false;
+                wsReady = true;
+                checkReady();
             };
             ws.onclose = () => {
+                wsReady = false;
                 statusDot.classList.remove('connected', 'executing');
                 statusText.textContent = 'Disconnected';
                 executeBtn.disabled = true;
@@ -501,16 +515,29 @@
             return div.innerHTML;
         }
 
+        // Reset filters
+        function resetFilters() {
+            searchText = '';
+            typeFilter = '';
+            componentFilter = '';
+            searchInput.value = '';
+            typeFilterEl.value = '';
+            componentFilterEl.value = '';
+            refreshTimeline();
+        }
+
         // Event listeners
         executeBtn.onclick = executeQuery;
         clearBtn.onclick = clearEvents;
         exportBtn.onclick = exportYAML;
+        resetFiltersBtn.onclick = resetFilters;
         queryInput.onkeydown = (e) => { if (e.key === 'Enter') executeQuery(); };
         searchInput.oninput = () => { searchText = searchInput.value; refreshTimeline(); };
         typeFilterEl.onchange = () => { typeFilter = typeFilterEl.value; refreshTimeline(); };
         componentFilterEl.onchange = () => { componentFilter = componentFilterEl.value; refreshTimeline(); };
 
-        // Connect on load
+        // Initialize on page load (both in parallel)
+        fetchColors();
         connect();
     </script>
 </body>
