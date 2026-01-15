@@ -234,54 +234,9 @@
         let typeFilter = '';
         let componentFilter = '';
         let componentColors = {};
+        let colorPalette = {};  // Server-provided Rich color hex palette
         let colorsReady = false;
         let wsReady = false;
-
-        // Rich color names to CSS hex values
-        const richColorToHex = {
-            'white': '#ffffff',
-            'red': '#ff4444',
-            'cyan': '#00d7d7',
-            'sky_blue2': '#87cefa',
-            'light_steel_blue1': '#b0c4de',
-            'bright_magenta': '#ff00ff',
-            'dark_orange3': '#cd6600',
-            'light_salmon1': '#ffa07a',
-            'thistle1': '#d8bfd8',
-            'dodger_blue1': '#1e90ff',
-            'green': '#00aa00',
-            'yellow': '#ffff00',
-            'blue': '#0066ff',
-            'magenta': '#ff00ff',
-            'grey': '#808080',
-            'gray': '#808080',
-            'bright_cyan': '#00ffff',
-            'bright_red': '#ff0000',
-            'bright_green': '#00ff00',
-            'bright_yellow': '#ffff00',
-            'bright_blue': '#5555ff',
-            'bright_white': '#ffffff',
-            'dark_cyan': '#008b8b',
-            'dark_magenta': '#8b008b',
-            'dark_red': '#8b0000',
-            'dark_green': '#006400',
-            'dark_blue': '#00008b',
-            'deep_pink1': '#ff1493',
-            'deep_sky_blue1': '#00bfff',
-            'gold1': '#ffd700',
-            'hot_pink': '#ff69b4',
-            'indian_red': '#cd5c5c',
-            'medium_purple1': '#9370db',
-            'medium_spring_green': '#00fa9a',
-            'orange1': '#ffa500',
-            'pale_green1': '#98fb98',
-            'plum1': '#dda0dd',
-            'salmon1': '#fa8072',
-            'spring_green1': '#00ff7f',
-            'steel_blue1': '#63b8ff',
-            'turquoise2': '#00e5ee',
-            'violet': '#ee82ee',
-        };
 
         // DOM
         const statusDot = document.getElementById('statusDot');
@@ -324,26 +279,28 @@
             }
         }
 
-        // Fetch component colors from config
+        // Fetch component colors and palette from server
         async function fetchColors() {
             try {
                 const res = await fetch('/api/colors');
                 const data = await res.json();
                 componentColors = data.colors || {};
+                colorPalette = data.palette || {};
             } catch (e) {
                 componentColors = {};
+                colorPalette = {};
             }
             colorsReady = true;
             checkReady();
         }
 
-        // Get CSS color for a component
+        // Get CSS color for a component using server-provided Rich palette
         function getComponentColor(component) {
             if (!component) return null;
             const colorName = componentColors[component];
             if (!colorName) return null;
-            // Try to map Rich color name to hex, or use as-is if it's already a color
-            return richColorToHex[colorName] || colorName;
+            // Use server-provided palette for accurate Rich colors, or use name as-is if it's already hex
+            return colorPalette[colorName] || colorName;
         }
 
         // Connect to WebSocket

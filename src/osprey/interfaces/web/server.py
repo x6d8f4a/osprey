@@ -101,12 +101,29 @@ def create_app(
 
     @app.get("/api/colors")
     async def get_colors():
-        """Return logging_colors from config for component styling."""
+        """Return logging_colors from config with hex palette for component styling.
+
+        Returns both the component-to-color-name mapping from config and
+        the color-name-to-hex mapping from Rich's palette for accurate
+        terminal color matching.
+        """
         try:
-            colors = get_config_value("logging.logging_colors", {})
-            return {"colors": colors}
+            from osprey.utils.rich_colors import get_rich_color_hex
+
+            # Get component color names from config
+            component_colors = get_config_value("logging.logging_colors", {})
+
+            # Build palette with hex values for all colors used
+            palette = {}
+            for color_name in set(component_colors.values()):
+                if color_name:
+                    hex_val = get_rich_color_hex(color_name)
+                    if hex_val:
+                        palette[color_name] = hex_val
+
+            return {"colors": component_colors, "palette": palette}
         except Exception:
-            return {"colors": {}}
+            return {"colors": {}, "palette": {}}
 
     @app.websocket("/ws/events")
     async def websocket_events(websocket: WebSocket):
