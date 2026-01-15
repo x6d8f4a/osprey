@@ -721,14 +721,26 @@ class CLI:
             # Create typed event handler for this execution
             handler = CLIEventHandler(console=self.console, verbose=self.show_streaming_updates)
 
-            # Stream events and process through handler
-            async for chunk in self.graph.astream(
-                input_data, config=self.base_config, stream_mode="custom"
-            ):
-                # Parse and handle typed events
-                event = parse_event(chunk)
-                if event:
-                    await handler.handle(event)
+            # Suppress Python logging during graph execution to avoid duplicate output.
+            # All output flows through typed events -> CLIEventHandler for consistent formatting.
+            import logging
+
+            root_logger = logging.getLogger()
+            original_level = root_logger.level
+            root_logger.setLevel(logging.WARNING)
+
+            try:
+                # Stream events and process through handler
+                async for chunk in self.graph.astream(
+                    input_data, config=self.base_config, stream_mode="custom"
+                ):
+                    # Parse and handle typed events
+                    event = parse_event(chunk)
+                    if event:
+                        await handler.handle(event)
+            finally:
+                # Restore original logging level
+                root_logger.setLevel(original_level)
 
             # After streaming completes, check for interrupts
             state = self.graph.get_state(config=self.base_config)

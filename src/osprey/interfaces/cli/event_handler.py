@@ -1,10 +1,13 @@
 """CLI Event Handler with Pattern Matching.
 
-This module provides the CLIEventHandler class that processes typed Osprey events
-using Python's pattern matching (match/case) for clean console output.
+This module provides the CLIEventHandler class that processes typed Osprey
+events using Python's pattern matching (match/case) for clean console output.
 
-The handler provides minimal, focused output for CLI usage - showing capability
-progress, results, and errors without the detailed block structure of the TUI.
+The handler provides focused output for CLI usage - showing status messages,
+success confirmations, warnings, errors, and final results. Component colors
+are loaded from the logging.logging_colors config for visual consistency.
+
+Output format follows Python logging style: [component] message
 
 Usage:
     from osprey.events import parse_event
@@ -18,50 +21,30 @@ Usage:
             await handler.handle(event)
 """
 
-from typing import TYPE_CHECKING
-
 from rich.console import Console
+from rich.highlighter import ReprHighlighter
+from rich.text import Text
 
+from osprey.cli.styles import Styles
 from osprey.events import (
-    CapabilitiesSelectedEvent,
-    CapabilityCompleteEvent,
-    CapabilityStartEvent,
     ErrorEvent,
-    LLMRequestEvent,
-    LLMResponseEvent,
     OspreyEvent,
-    PhaseCompleteEvent,
-    PhaseStartEvent,
-    PlanCreatedEvent,
     ResultEvent,
     StatusEvent,
-    TaskExtractedEvent,
 )
-
-if TYPE_CHECKING:
-    pass
-
-
-# Phase name mapping for display
-PHASE_DISPLAY_NAMES = {
-    "task_extraction": "Task Extraction",
-    "classification": "Classification",
-    "planning": "Planning",
-    "execution": "Execution",
-    "response": "Response",
-}
+from osprey.utils.config import get_config_value
 
 
 class CLIEventHandler:
     """Handles typed Osprey events for CLI output using pattern matching.
 
-    This handler provides minimal, focused console output suitable for CLI usage.
-    It shows capability progress, final results, and errors.
+    This handler provides focused console output suitable for CLI usage.
+    It shows status updates, success confirmations, warnings, errors,
+    and final results with component-specific colors from config.
 
     Attributes:
         console: Rich Console for output
-        verbose: Whether to show detailed status updates
-        show_timing: Whether to show timing information
+        verbose: Whether to show debug-level messages
     """
 
     def __init__(
@@ -74,130 +57,124 @@ class CLIEventHandler:
 
         Args:
             console: Rich Console for output (creates new one if not provided)
-            verbose: Whether to show detailed status updates
-            show_timing: Whether to show timing information
+            verbose: Whether to show debug-level status messages
+            show_timing: Kept for API compatibility (not used currently)
         """
         self.console = console or Console()
         self.verbose = verbose
         self.show_timing = show_timing
-        self._current_capability: str | None = None
+        self._color_cache: dict[str, str] = {}
+        self._highlighter = ReprHighlighter()  # For data type highlighting
+
+    def _get_component_color(self, component: str) -> str:
+        """Get component color from config with caching.
+
+        Looks up the color from logging.logging_colors.{component} config.
+        Falls back to 'white' if not found or on error.
+
+        Args:
+            component: Component name (e.g., 'classifier', 'orchestrator')
+
+        Returns:
+            Rich color name (e.g., 'cyan', 'light_salmon1')
+        """
+        if component not in self._color_cache:
+            try:
+                color = get_config_value(f"logging.logging_colors.{component}")
+                self._color_cache[component] = color or "white"
+            except Exception:
+                self._color_cache[component] = "white"
+        return self._color_cache[component]
+
+    def _format_message(self, prefix: str, msg: str, style: str) -> Text:
+        """Format message with component color and data type highlighting.
+
+        Creates a Rich Text object with the component style applied to the entire
+        message, then applies ReprHighlighter to add data type highlighting on top.
+        Rich renders overlapping spans, with data type colors taking visual precedence.
+
+        Args:
+            prefix: Component prefix like "[comp] " or "✓ [comp] "
+            msg: The message content
+            style: Rich style string for the component color
+
+        Returns:
+            Rich Text object with both component style and data type highlighting
+        """
+        text = Text(f"{prefix}{msg}")
+        text.stylize(style)
+        self._highlighter.highlight(text)
+        return text
 
     async def handle(self, event: OspreyEvent) -> None:
         """Process a typed event using pattern matching.
 
-        Routes the event to appropriate output based on event type.
+        Routes the event to appropriate output based on event type and level.
+        StatusEvents are filtered by level (status, info, success, warning,
+        error shown; debug only in verbose mode; timing/approval/resume hidden).
 
         Args:
             event: The typed OspreyEvent to process
         """
         match event:
-            # Phase lifecycle events (verbose only)
-            case PhaseStartEvent(phase=phase, description=desc) if self.verbose:
-                display_name = PHASE_DISPLAY_NAMES.get(phase, phase)
-                self.console.print(f"[dim cyan]>> {display_name}[/dim cyan]")
+            # StatusEvent - status level (most common - high-level progress)
+            # Uses Text object with overlapping styles: component color + data type highlighting
+            case StatusEvent(message=msg, level="status", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"[{comp}] ", msg, color)
+                self.console.print(text)
 
-            case PhaseCompleteEvent(
-                phase=phase, success=success, duration_ms=duration
+            # StatusEvent - info level (operational info)
+            case StatusEvent(message=msg, level="info", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"[{comp}] ", msg, color)
+                self.console.print(text)
+
+            # StatusEvent - success level (completion confirmations)
+            case StatusEvent(message=msg, level="success", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"✓ [{comp}] ", msg, f"bold {color}")
+                self.console.print(text)
+
+            # StatusEvent - warning level (warnings)
+            case StatusEvent(message=msg, level="warning", component=comp):
+                text = self._format_message(f"⚠ [{comp}] ", msg, "yellow")
+                self.console.print(text)
+
+            # StatusEvent - error level (errors)
+            case StatusEvent(message=msg, level="error", component=comp):
+                text = self._format_message(f"✗ [{comp}] ", msg, "red")
+                self.console.print(text)
+
+            # StatusEvent - debug level (only in verbose mode)
+            case StatusEvent(
+                message=msg, level="debug", component=comp
             ) if self.verbose:
-                display_name = PHASE_DISPLAY_NAMES.get(phase, phase)
-                status = "[green]OK[/green]" if success else "[red]FAILED[/red]"
-                timing = f" ({duration}ms)" if self.show_timing else ""
-                self.console.print(f"[dim]   {display_name}: {status}{timing}[/dim]")
+                color = self._get_component_color(comp)
+                text = self._format_message(f"🔍 [{comp}] ", msg, f"dim {color}")
+                self.console.print(text)
 
-            # Task preparation events (verbose only)
-            case TaskExtractedEvent(task=task) if self.verbose:
-                preview = task[:80] + "..." if len(task) > 80 else task
-                self.console.print(f"[dim cyan]   Task: {preview}[/dim cyan]")
+            # ResultEvent - final response (success)
+            case ResultEvent(response=response, success=True):
+                self.console.print(f"\n{response}", style=Styles.BOLD_SUCCESS)
 
-            case CapabilitiesSelectedEvent(capability_names=names) if self.verbose:
-                self.console.print(f"[dim cyan]   Capabilities: {', '.join(names)}[/dim cyan]")
-
-            case PlanCreatedEvent(steps=steps) if self.verbose:
-                self.console.print(f"[dim cyan]   Plan: {len(steps)} steps[/dim cyan]")
-
-            # LLM events (verbose only)
-            case LLMRequestEvent(prompt_preview=preview) if self.verbose:
-                short_preview = preview[:50] + "..." if len(preview) > 50 else preview
-                self.console.print(f"[dim]   LLM Request: {short_preview}[/dim]")
-
-            case LLMResponseEvent(response_preview=preview) if self.verbose:
-                short_preview = preview[:50] + "..." if len(preview) > 50 else preview
-                self.console.print(f"[dim]   LLM Response: {short_preview}[/dim]")
-
-            # Capability execution events (always shown)
-            case CapabilityStartEvent(
-                capability_name=name, step_number=step, total_steps=total, description=desc
-            ):
-                self._current_capability = name
+            # ResultEvent - final response (failure)
+            case ResultEvent(response=response, success=False):
                 self.console.print(
-                    f"[cyan]>> Step {step}/{total}: {name}[/cyan]"
+                    f"\nExecution failed: {response}",
+                    style=Styles.BOLD_ERROR,
                 )
-                if self.verbose and desc:
-                    self.console.print(f"[dim]   {desc}[/dim]")
 
-            case CapabilityCompleteEvent(
-                capability_name=name, success=success, duration_ms=duration, error_message=err
+            # ErrorEvent - execution errors
+            case ErrorEvent(
+                error_type=err_type, error_message=msg, component=comp
             ):
-                if success:
-                    timing = f" ({duration}ms)" if self.show_timing else ""
-                    self.console.print(f"[green]   OK{timing}[/green]")
-                else:
-                    self.console.print(f"[red]   FAILED: {err or 'Unknown error'}[/red]")
-                self._current_capability = None
-
-            # Status updates (CLI shows ALL for debugging)
-            case StatusEvent(message=msg, level="error"):
-                self.console.print(f"[red]   Error: {msg}[/red]")
-
-            case StatusEvent(message=msg, level="warning"):
-                self.console.print(f"[yellow]   Warning: {msg}[/yellow]")
-
-            case StatusEvent(message=msg, level="success"):
-                self.console.print(f"[green]   {msg}[/green]")
-
-            case StatusEvent(message=msg, level="status"):
-                # Primary status updates
-                self.console.print(f"[dim cyan]   {msg}[/dim cyan]")
-
-            case StatusEvent(message=msg, level="info"):
-                # Info messages - shown in verbose mode or always (design choice)
-                self.console.print(f"[dim]   {msg}[/dim]")
-
-            case StatusEvent(message=msg, level="debug") if self.verbose:
-                # Debug messages - only in verbose mode
-                self.console.print(f"[dim magenta]   🔍 {msg}[/dim magenta]")
-
-            case StatusEvent(message=msg, level="timing"):
-                # Timing information
-                self.console.print(f"[dim white]   🕒 {msg}[/dim white]")
-
-            case StatusEvent(message=msg, level="approval"):
-                # Approval-related messages
-                self.console.print(f"[yellow]   ⏸️  {msg}[/yellow]")
-
-            case StatusEvent(message=msg, level="resume"):
-                # Resume-related messages
-                self.console.print(f"[green]   ▶️  {msg}[/green]")
-
-            case StatusEvent(message=msg, level=level):
-                # Show all other status updates
-                self.console.print(f"[dim]   {msg}[/dim]")
-
-            # Result events (always shown)
-            case ResultEvent(response=response, success=success):
-                if success:
-                    self.console.print(f"\n[bold green]{response}[/bold green]")
-                else:
-                    self.console.print(f"\n[bold red]Execution failed: {response}[/bold red]")
-
-            # Error events (always shown)
-            case ErrorEvent(error_type=err_type, error_message=msg, recoverable=recoverable):
-                recovery = " (recoverable)" if recoverable else ""
-                self.console.print(f"[bold red]Error{recovery}: {err_type}[/bold red]")
-                self.console.print(f"[red]{msg}[/red]")
+                self.console.print(f"[error]✗ [{comp}] {err_type}[/error]")
+                self.console.print(f"[error]  {msg}[/error]")
 
             case _:
-                # Unknown event type - skip silently
+                # All other events silently ignored (timing, approval, resume,
+                # PhaseStart/Complete, CapabilityStart/Complete, LLM events, etc.)
                 pass
 
     def handle_sync(self, event: OspreyEvent) -> None:
@@ -208,17 +185,13 @@ class CLIEventHandler:
         """
         import asyncio
 
-        # Run the async handler synchronously
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # If event loop is already running, just process directly
-                # (pattern matching doesn't need async)
                 self._handle_sync_impl(event)
             else:
                 loop.run_until_complete(self.handle(event))
         except RuntimeError:
-            # No event loop - process directly
             self._handle_sync_impl(event)
 
     def _handle_sync_impl(self, event: OspreyEvent) -> None:
@@ -228,83 +201,59 @@ class CLIEventHandler:
             event: The typed OspreyEvent to process
         """
         match event:
-            case PhaseStartEvent(phase=phase, description=desc) if self.verbose:
-                display_name = PHASE_DISPLAY_NAMES.get(phase, phase)
-                self.console.print(f"[dim cyan]>> {display_name}[/dim cyan]")
+            # StatusEvent - status level
+            case StatusEvent(message=msg, level="status", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"[{comp}] ", msg, color)
+                self.console.print(text)
 
-            case PhaseCompleteEvent(
-                phase=phase, success=success, duration_ms=duration
+            # StatusEvent - info level
+            case StatusEvent(message=msg, level="info", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"[{comp}] ", msg, color)
+                self.console.print(text)
+
+            # StatusEvent - success level
+            case StatusEvent(message=msg, level="success", component=comp):
+                color = self._get_component_color(comp)
+                text = self._format_message(f"✓ [{comp}] ", msg, f"bold {color}")
+                self.console.print(text)
+
+            # StatusEvent - warning level
+            case StatusEvent(message=msg, level="warning", component=comp):
+                text = self._format_message(f"⚠ [{comp}] ", msg, "yellow")
+                self.console.print(text)
+
+            # StatusEvent - error level
+            case StatusEvent(message=msg, level="error", component=comp):
+                text = self._format_message(f"✗ [{comp}] ", msg, "red")
+                self.console.print(text)
+
+            # StatusEvent - debug level (verbose only)
+            case StatusEvent(
+                message=msg, level="debug", component=comp
             ) if self.verbose:
-                display_name = PHASE_DISPLAY_NAMES.get(phase, phase)
-                status = "[green]OK[/green]" if success else "[red]FAILED[/red]"
-                timing = f" ({duration}ms)" if self.show_timing else ""
-                self.console.print(f"[dim]   {display_name}: {status}{timing}[/dim]")
+                color = self._get_component_color(comp)
+                text = self._format_message(f"🔍 [{comp}] ", msg, f"dim {color}")
+                self.console.print(text)
 
-            # Task preparation events (verbose only)
-            case TaskExtractedEvent(task=task) if self.verbose:
-                preview = task[:80] + "..." if len(task) > 80 else task
-                self.console.print(f"[dim cyan]   Task: {preview}[/dim cyan]")
+            # ResultEvent - success
+            case ResultEvent(response=response, success=True):
+                self.console.print(f"\n{response}", style=Styles.BOLD_SUCCESS)
 
-            case CapabilitiesSelectedEvent(capability_names=names) if self.verbose:
-                self.console.print(f"[dim cyan]   Capabilities: {', '.join(names)}[/dim cyan]")
+            # ResultEvent - failure
+            case ResultEvent(response=response, success=False):
+                self.console.print(
+                    f"\nExecution failed: {response}",
+                    style=Styles.BOLD_ERROR,
+                )
 
-            case PlanCreatedEvent(steps=steps) if self.verbose:
-                self.console.print(f"[dim cyan]   Plan: {len(steps)} steps[/dim cyan]")
-
-            # LLM events (verbose only)
-            case LLMRequestEvent(prompt_preview=preview) if self.verbose:
-                short_preview = preview[:50] + "..." if len(preview) > 50 else preview
-                self.console.print(f"[dim]   LLM Request: {short_preview}[/dim]")
-
-            case LLMResponseEvent(response_preview=preview) if self.verbose:
-                short_preview = preview[:50] + "..." if len(preview) > 50 else preview
-                self.console.print(f"[dim]   LLM Response: {short_preview}[/dim]")
-
-            case CapabilityStartEvent(
-                capability_name=name, step_number=step, total_steps=total, description=desc
+            # ErrorEvent
+            case ErrorEvent(
+                error_type=err_type, error_message=msg, component=comp
             ):
-                self._current_capability = name
-                self.console.print(f"[cyan]>> Step {step}/{total}: {name}[/cyan]")
-                if self.verbose and desc:
-                    self.console.print(f"[dim]   {desc}[/dim]")
-
-            case CapabilityCompleteEvent(
-                capability_name=name, success=success, duration_ms=duration, error_message=err
-            ):
-                if success:
-                    timing = f" ({duration}ms)" if self.show_timing else ""
-                    self.console.print(f"[green]   OK{timing}[/green]")
-                else:
-                    self.console.print(f"[red]   FAILED: {err or 'Unknown error'}[/red]")
-                self._current_capability = None
-
-            case StatusEvent(message=msg, level="error"):
-                self.console.print(f"[red]   Error: {msg}[/red]")
-
-            case StatusEvent(message=msg, level="warning"):
-                self.console.print(f"[yellow]   Warning: {msg}[/yellow]")
-
-            case StatusEvent(message=msg, level="success"):
-                self.console.print(f"[green]   {msg}[/green]")
-
-            case StatusEvent(message=msg, level="info"):
-                # Show info messages (infrastructure, approval, etc.)
-                self.console.print(f"[dim cyan]   {msg}[/dim cyan]")
-
-            case StatusEvent(message=msg, level=level):
-                # Show all other status updates
-                self.console.print(f"[dim]   {msg}[/dim]")
-
-            case ResultEvent(response=response, success=success):
-                if success:
-                    self.console.print(f"\n[bold green]{response}[/bold green]")
-                else:
-                    self.console.print(f"\n[bold red]Execution failed: {response}[/bold red]")
-
-            case ErrorEvent(error_type=err_type, error_message=msg, recoverable=recoverable):
-                recovery = " (recoverable)" if recoverable else ""
-                self.console.print(f"[bold red]Error{recovery}: {err_type}[/bold red]")
-                self.console.print(f"[red]{msg}[/red]")
+                self.console.print(f"[error]✗ [{comp}] {err_type}[/error]")
+                self.console.print(f"[error]  {msg}[/error]")
 
             case _:
                 pass
