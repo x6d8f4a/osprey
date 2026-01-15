@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detect site-packages installation and show clear warning about editable mode requirement
   - Add helpful error message when `build` package is missing
   - Add `build` to dev dependencies for wheel building support
+- **Models**: Handle Python-style booleans in LLM JSON responses (#102)
+  - Some LLM providers (including Argo) return `True`/`False` instead of `true`/`false`
+  - `_clean_json_response()` now converts Python-style booleans to JSON-style
+- **CLI**: Display full absolute paths for plot files in artifact output (#96)
+  - Figure and notebook paths now resolved to absolute before artifact registration
+  - Ensures users can directly access generated files from CLI output
+
+## [0.10.4] - 2026-01-15
+
+### Fixed
+- **Dependencies**: Pin aiohttp>=3.10 for litellm compatibility (#87)
+  - Fixes `AttributeError: module aiohttp has no attribute ConnectionTimeoutError`
+  - `aiohttp.ConnectionTimeoutError` was added in aiohttp 3.10; litellm requires it but doesn't pin the version
 
 ## [0.10.3] - 2026-01-14
 
