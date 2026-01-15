@@ -162,7 +162,11 @@
             border: 1px solid var(--text-faint);
             white-space: nowrap;
         }
-        .event-component { color: var(--text-muted); }
+        .event-component {
+            color: var(--text-muted);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
         .event-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .event-time { color: var(--text-faint); font-size: 11px; }
         .event-details {
@@ -191,6 +195,38 @@
             color: var(--text-muted);
             display: flex;
             gap: 16px;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            z-index: 1000;
+            padding: 8px 12px;
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 12px;
+            max-width: 400px;
+            pointer-events: none;
+            display: none;
+        }
+        .tooltip.visible { display: block; }
+        .tooltip-header {
+            font-weight: bold;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tooltip-row {
+            display: flex;
+            gap: 8px;
+            margin: 2px 0;
+        }
+        .tooltip-label { color: var(--text-muted); min-width: 80px; }
+        .tooltip-value { color: var(--text); word-break: break-word; }
+        .tooltip-separator {
+            border-top: 1px solid var(--border);
+            margin: 4px 0;
         }
     </style>
 </head>
@@ -234,6 +270,8 @@
         <span>Filtered: <strong id="filteredCount">0</strong></span>
     </div>
 
+    <div class="tooltip" id="tooltip"></div>
+
     <script>
         // State
         let ws = null;
@@ -261,6 +299,8 @@
         const filteredCount = document.getElementById('filteredCount');
         const themeToggle = document.getElementById('themeToggle');
         const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+        const tooltip = document.getElementById('tooltip');
+        let tooltipTimeout = null;
 
         // Theme toggle
         function initTheme() {
@@ -275,8 +315,26 @@
             const isDark = document.body.classList.contains('dark');
             themeToggle.textContent = isDark ? 'Light' : 'Dark';
             localStorage.setItem('osprey-theme', isDark ? 'dark' : 'light');
+            updateEventColors();
         };
         initTheme();
+
+        // Update component colors when theme changes
+        function updateEventColors() {
+            const isDark = document.body.classList.contains('dark');
+            document.querySelectorAll('.event-component').forEach(el => {
+                const color = el.dataset.color;
+                if (color) {
+                    if (isDark) {
+                        el.style.backgroundColor = 'transparent';
+                        el.style.color = color;
+                    } else {
+                        el.style.backgroundColor = color;
+                        el.style.color = '#333';
+                    }
+                }
+            });
+        }
 
         // Check if fully ready (colors + WebSocket)
         function checkReady() {
@@ -379,14 +437,22 @@
             const time = data.created_at ? new Date(data.created_at).toLocaleTimeString() : '';
             const json = JSON.stringify(data, null, 2);
 
-            // Get component color from config
+            // Get component color from config - theme aware
             const compColor = getComponentColor(data.component);
-            const compStyle = compColor ? `style="color: ${compColor}"` : '';
+            const isDark = document.body.classList.contains('dark');
+            let compStyle = '';
+            if (compColor) {
+                if (isDark) {
+                    compStyle = `style="color: ${compColor}"`;
+                } else {
+                    compStyle = `style="background-color: ${compColor}; color: #333"`;
+                }
+            }
 
             div.innerHTML = `
                 <div class="event-row">
                     <span class="event-tag">${data.type || 'unknown'}</span>
-                    ${data.component ? `<span class="event-component" ${compStyle}>[${data.component}]</span>` : ''}
+                    ${data.component ? `<span class="event-component" data-color="${compColor || ''}" ${compStyle}>[${data.component}]</span>` : ''}
                     <span class="event-msg">${escapeHtml(msg)}</span>
                     <span class="event-time">${time}</span>
                 </div>
@@ -398,7 +464,19 @@
                 </div>
             `;
 
-            div.querySelector('.event-row').onclick = () => div.classList.toggle('expanded');
+            const row = div.querySelector('.event-row');
+            row.onclick = () => div.classList.toggle('expanded');
+            row.onmouseenter = (e) => {
+                tooltipTimeout = setTimeout(() => showTooltip(data, e), 300);
+            };
+            row.onmousemove = (e) => {
+                if (tooltip.classList.contains('visible')) positionTooltip(e);
+            };
+            row.onmouseleave = () => {
+                clearTimeout(tooltipTimeout);
+                hideTooltip();
+            };
+
             div.querySelector('.event-details').onclick = (e) => e.stopPropagation();
             div.querySelector('.copy-btn').onclick = (e) => {
                 e.stopPropagation();
@@ -548,6 +626,80 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Tooltip functions
+        function buildTooltipContent(event) {
+            const d = event.data || {};
+            const time = event.created_at ? new Date(event.created_at).toLocaleTimeString() : '';
+
+            let html = `<div class="tooltip-header">${escapeHtml(event.type || 'Event')}</div>`;
+
+            if (event.component) {
+                html += `<div class="tooltip-row"><span class="tooltip-label">Component:</span><span class="tooltip-value">${escapeHtml(event.component)}</span></div>`;
+            }
+            if (time) {
+                html += `<div class="tooltip-row"><span class="tooltip-label">Time:</span><span class="tooltip-value">${time}</span></div>`;
+            }
+
+            const fields = getTooltipFields(event.type, d, event);
+            if (fields.length > 0) {
+                html += '<div class="tooltip-separator"></div>';
+                for (const [label, value] of fields) {
+                    const displayVal = typeof value === 'string' ? value.slice(0, 100) : String(value);
+                    html += `<div class="tooltip-row"><span class="tooltip-label">${escapeHtml(label)}:</span><span class="tooltip-value">${escapeHtml(displayVal)}</span></div>`;
+                }
+            }
+
+            return html;
+        }
+
+        function getTooltipFields(type, d, event) {
+            switch (type) {
+                case 'StatusEvent':
+                    return [['message', d.message], ['level', d.level], ['phase', d.phase]].filter(f => f[1]);
+                case 'LLMRequestEvent':
+                    return [['model', d.model], ['prompt', d.prompt_preview]].filter(f => f[1]);
+                case 'LLMResponseEvent':
+                    return [['response', d.response_preview], ['tokens', `${d.input_tokens}→${d.output_tokens}`]].filter(f => f[1]);
+                case 'CapabilityStartEvent':
+                case 'CapabilityCompleteEvent':
+                    return [['capability', d.capability_name], ['success', d.success]].filter(f => f[1] !== undefined);
+                case 'TaskExtractedEvent':
+                    return [['task', d.task]].filter(f => f[1]);
+                case 'ErrorEvent':
+                    return [['error', d.error_message], ['type', d.error_type]].filter(f => f[1]);
+                case 'connected':
+                    return [['message', event.message]].filter(f => f[1]);
+                case 'execution_started':
+                    return [['query', event.query]].filter(f => f[1]);
+                case 'execution_completed':
+                    return [['events', event.event_count]].filter(f => f[1] !== undefined);
+                default:
+                    return Object.entries(d).slice(0, 3);
+            }
+        }
+
+        function showTooltip(event, e) {
+            tooltip.innerHTML = buildTooltipContent(event);
+            tooltip.classList.add('visible');
+            positionTooltip(e);
+        }
+
+        function positionTooltip(e) {
+            const rect = tooltip.getBoundingClientRect();
+            let x = e.clientX + 10;
+            let y = e.clientY + 10;
+
+            if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - 10;
+            if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - 10;
+
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
         }
 
         // Reset filters
