@@ -3,602 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Osprey Debug UI</title>
+    <title>Osprey Debug</title>
     <style>
-        :root {
-            --bg-primary: #1a1a2e;
-            --bg-secondary: #16213e;
-            --bg-tertiary: #0f3460;
-            --text-primary: #e8e8e8;
-            --text-secondary: #a0a0a0;
-            --accent-blue: #4fc3f7;
-            --accent-green: #66bb6a;
-            --accent-yellow: #ffca28;
-            --accent-red: #ef5350;
-            --accent-purple: #ab47bc;
-            --accent-cyan: #26c6da;
-            --accent-orange: #ffa726;
-            --border-color: #2a2a4a;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            background: #fff;
+            color: #333;
+            height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        header {
-            background: var(--bg-secondary);
-            padding: 1rem 2rem;
-            border-bottom: 1px solid var(--border-color);
+        /* Header bar */
+        .header {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 16px;
+            flex-wrap: wrap;
         }
-
-        header h1 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--accent-cyan);
-        }
-
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-        }
-
+        .header h1 { font-size: 14px; font-weight: bold; }
+        .status { display: flex; align-items: center; gap: 6px; }
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             border-radius: 50%;
-            background: var(--accent-red);
+            background: #ccc;
         }
+        .status-dot.connected { background: #090; }
+        .status-dot.executing { background: #f90; }
 
-        .status-dot.connected {
-            background: var(--accent-green);
-        }
-
-        .main-container {
+        /* Controls row */
+        .controls {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
             display: flex;
-            flex: 1;
-            overflow: hidden;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
         }
-
-        .sidebar {
-            width: 300px;
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .query-section {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .query-section label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-        }
-
         .query-input {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-primary);
+            flex: 1;
+            min-width: 200px;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
             font-family: inherit;
-            font-size: 0.9rem;
-            resize: vertical;
-            min-height: 80px;
+            font-size: inherit;
         }
-
-        .query-input:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-        }
-
-        .execute-btn {
-            width: 100%;
-            margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: var(--accent-cyan);
-            color: var(--bg-primary);
-            border: none;
-            border-radius: 4px;
-            font-weight: 600;
+        .query-input:focus { outline: 1px solid #666; }
+        button {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            background: #f5f5f5;
+            font-family: inherit;
+            font-size: inherit;
             cursor: pointer;
-            transition: opacity 0.2s;
         }
+        button:hover { background: #eee; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .execute-btn:hover {
-            opacity: 0.9;
+        /* Search and filters */
+        .filters {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
         }
-
-        .execute-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .search-input {
+            width: 200px;
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            font-family: inherit;
+            font-size: inherit;
         }
-
-        .filters-section {
-            padding: 1rem;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .filters-section h3 {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.75rem;
-            text-transform: uppercase;
-        }
-
         .filter-group {
-            margin-bottom: 1rem;
-        }
-
-        .filter-item {
             display: flex;
+            gap: 8px;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.25rem 0;
-            font-size: 0.85rem;
+        }
+        .filter-group label { font-size: 12px; color: #666; }
+        .filter-group select {
+            padding: 4px;
+            border: 1px solid #ccc;
+            font-family: inherit;
+            font-size: 12px;
         }
 
-        .filter-item input[type="checkbox"] {
-            accent-color: var(--accent-cyan);
-        }
-
-        .event-timeline {
+        /* Event timeline */
+        .timeline {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 8px 12px;
         }
-
-        .event-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-bottom: 0.75rem;
-            overflow: hidden;
+        .event {
+            border: 1px solid #ddd;
+            margin-bottom: 4px;
         }
-
-        .event-header {
+        .event-row {
             display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            gap: 0.75rem;
+            gap: 8px;
+            padding: 4px 8px;
             cursor: pointer;
-            transition: background 0.2s;
+            align-items: baseline;
         }
-
-        .event-header:hover {
-            background: var(--bg-tertiary);
-        }
-
-        .event-type {
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 0.25rem 0.5rem;
-            border-radius: 3px;
-            text-transform: uppercase;
-        }
-
-        .event-type.status { background: var(--accent-blue); color: var(--bg-primary); }
-        .event-type.llm { background: var(--accent-purple); color: white; }
-        .event-type.phase { background: var(--accent-green); color: var(--bg-primary); }
-        .event-type.capability { background: var(--accent-orange); color: var(--bg-primary); }
-        .event-type.result { background: var(--accent-cyan); color: var(--bg-primary); }
-        .event-type.error { background: var(--accent-red); color: white; }
-        .event-type.data { background: var(--accent-yellow); color: var(--bg-primary); }
-        .event-type.system { background: var(--text-secondary); color: var(--bg-primary); }
-
-        .event-component {
-            font-size: 0.8rem;
-            color: var(--accent-cyan);
-            font-weight: 500;
-        }
-
-        .event-message {
-            flex: 1;
-            font-size: 0.85rem;
+        .event-row:hover { background: #f9f9f9; }
+        .event-tag {
+            font-size: 11px;
+            padding: 1px 4px;
+            border: 1px solid #999;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
-
-        .event-time {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
+        .event-component { color: #666; }
+        .event-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .event-time { color: #999; font-size: 11px; }
         .event-details {
             display: none;
-            padding: 1rem;
-            background: var(--bg-tertiary);
-            border-top: 1px solid var(--border-color);
-            font-size: 0.8rem;
+            padding: 8px;
+            border-top: 1px solid #ddd;
+            background: #f9f9f9;
         }
-
-        .event-card.expanded .event-details {
-            display: block;
-        }
-
+        .event.expanded .event-details { display: block; }
         .event-details pre {
-            background: var(--bg-primary);
-            padding: 0.75rem;
-            border-radius: 4px;
-            overflow-x: auto;
             white-space: pre-wrap;
             word-break: break-all;
+            font-size: 12px;
         }
-
-        .details-toolbar {
+        .details-actions {
+            margin-bottom: 8px;
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 0.5rem;
+            gap: 8px;
         }
 
-        .copy-btn {
-            padding: 0.25rem 0.5rem;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 0.75rem;
-        }
-
-        .copy-btn:hover {
-            background: var(--accent-cyan);
-            color: var(--bg-primary);
-        }
-
-        .clear-btn {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            padding: 0.5rem 1rem;
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-
-        .clear-btn:hover {
-            background: var(--accent-red);
-            border-color: var(--accent-red);
-        }
-
-        .stats {
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            font-size: 0.8rem;
-            color: var(--text-secondary);
+        /* Footer stats */
+        .footer {
+            padding: 6px 12px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
             display: flex;
-            gap: 1.5rem;
-        }
-
-        .stats span {
-            color: var(--text-primary);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .executing .status-dot {
-            animation: pulse 1s infinite;
-            background: var(--accent-yellow);
+            gap: 16px;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Osprey Debug UI</h1>
+    <div class="header">
+        <h1>Osprey Debug</h1>
         <div class="status">
             <div class="status-dot" id="statusDot"></div>
             <span id="statusText">Disconnected</span>
         </div>
-    </header>
+    </div>
 
-    <div class="main-container">
-        <div class="sidebar">
-            <div class="query-section">
-                <label>Query</label>
-                <textarea class="query-input" id="queryInput" placeholder="Enter your query...">What's the weather in San Francisco?</textarea>
-                <button class="execute-btn" id="executeBtn">Execute Query</button>
-            </div>
+    <div class="controls">
+        <input type="text" class="query-input" id="queryInput"
+               placeholder="Enter query..." value="What's the weather in San Francisco?">
+        <button id="executeBtn" disabled>Execute</button>
+        <button id="clearBtn">Clear</button>
+        <button id="exportBtn">Export YAML</button>
+    </div>
 
-            <div class="filters-section">
-                <h3>Filter by Type</h3>
-                <div class="filter-group" id="typeFilters">
-                    <!-- Populated dynamically -->
-                </div>
-
-                <h3>Filter by Component</h3>
-                <div class="filter-group" id="componentFilters">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <div class="stats">
-                Events: <span id="eventCount">0</span>
-            </div>
+    <div class="filters">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search events...">
+        <div class="filter-group">
+            <label>Type:</label>
+            <select id="typeFilter"><option value="">All</option></select>
         </div>
-
-        <div class="event-timeline" id="eventTimeline">
-            <!-- Events will be added here -->
+        <div class="filter-group">
+            <label>Component:</label>
+            <select id="componentFilter"><option value="">All</option></select>
         </div>
     </div>
 
-    <button class="clear-btn" id="clearBtn">Clear Events</button>
+    <div class="timeline" id="timeline">
+        <!-- Events appended here (latest at bottom) -->
+    </div>
+
+    <div class="footer">
+        <span>Events: <strong id="eventCount">0</strong></span>
+        <span>Filtered: <strong id="filteredCount">0</strong></span>
+    </div>
 
     <script>
         // State
         let ws = null;
         let events = [];
-        let typeFilters = new Set();
-        let componentFilters = new Set();
-        let allTypes = new Set();
-        let allComponents = new Set();
+        let searchText = '';
+        let typeFilter = '';
+        let componentFilter = '';
 
-        // DOM Elements
+        // DOM
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const queryInput = document.getElementById('queryInput');
         const executeBtn = document.getElementById('executeBtn');
-        const eventTimeline = document.getElementById('eventTimeline');
-        const eventCount = document.getElementById('eventCount');
         const clearBtn = document.getElementById('clearBtn');
-        const typeFiltersEl = document.getElementById('typeFilters');
-        const componentFiltersEl = document.getElementById('componentFilters');
+        const exportBtn = document.getElementById('exportBtn');
+        const searchInput = document.getElementById('searchInput');
+        const typeFilterEl = document.getElementById('typeFilter');
+        const componentFilterEl = document.getElementById('componentFilter');
+        const timeline = document.getElementById('timeline');
+        const eventCount = document.getElementById('eventCount');
+        const filteredCount = document.getElementById('filteredCount');
 
-        // Event type categories
-        const typeCategories = {
-            'StatusEvent': 'status',
-            'LLMRequestEvent': 'llm',
-            'LLMResponseEvent': 'llm',
-            'PhaseStartEvent': 'phase',
-            'PhaseCompleteEvent': 'phase',
-            'CapabilityStartEvent': 'capability',
-            'CapabilityCompleteEvent': 'capability',
-            'ResultEvent': 'result',
-            'ErrorEvent': 'error',
-            'TaskExtractedEvent': 'data',
-            'CapabilitiesSelectedEvent': 'data',
-            'PlanCreatedEvent': 'data',
-            'connected': 'system',
-            'execution_started': 'system',
-            'execution_completed': 'system',
-            'execution_error': 'error',
-        };
-
-        // Connect to WebSocket
+        // Connect
         function connect() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/events`;
-
-            ws = new WebSocket(wsUrl);
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws/events`);
 
             ws.onopen = () => {
                 statusDot.classList.add('connected');
                 statusText.textContent = 'Connected';
                 executeBtn.disabled = false;
             };
-
             ws.onclose = () => {
-                statusDot.classList.remove('connected');
+                statusDot.classList.remove('connected', 'executing');
                 statusText.textContent = 'Disconnected';
                 executeBtn.disabled = true;
-                // Try to reconnect after 3 seconds
                 setTimeout(connect, 3000);
             };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleEvent(data);
-            };
+            ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
         }
 
-        // Handle incoming event
+        // Handle event
         function handleEvent(data) {
             events.push(data);
             eventCount.textContent = events.length;
+            updateFilterOptions();
 
-            // Track types and components
-            if (data.type) {
-                allTypes.add(data.type);
-                updateTypeFilters();
-            }
-            if (data.component) {
-                allComponents.add(data.component);
-                updateComponentFilters();
-            }
-
-            // Add to timeline if not filtered
-            if (shouldShowEvent(data)) {
-                addEventToTimeline(data);
-            }
-
-            // Update executing state
             if (data.type === 'execution_started') {
-                document.body.classList.add('executing');
+                statusDot.classList.add('executing');
             } else if (data.type === 'execution_completed' || data.type === 'execution_error') {
-                document.body.classList.remove('executing');
+                statusDot.classList.remove('executing');
             }
+
+            if (matchesFilters(data)) {
+                appendEvent(data);
+                timeline.scrollTop = timeline.scrollHeight;
+            }
+            updateFilteredCount();
         }
 
-        // Check if event should be shown based on filters
-        function shouldShowEvent(data) {
-            if (typeFilters.size > 0 && !typeFilters.has(data.type)) {
-                return false;
-            }
-            if (componentFilters.size > 0 && data.component && !componentFilters.has(data.component)) {
-                return false;
-            }
+        // Check filters
+        function matchesFilters(data) {
+            const json = JSON.stringify(data).toLowerCase();
+            if (searchText && !json.includes(searchText.toLowerCase())) return false;
+            if (typeFilter && data.type !== typeFilter) return false;
+            if (componentFilter && data.component !== componentFilter) return false;
             return true;
         }
 
-        // Add event to timeline
-        function addEventToTimeline(data) {
-            const card = document.createElement('div');
-            card.className = 'event-card';
-
-            const category = typeCategories[data.type] || 'status';
-            const message = getEventMessage(data);
+        // Append event to timeline
+        function appendEvent(data) {
+            const div = document.createElement('div');
+            div.className = 'event';
+            const msg = getMsg(data);
             const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '';
-            const jsonContent = JSON.stringify(data, null, 2);
+            const json = JSON.stringify(data, null, 2);
 
-            card.innerHTML = `
-                <div class="event-header">
-                    <span class="event-type ${category}">${data.type}</span>
-                    ${data.component ? `<span class="event-component">${data.component}</span>` : ''}
-                    <span class="event-message">${escapeHtml(message)}</span>
+            div.innerHTML = `
+                <div class="event-row">
+                    <span class="event-tag">${data.type || 'unknown'}</span>
+                    ${data.component ? `<span class="event-component">[${data.component}]</span>` : ''}
+                    <span class="event-msg">${escapeHtml(msg)}</span>
                     <span class="event-time">${time}</span>
                 </div>
                 <div class="event-details">
-                    <div class="details-toolbar">
-                        <button class="copy-btn" title="Copy to clipboard">Copy</button>
+                    <div class="details-actions">
+                        <button class="copy-btn">Copy JSON</button>
                     </div>
-                    <pre>${escapeHtml(jsonContent)}</pre>
+                    <pre>${escapeHtml(json)}</pre>
                 </div>
             `;
 
-            // Only header triggers expand/collapse
-            const header = card.querySelector('.event-header');
-            header.onclick = () => card.classList.toggle('expanded');
-
-            // Details section doesn't propagate clicks (allows text selection)
-            const details = card.querySelector('.event-details');
-            details.onclick = (e) => e.stopPropagation();
-
-            // Copy button functionality
-            const copyBtn = card.querySelector('.copy-btn');
-            copyBtn.onclick = (e) => {
+            div.querySelector('.event-row').onclick = () => div.classList.toggle('expanded');
+            div.querySelector('.event-details').onclick = (e) => e.stopPropagation();
+            div.querySelector('.copy-btn').onclick = (e) => {
                 e.stopPropagation();
-                navigator.clipboard.writeText(jsonContent).then(() => {
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(() => copyBtn.textContent = 'Copy', 2000);
-                });
+                navigator.clipboard.writeText(json);
+                e.target.textContent = 'Copied!';
+                setTimeout(() => e.target.textContent = 'Copy JSON', 1500);
             };
 
-            eventTimeline.insertBefore(card, eventTimeline.firstChild);
+            timeline.appendChild(div);
         }
 
-        // Get display message from event
-        function getEventMessage(data) {
-            if (data.data) {
-                if (data.data.message) return data.data.message;
-                if (data.data.phase) return `Phase: ${data.data.phase}`;
-                if (data.data.capability_name) return `Capability: ${data.data.capability_name}`;
-                if (data.data.response) return data.data.response.substring(0, 100);
-                if (data.data.error_message) return data.data.error_message;
-            }
+        // Get message
+        function getMsg(data) {
+            if (data.data?.message) return data.data.message;
+            if (data.data?.phase) return `Phase: ${data.data.phase}`;
+            if (data.data?.capability_name) return data.data.capability_name;
             if (data.message) return data.message;
             if (data.query) return `Query: ${data.query}`;
             if (data.error) return data.error;
-            return JSON.stringify(data.data || data).substring(0, 100);
+            return JSON.stringify(data.data || data).slice(0, 80);
         }
 
-        // Update type filter checkboxes
-        function updateTypeFilters() {
-            typeFiltersEl.innerHTML = Array.from(allTypes).sort().map(type => `
-                <label class="filter-item">
-                    <input type="checkbox" value="${type}"
-                           ${typeFilters.has(type) ? 'checked' : ''}
-                           onchange="toggleTypeFilter('${type}')">
-                    ${type}
-                </label>
-            `).join('');
+        // Update filter dropdowns
+        function updateFilterOptions() {
+            const types = [...new Set(events.map(e => e.type).filter(Boolean))].sort();
+            const comps = [...new Set(events.map(e => e.component).filter(Boolean))].sort();
+
+            const currentType = typeFilter;
+            const currentComp = componentFilter;
+
+            typeFilterEl.innerHTML = '<option value="">All</option>' +
+                types.map(t => `<option value="${t}" ${t === currentType ? 'selected' : ''}>${t}</option>`).join('');
+            componentFilterEl.innerHTML = '<option value="">All</option>' +
+                comps.map(c => `<option value="${c}" ${c === currentComp ? 'selected' : ''}>${c}</option>`).join('');
         }
 
-        // Update component filter checkboxes
-        function updateComponentFilters() {
-            componentFiltersEl.innerHTML = Array.from(allComponents).sort().map(comp => `
-                <label class="filter-item">
-                    <input type="checkbox" value="${comp}"
-                           ${componentFilters.has(comp) ? 'checked' : ''}
-                           onchange="toggleComponentFilter('${comp}')">
-                    ${comp}
-                </label>
-            `).join('');
-        }
-
-        // Toggle type filter
-        function toggleTypeFilter(type) {
-            if (typeFilters.has(type)) {
-                typeFilters.delete(type);
-            } else {
-                typeFilters.add(type);
-            }
-            refreshTimeline();
-        }
-
-        // Toggle component filter
-        function toggleComponentFilter(comp) {
-            if (componentFilters.has(comp)) {
-                componentFilters.delete(comp);
-            } else {
-                componentFilters.add(comp);
-            }
-            refreshTimeline();
-        }
-
-        // Refresh timeline with current filters
+        // Refresh timeline
         function refreshTimeline() {
-            eventTimeline.innerHTML = '';
-            events.filter(shouldShowEvent).forEach(addEventToTimeline);
+            timeline.innerHTML = '';
+            events.filter(matchesFilters).forEach(appendEvent);
+            updateFilteredCount();
+            timeline.scrollTop = timeline.scrollHeight;
         }
 
-        // Execute query
+        function updateFilteredCount() {
+            filteredCount.textContent = events.filter(matchesFilters).length;
+        }
+
+        // Execute
         function executeQuery() {
-            const query = queryInput.value.trim();
-            if (!query || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-            ws.send(JSON.stringify({
-                action: 'execute',
-                query: query
-            }));
+            const q = queryInput.value.trim();
+            if (!q || !ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ action: 'execute', query: q }));
         }
 
-        // Clear events
+        // Clear
         function clearEvents() {
             events = [];
-            eventTimeline.innerHTML = '';
+            timeline.innerHTML = '';
             eventCount.textContent = '0';
-            allTypes.clear();
-            allComponents.clear();
-            typeFilters.clear();
-            componentFilters.clear();
-            updateTypeFilters();
-            updateComponentFilters();
+            filteredCount.textContent = '0';
+            searchText = '';
+            typeFilter = '';
+            componentFilter = '';
+            searchInput.value = '';
+            typeFilterEl.innerHTML = '<option value="">All</option>';
+            componentFilterEl.innerHTML = '<option value="">All</option>';
         }
 
-        // Escape HTML
+        // Export YAML
+        function exportYAML() {
+            // Simple YAML-like format (proper YAML would need a library)
+            const yaml = events.map((e, i) => {
+                return `- # Event ${i + 1}\n` +
+                    Object.entries(e).map(([k, v]) => {
+                        const val = typeof v === 'object' ? JSON.stringify(v) : v;
+                        return `  ${k}: ${val}`;
+                    }).join('\n');
+            }).join('\n\n');
+
+            const blob = new Blob([yaml], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `osprey-events-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.yaml`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -608,11 +379,11 @@
         // Event listeners
         executeBtn.onclick = executeQuery;
         clearBtn.onclick = clearEvents;
-        queryInput.onkeydown = (e) => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                executeQuery();
-            }
-        };
+        exportBtn.onclick = exportYAML;
+        queryInput.onkeydown = (e) => { if (e.key === 'Enter') executeQuery(); };
+        searchInput.oninput = () => { searchText = searchInput.value; refreshTimeline(); };
+        typeFilterEl.onchange = () => { typeFilter = typeFilterEl.value; refreshTimeline(); };
+        componentFilterEl.onchange = () => { componentFilter = componentFilterEl.value; refreshTimeline(); };
 
         // Connect on load
         connect();
