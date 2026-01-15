@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Deployment**: Fix `--dev` mode failing when osprey is installed from PyPI (#86)
+  - Detect site-packages installation and show clear warning about editable mode requirement
+  - Add helpful error message when `build` package is missing
+  - Add `build` to dev dependencies for wheel building support
 - **Models**: Handle Python-style booleans in LLM JSON responses (#102)
   - Some LLM providers (including Argo) return `True`/`False` instead of `true`/`false`
   - `_clean_json_response()` now converts Python-style booleans to JSON-style
