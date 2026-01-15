@@ -391,7 +391,7 @@ class CLI:
         self.prompt_session = self._create_prompt_session()
 
         self.console.print(
-            f"[{Styles.SUCCESS}]✅ Framework initialized! Thread ID: {self.thread_id}[/{Styles.SUCCESS}]"
+            f"[system]✅ Framework initialized! Thread ID: {self.thread_id}[/system]"
         )
         self.console.print(
             f"[{Styles.DIM}]  • Use ↑/↓ arrow keys to navigate command history[/{Styles.DIM}]"
@@ -603,7 +603,7 @@ class CLI:
         # Show slash command processing if any
         if result.slash_commands_processed:
             self.console.print(
-                f"[{Styles.SUCCESS}]✅ Processed commands: {result.slash_commands_processed}[/{Styles.SUCCESS}]"
+                f"[system]✅ Processed commands: {result.slash_commands_processed}[/system]"
             )
 
         # Execute the result
@@ -651,7 +651,7 @@ class CLI:
                 # Apply state update without executing the graph
                 self.graph.update_state(self.base_config, result.agent_state)
                 self.console.print(
-                    f"[{Styles.SUCCESS}]✓ Mode switched. Ready for your message.[/{Styles.SUCCESS}]"
+                    f"[system]✓ Mode switched. Ready for your message.[/system]"
                 )
             else:
                 # Debug: Show execution step results count in fresh state
@@ -853,7 +853,7 @@ class CLI:
         # Debug: Show execution step results count after execution
         step_results = result.get("execution_step_results", {})
         self.console.print(
-            f"[{Styles.INFO}]📊 Execution completed (execution_step_results: {len(step_results)} records)[/{Styles.INFO}]"
+            f"[system]📊 Execution completed (execution_step_results: {len(step_results)} records)[/system]"
         )
 
         # Extract and display the main text response
@@ -865,18 +865,18 @@ class CLI:
                 if hasattr(msg, "content") and msg.content:
                     if not hasattr(msg, "type") or msg.type != "human":
                         text_response = msg.content
-                        self.console.print(f"[{Styles.SUCCESS}]🤖 {msg.content}[/{Styles.SUCCESS}]")
+                        self.console.print(f"🤖 {msg.content}")
                         break
 
         if not text_response:
             # Fallback if no messages found
-            self.console.print(f"[{Styles.SUCCESS}]✅ Execution completed[/{Styles.SUCCESS}]")
+            self.console.print("[system]✅ Execution completed[/system]")
 
         # Extract and display additional content
         figures_output = self._extract_figures_for_cli(result)
         if figures_output:
             self.console.print()  # Add spacing
-            self.console.print(f"[{Styles.INFO}]{figures_output}[/{Styles.INFO}]")
+            self.console.print(f"[system]{figures_output}[/system]")
 
         commands_output = self._extract_commands_for_cli(result)
         if commands_output:
@@ -886,7 +886,7 @@ class CLI:
         notebooks_output = self._extract_notebooks_for_cli(result)
         if notebooks_output:
             self.console.print()  # Add spacing
-            self.console.print(f"[{Styles.INFO}]{notebooks_output}[/{Styles.INFO}]")
+            self.console.print(f"[system]{notebooks_output}[/system]")
 
     async def _handle_stream_event(self, event: dict[str, Any]):
         """Handle and display streaming events from LangGraph execution.
@@ -947,13 +947,11 @@ class CLI:
                     for msg in reversed(messages):
                         if hasattr(msg, "content") and msg.content:
                             if not hasattr(msg, "type") or msg.type != "human":
-                                self.console.print(
-                                    f"[{Styles.SUCCESS}]🤖 {msg.content}[/{Styles.SUCCESS}]"
-                                )
+                                self.console.print(f"🤖 {msg.content}")
                                 return
 
         # If no response found, show completion
-        self.console.print(f"[{Styles.SUCCESS}]✅ Execution completed[/{Styles.SUCCESS}]")
+        self.console.print("[system]✅ Execution completed[/system]")
 
     def _extract_figures_for_cli(self, state: dict[str, Any]) -> str | None:
         """Extract figures from centralized registry and format for CLI display.

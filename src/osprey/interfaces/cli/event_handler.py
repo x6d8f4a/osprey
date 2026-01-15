@@ -76,7 +76,7 @@ class CLIEventHandler:
         """Format component name to title case.
 
         Examples:
-            "REGISTRY" -> "Registry"
+            "registry" -> "Registry"
             "task_extraction" -> "Task_Extraction"
             "current_weather" -> "Current_Weather"
 
@@ -204,17 +204,17 @@ class CLIEventHandler:
             # StatusEvent - success level (completion confirmations)
             case StatusEvent(message=msg, level="success", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "bold green", "bold green", prefix="✓ ")
+                self._print_aligned(role, f"✓ {msg}", "bold green", "bold green")
 
             # StatusEvent - warning level (warnings)
             case StatusEvent(message=msg, level="warning", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "yellow", "yellow", prefix="⚠ ")
+                self._print_aligned(role, f"⚠ {msg}", "yellow", "yellow")
 
             # StatusEvent - error level (errors)
             case StatusEvent(message=msg, level="error", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "red", "red", prefix="✗ ")
+                self._print_aligned(role, f"✗ {msg}", "red", "red")
 
             # StatusEvent - debug level (only in verbose mode)
             case StatusEvent(
@@ -222,7 +222,7 @@ class CLIEventHandler:
             ) if self.verbose:
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, f"dim {color}", f"dim {color}", prefix="🔍 ")
+                self._print_aligned(role, f"🔍 {msg}", f"dim {color}", f"dim {color}")
 
             # LLMRequestEvent - "LLM prompt built"
             case LLMRequestEvent(component=comp, prompt_length=length, key=key):
@@ -263,7 +263,7 @@ class CLIEventHandler:
                 error_type=err_type, error_message=msg, component=comp
             ):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, err_type, "red", "red", prefix="✗ ")
+                self._print_aligned(role, f"✗ {err_type}", "red", "red")
                 # Error detail on next line, aligned with message column
                 self._print_aligned("", msg, "", "red")
 
@@ -317,17 +317,17 @@ class CLIEventHandler:
             # StatusEvent - success level
             case StatusEvent(message=msg, level="success", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "bold green", "bold green", prefix="✓ ")
+                self._print_aligned(role, f"✓ {msg}", "bold green", "bold green")
 
             # StatusEvent - warning level
             case StatusEvent(message=msg, level="warning", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "yellow", "yellow", prefix="⚠ ")
+                self._print_aligned(role, f"⚠ {msg}", "yellow", "yellow")
 
             # StatusEvent - error level
             case StatusEvent(message=msg, level="error", component=comp):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, "red", "red", prefix="✗ ")
+                self._print_aligned(role, f"✗ {msg}", "red", "red")
 
             # StatusEvent - debug level (verbose only)
             case StatusEvent(
@@ -335,7 +335,7 @@ class CLIEventHandler:
             ) if self.verbose:
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
-                self._print_aligned(role, msg, f"dim {color}", f"dim {color}", prefix="🔍 ")
+                self._print_aligned(role, f"🔍 {msg}", f"dim {color}", f"dim {color}")
 
             # LLMRequestEvent - "LLM prompt built"
             case LLMRequestEvent(component=comp, prompt_length=length, key=key):
@@ -376,7 +376,7 @@ class CLIEventHandler:
                 error_type=err_type, error_message=msg, component=comp
             ):
                 role = self._format_role_name(comp)
-                self._print_aligned(role, err_type, "red", "red", prefix="✗ ")
+                self._print_aligned(role, f"✗ {err_type}", "red", "red")
                 # Error detail on next line, aligned with message column
                 self._print_aligned("", msg, "", "red")
 

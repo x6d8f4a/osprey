@@ -723,7 +723,7 @@ def setup_build_dir(template_path, config, container_cfg, dev_mode=False):
         # Create flattened configuration file for container
         # This merges all imports and creates a complete config without import directives
         try:
-            with quiet_logger(["REGISTRY", "CONFIG"]):
+            with quiet_logger(["registry", "CONFIG"]):
                 global_config = ConfigBuilder()
                 flattened_config = (
                     global_config.raw_config
@@ -1078,7 +1078,7 @@ def prepare_compose_files(config_path, dev_mode=False):
     :raises RuntimeError: If configuration loading fails
     """
     try:
-        with quiet_logger(["REGISTRY", "CONFIG"]):
+        with quiet_logger(["registry", "CONFIG"]):
             config = ConfigBuilder(config_path)
             config = config.raw_config
     except Exception as e:
@@ -1173,7 +1173,7 @@ def deploy_down(config_path, dev_mode=False):
     :type config_path: str
     """
     try:
-        with quiet_logger(["REGISTRY", "CONFIG"]):
+        with quiet_logger(["registry", "CONFIG"]):
             config = ConfigBuilder(config_path)
             config = config.raw_config
     except Exception as e:
@@ -1257,7 +1257,7 @@ def show_status(config_path):
 
         from osprey.cli.styles import Styles, console
 
-        with quiet_logger(["REGISTRY", "CONFIG"]):
+        with quiet_logger(["registry", "CONFIG"]):
             config = ConfigBuilder(config_path)
             config = config.raw_config
     except Exception as e:

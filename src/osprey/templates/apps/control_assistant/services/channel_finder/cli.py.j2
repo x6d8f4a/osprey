@@ -186,7 +186,7 @@ class ChannelFinderCLI:
             from osprey.utils.log_filter import quiet_logger
 
             # Silence all registry-related initialization logs (approval, limits, export, etc.)
-            with quiet_logger(['REGISTRY', 'osprey.approval', 'osprey.services', 'connector_factory', 'memory_storage']):
+            with quiet_logger(['registry', 'osprey.approval', 'osprey.services', 'connector_factory', 'memory_storage']):
                 initialize_registry(silent=True)
 
             self.service = ChannelFinderService()
@@ -317,7 +317,7 @@ async def direct_query(query: str, verbose: bool = False):
         from osprey.utils.log_filter import quiet_logger
 
         # Silence all registry-related initialization logs (approval, limits, export, etc.)
-        with quiet_logger(['REGISTRY', 'osprey.approval', 'osprey.services', 'connector_factory', 'memory_storage']):
+        with quiet_logger(['registry', 'osprey.approval', 'osprey.services', 'connector_factory', 'memory_storage']):
             initialize_registry(silent=True)
 
         # Initialize service

@@ -56,7 +56,7 @@ def initialize_registry():
     from osprey.utils.log_filter import quiet_logger
 
     # Initialize registry (quiet mode to suppress logs)
-    with quiet_logger(["REGISTRY", "CONFIG"]):
+    with quiet_logger(["registry", "CONFIG"]):
         initialize_registry()
 
     return True
