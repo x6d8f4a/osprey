@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI**: Display full absolute paths for plot files in artifact output (#96)
   - Figure and notebook paths now resolved to absolute before artifact registration
   - Ensures users can directly access generated files from CLI output
+- **Packaging**: Include TUI styles.tcss in package data (#97)
+  - Textual CSS file was missing from PyPI releases since TUI was introduced in 0.10.0
+  - Issue went unnoticed because editable installs (`pip install -e .`) symlink to source
 
 ## [0.10.4] - 2026-01-15
 

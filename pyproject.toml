@@ -184,6 +184,7 @@ include = ["osprey*"]
 # Include package data files
 [tool.setuptools.package-data]
 "*" = ["*.yml", "*.yaml", "*.json", "*.j2", "*.md", "*.txt", "*.cfg", "*.ini"]
+"osprey.interfaces.tui" = ["*.tcss"]
 "osprey" = [
     "config.yml",
     "templates/**/*",
