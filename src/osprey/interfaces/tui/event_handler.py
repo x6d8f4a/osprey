@@ -94,6 +94,8 @@ class TUIEventHandler:
         # Capability context tracking for log routing
         self._current_capability: str | None = None
         self._current_step_number: int | None = None
+        # Track last status/key_info message per block for meaningful results
+        self._last_key_message: dict[str, str] = {}
 
     async def handle(self, event: OspreyEvent) -> None:
         """Process a typed event using pattern matching.
@@ -383,7 +385,19 @@ class TUIEventHandler:
         if block:
             status = "success" if success else "error"
             if success:
-                output_text = f"Completed in {duration_ms}ms"
+                # Try to get the last meaningful status/key_info message for this block
+                block_key = None
+                for key, b in self.current_blocks.items():
+                    if b is block:
+                        block_key = key
+                        break
+
+                if block_key and block_key in self._last_key_message:
+                    output_text = self._last_key_message[block_key]
+                    # Clean up after use
+                    del self._last_key_message[block_key]
+                else:
+                    output_text = f"Completed in {duration_ms}ms"
             else:
                 output_text = error_message or "Execution failed"
             block.set_output(output_text, status=status)
@@ -444,17 +458,29 @@ class TUIEventHandler:
                     break
 
         if block and hasattr(block, "add_log"):
-            # Map level to status
+            # Only log levels that CLI displays (skip timing, approval, resume, debug)
+            CLI_VISIBLE_LEVELS = {"status", "key_info", "info", "success", "warning", "error"}
+            if level not in CLI_VISIBLE_LEVELS:
+                return
+
+            # Map level to status for display styling
             status_map = {
                 "error": "error",
                 "warning": "warning",
                 "success": "success",
                 "status": "status",
+                "key_info": "key_info",
                 "info": None,
-                "debug": None,
             }
             status = status_map.get(level)
             block.add_log(message, status=status)
+
+            # Track last status/key_info message for meaningful capability results
+            if level in ("status", "key_info"):
+                for key, b in self.current_blocks.items():
+                    if b is block:
+                        self._last_key_message[key] = message
+                        break
 
             # Update partial output for real-time display
             if hasattr(block, "set_partial_output"):
