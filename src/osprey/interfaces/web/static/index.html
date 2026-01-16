@@ -657,16 +657,22 @@
 
             let html = `<div class="tooltip-header">${escapeHtml(event.type || 'Event')}</div>`;
 
+            let hasCommonFields = false;
             if (event.component) {
                 html += `<div class="tooltip-row"><span class="tooltip-label">Component:</span><span class="tooltip-value">${escapeHtml(event.component)}</span></div>`;
+                hasCommonFields = true;
             }
             if (time) {
                 html += `<div class="tooltip-row"><span class="tooltip-label">Time:</span><span class="tooltip-value">${time}</span></div>`;
+                hasCommonFields = true;
             }
 
             const fields = getTooltipFields(event.type, d, event);
             if (fields.length > 0) {
-                html += '<div class="tooltip-separator"></div>';
+                // Only add separator if we had common fields (header already has border-bottom)
+                if (hasCommonFields) {
+                    html += '<div class="tooltip-separator"></div>';
+                }
                 for (const [label, value] of fields) {
                     const displayVal = typeof value === 'string' ? value.slice(0, 100) : String(value);
                     html += `<div class="tooltip-row"><span class="tooltip-label">${escapeHtml(label)}:</span><span class="tooltip-value">${escapeHtml(displayVal)}</span></div>`;
