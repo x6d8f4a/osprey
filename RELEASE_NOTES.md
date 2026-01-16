@@ -1,15 +1,32 @@
-# Osprey Framework - Latest Release (v0.10.4)
+# Osprey Framework - Latest Release (v0.10.5)
 
-**Dependency Fix** - litellm/aiohttp compatibility
+**Bug Fixes & Provider Extensibility**
 
-## What's New in v0.10.4
+## What's New in v0.10.5
 
-### Bug Fix
+### Highlights
 
-- **Dependencies**: Pin `aiohttp>=3.10` for litellm compatibility (#87)
-  - Fixes `AttributeError: module aiohttp has no attribute ConnectionTimeoutError`
-  - `aiohttp.ConnectionTimeoutError` was added in aiohttp 3.10; litellm requires it but doesn't pin the version
-  - This was causing Docker container deployment failures
+- **TUI now works from PyPI installs** (#97) - Fixed missing `styles.tcss` in package
+- **LiteLLM provider extensibility** - Custom providers can integrate without modifying adapter code
+- **Public config API** (#103) - `load_config()` properly exported for channel finder integration
+- **Dev mode fix** (#86) - `osprey deploy up --dev` works when installed from PyPI
+
+### Added
+- E2E test for LLM channel naming workflow (#103)
+
+### Changed
+- Update ALS Assistant reference to published paper (Phys. Rev. Res. **8**, L012017)
+- Decouple LiteLLM adapter from hardcoded provider checks
+  - Providers now declare LiteLLM routing via class attributes
+  - Structured output detection uses LiteLLM's `supports_response_schema()`
+
+### Fixed
+- **Packaging**: Include TUI `styles.tcss` in package data (#97)
+- **Channel Finder**: Fix `load_config` not defined error (#103)
+- **Deployment**: Fix `--dev` mode for non-editable installs (#86)
+- **Models**: Handle Python-style booleans in LLM JSON responses (#102)
+- **CLI**: Display full absolute paths for plot files (#96)
+- **CI**: Fix deploy-e2e test to test PR code with `--dev` mode
 
 ---
 
