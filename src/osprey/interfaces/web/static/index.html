@@ -239,7 +239,7 @@
         .event.status-success { border: 2px solid var(--status-success-color, #090); }
         .event.status-warning { border: 2px solid var(--status-warning-color, #f90); }
         .event.status-error { border: 2px solid var(--status-error-color, #c00); }
-        .event.status-key-info { background: rgba(255, 255, 0, 0.15); }
+        .event.status-key-info { background: rgba(255, 255, 0, 0.15); border: 2px solid rgba(255, 200, 0, 0.5); }
     </style>
 </head>
 <body>
@@ -440,7 +440,7 @@
             const div = document.createElement('div');
             div.className = 'event';
 
-            // Add special styling for StatusEvent levels
+            // Add special styling for StatusEvent levels and ErrorEvent
             if (data.type === 'StatusEvent' && data.data?.level) {
                 const level = data.data.level;
                 if (level === 'success') {
@@ -458,6 +458,11 @@
                 } else if (level === 'key_info') {
                     div.classList.add('status-key-info');
                 }
+            } else if (data.type === 'ErrorEvent') {
+                // ErrorEvent gets same styling as error level
+                div.classList.add('status-error');
+                const color = colorPalette['red'] || '#c00';
+                div.style.setProperty('--status-error-color', color);
             }
 
             const msg = getMsg(data);
