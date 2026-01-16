@@ -218,13 +218,9 @@ jobs:
         osprey init hello-weather-test --template hello_world_weather --provider cborg --model anthropic/claude-haiku
         ls -la hello-weather-test/
 
-    - name: Configure API key for container
-      run: |
-        cd hello-weather-test
-        echo "CBORG_API_KEY=${{ secrets.CBORG_API_KEY }}" >> .env
-        cat .env
-
     - name: Deploy pipelines container
+      env:
+        CBORG_API_KEY: ${{ secrets.CBORG_API_KEY }}
       run: |
         cd hello-weather-test
         osprey deploy up -d
