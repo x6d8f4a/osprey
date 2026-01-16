@@ -27,13 +27,11 @@ from rich.highlighter import ReprHighlighter
 from rich.table import Table
 from rich.text import Text
 
-from osprey.cli.styles import Styles
 from osprey.events import (
     ErrorEvent,
     LLMRequestEvent,
     LLMResponseEvent,
     OspreyEvent,
-    ResultEvent,
     StatusEvent,
 )
 from osprey.utils.config import get_config_value
@@ -247,17 +245,6 @@ class CLIEventHandler:
                     msg = f"LLM response received ({length} chars, {dur_sec:.2f}s)"
                 self._print_aligned(role, msg, color, color)
 
-            # ResultEvent - final response (success)
-            case ResultEvent(response=response, success=True):
-                self.console.print(f"\n{response}", style=Styles.BOLD_SUCCESS)
-
-            # ResultEvent - final response (failure)
-            case ResultEvent(response=response, success=False):
-                self.console.print(
-                    f"\nExecution failed: {response}",
-                    style=Styles.BOLD_ERROR,
-                )
-
             # ErrorEvent - execution errors
             case ErrorEvent(
                 error_type=err_type, error_message=msg, component=comp
@@ -359,17 +346,6 @@ class CLIEventHandler:
                 else:
                     msg = f"LLM response received ({length} chars, {dur_sec:.2f}s)"
                 self._print_aligned(role, msg, color, color)
-
-            # ResultEvent - success
-            case ResultEvent(response=response, success=True):
-                self.console.print(f"\n{response}", style=Styles.BOLD_SUCCESS)
-
-            # ResultEvent - failure
-            case ResultEvent(response=response, success=False):
-                self.console.print(
-                    f"\nExecution failed: {response}",
-                    style=Styles.BOLD_ERROR,
-                )
 
             # ErrorEvent
             case ErrorEvent(

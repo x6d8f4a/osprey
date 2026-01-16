@@ -865,7 +865,7 @@ class CLI:
                 if hasattr(msg, "content") and msg.content:
                     if not hasattr(msg, "type") or msg.type != "human":
                         text_response = msg.content
-                        self.console.print(f"🤖 {msg.content}")
+                        self.console.print(f"[system]🤖 {msg.content}[/system]")
                         break
 
         if not text_response:
@@ -947,7 +947,7 @@ class CLI:
                     for msg in reversed(messages):
                         if hasattr(msg, "content") and msg.content:
                             if not hasattr(msg, "type") or msg.type != "human":
-                                self.console.print(f"🤖 {msg.content}")
+                                self.console.print(f"[system]🤖 {msg.content}[/system]")
                                 return
 
         # If no response found, show completion
