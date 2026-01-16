@@ -455,7 +455,7 @@
                 } else if (level === 'error') {
                     div.classList.add('status-error');
                     div.style.setProperty('--status-error-color', colorPalette['red'] || '#c00');
-                } else if (level === 'key_info') {
+                } else if (level === 'key_info' || level === 'status') {
                     div.classList.add('status-key-info');
                 }
             } else if (data.type === 'ErrorEvent') {
