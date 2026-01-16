@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Docs**: Update ALS Assistant reference to published paper (Phys. Rev. Res. **8**, L012017)
+
 ### Fixed
 - **Deployment**: Fix `--dev` mode failing when osprey is installed from PyPI (#86)
   - Detect site-packages installation and show clear warning about editable mode requirement
