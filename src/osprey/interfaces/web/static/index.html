@@ -221,9 +221,15 @@
             display: flex;
             gap: 8px;
             margin: 2px 0;
+            align-items: flex-start;
         }
-        .tooltip-label { color: var(--text-muted); min-width: 80px; }
-        .tooltip-value { color: var(--text); word-break: break-word; }
+        .tooltip-label { color: var(--text-muted); min-width: 80px; flex-shrink: 0; }
+        .tooltip-value {
+            color: var(--text);
+            word-break: break-word;
+            max-width: 280px;
+            overflow-wrap: break-word;
+        }
         .tooltip-separator {
             border-top: 1px solid var(--border);
             margin: 4px 0;
@@ -663,8 +669,18 @@
                 case 'LLMResponseEvent':
                     return [['response', d.response_preview], ['tokens', `${d.input_tokens}→${d.output_tokens}`]].filter(f => f[1]);
                 case 'CapabilityStartEvent':
+                    return [['capability', d.capability_name], ['step', `${d.step_number}/${d.total_steps}`]].filter(f => f[1]);
                 case 'CapabilityCompleteEvent':
-                    return [['capability', d.capability_name], ['success', d.success]].filter(f => f[1] !== undefined);
+                    return [['capability', d.capability_name], ['success', d.success], ['duration', d.duration_ms ? `${d.duration_ms}ms` : null]].filter(f => f[1] !== undefined && f[1] !== null);
+                case 'PhaseStartEvent':
+                    return [['phase', d.phase], ['description', d.description]].filter(f => f[1]);
+                case 'PhaseCompleteEvent':
+                    return [['phase', d.phase], ['success', d.success], ['duration', d.duration_ms ? `${d.duration_ms}ms` : null]].filter(f => f[1] !== undefined && f[1] !== null);
+                case 'CapabilitiesSelectedEvent':
+                    const caps = d.capability_names?.join(', ') || '';
+                    return [['capabilities', caps.length > 60 ? caps.slice(0, 60) + '...' : caps]].filter(f => f[1]);
+                case 'PlanCreatedEvent':
+                    return [['steps', d.steps ? `${d.steps.length} steps` : null]].filter(f => f[1]);
                 case 'TaskExtractedEvent':
                     return [['task', d.task]].filter(f => f[1]);
                 case 'ErrorEvent':

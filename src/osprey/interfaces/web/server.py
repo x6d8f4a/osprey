@@ -15,6 +15,7 @@ from pathlib import Path
 
 from osprey.events import parse_event, register_fallback_handler
 from osprey.utils.config import get_config_value
+from osprey.utils.rich_colors import init_terminal_colors
 
 from .event_handler import WebEventHandler
 
@@ -64,6 +65,9 @@ def create_app(
         Configured FastAPI application
     """
     _ensure_dependencies()
+
+    # Query terminal colors at startup (if TTY available)
+    init_terminal_colors()
 
     app = FastAPI(title=title)
 
