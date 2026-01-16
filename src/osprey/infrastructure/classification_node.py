@@ -568,7 +568,7 @@ async def select_capabilities(
         classification_config = get_classification_config()
         max_concurrent = classification_config["max_concurrent_classifications"]
 
-        logger.status(
+        logger.info(
             f"Classifying {len(remaining_capabilities)} capabilities with max {max_concurrent} concurrent requests"
         )
 
