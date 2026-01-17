@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.message import Message
 from textual.widgets import Collapsible, Static
 
 if TYPE_CHECKING:
@@ -1131,6 +1132,11 @@ class TodoUpdateStep(ProcessingStep):
     Handles deferred initialization if set_todos() is called before mount.
     """
 
+    class TodosRendered(Message):
+        """Posted when todos are fully rendered (for auto-scroll timing)."""
+
+        pass
+
     def __init__(self, **kwargs):
         """Initialize todo update step."""
         super().__init__("Update Todos", **kwargs)
@@ -1200,6 +1206,9 @@ class TodoUpdateStep(ProcessingStep):
         # Update styling
         self.remove_class("step-active")
         self.add_class("step-success")
+
+        # Notify parent that todos are rendered (for auto-scroll)
+        self.post_message(self.TodosRendered())
 
     def set_todos(self, steps: list[dict], step_states: list[str]) -> None:
         """Set the todo list content.

@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.containers import ScrollableContainer
 
-from osprey.interfaces.tui.widgets.blocks import ProcessingBlock
+from osprey.interfaces.tui.widgets.blocks import ProcessingBlock, TodoUpdateStep
 from osprey.interfaces.tui.widgets.debug import DebugBlock
 from osprey.interfaces.tui.widgets.messages import ChatMessage
 
@@ -54,6 +54,22 @@ class ChatDisplay(ScrollableContainer):
             self._debug_block.clear()
         self.add_message(user_query, "user")
 
+    def auto_scroll_if_at_bottom(self) -> None:
+        """Auto-scroll only if user is currently at or near the bottom.
+
+        This checks the current position at call time rather than tracking
+        scroll state continuously, which avoids performance issues.
+        """
+        # If no scrollable content, always scroll to end
+        if self.max_scroll_y <= 0:
+            self.scroll_end(animate=False)
+            return
+
+        # If user is near the bottom (within 5 units), scroll to end
+        # If user has scrolled up significantly, don't interrupt them
+        if self.scroll_y >= (self.max_scroll_y - 5):
+            self.scroll_end(animate=False)
+
     def get_or_create_debug_block(self) -> DebugBlock | None:
         """Get or create the debug block for event visualization.
 
@@ -67,7 +83,9 @@ class ChatDisplay(ScrollableContainer):
             self.scroll_end(animate=False)
         return self._debug_block
 
-    def add_message(self, content: str, role: str = "user", message_type: str = "") -> None:
+    def add_message(
+        self, content: str, role: str = "user", message_type: str = ""
+    ) -> None:
         """Add a message to the chat display.
 
         Args:
@@ -77,4 +95,10 @@ class ChatDisplay(ScrollableContainer):
         """
         message = ChatMessage(content, role, message_type=message_type)
         self.mount(message)
-        self.scroll_end(animate=False)
+        self.auto_scroll_if_at_bottom()
+
+    def on_todo_update_step_todos_rendered(
+        self, message: TodoUpdateStep.TodosRendered
+    ) -> None:
+        """Auto-scroll when TodoUpdateStep finishes rendering todos."""
+        self.auto_scroll_if_at_bottom()

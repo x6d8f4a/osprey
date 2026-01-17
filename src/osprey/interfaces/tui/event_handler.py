@@ -220,6 +220,7 @@ class TUIEventHandler:
 
             self.display.mount(block)
             block.set_active()
+            self.display.auto_scroll_if_at_bottom()
 
     async def _handle_phase_complete(
         self, phase: str, success: bool, duration_ms: int, component: str
@@ -348,6 +349,7 @@ class TUIEventHandler:
                 self.display._plan_step_states[step - 1] = "current"
 
             # Create TodoUpdateStep to show progress
+            # Note: auto_scroll is triggered by TodosRendered message when todos are rendered
             update_step = TodoUpdateStep()
             self.display.mount(update_step)
             update_step.set_todos(self.display._plan_steps, self.display._plan_step_states)
@@ -358,6 +360,7 @@ class TUIEventHandler:
         self.current_blocks[block_key] = block
         self.display.mount(block)
         block.set_active()
+        self.display.auto_scroll_if_at_bottom()
 
         # Track current capability context for log routing
         self._current_capability = name
