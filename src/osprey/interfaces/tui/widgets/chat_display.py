@@ -7,7 +7,10 @@ from typing import Any
 
 from textual.containers import ScrollableContainer
 
-from osprey.interfaces.tui.widgets.blocks import ProcessingBlock, TodoUpdateStep
+from osprey.interfaces.tui.widgets.blocks import (
+    ProcessingBlock,
+    TodoUpdateStep,
+)
 from osprey.interfaces.tui.widgets.debug import DebugBlock
 from osprey.interfaces.tui.widgets.messages import ChatMessage
 
@@ -53,6 +56,8 @@ class ChatDisplay(ScrollableContainer):
         if self._debug_block:
             self._debug_block.clear()
         self.add_message(user_query, "user")
+        # Force scroll to bottom on new query (reset scroll behavior)
+        self.scroll_end(animate=False)
 
     def auto_scroll_if_at_bottom(self) -> None:
         """Auto-scroll only if user is currently at or near the bottom.
