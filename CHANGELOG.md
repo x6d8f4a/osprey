@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Orchestration**: Context key validation in execution plans
+  - Validates that all input key references match actual context keys (existing or from earlier steps)
+  - Detects ordering errors where a step references a key created by a later step
+  - Triggers replanning (not reclassification) with helpful error context listing available keys
+  - New `InvalidContextKeyError` exception for distinguishing from capability hallucination
 - **Context**: Store task_objective metadata alongside capability context data (#108)
   - ContextManager now accepts optional `task_objective` parameter in `set_context()`
   - Metadata stored in `_meta` field, stripped before Pydantic validation
