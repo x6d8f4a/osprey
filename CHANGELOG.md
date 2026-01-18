@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-01-18
+
 ### Added
 - **CLI**: Add Claude Code skill for release workflow (`osprey claude install release-workflow`)
   - Custom SKILL.md wrapper with quick reference for version files and commands

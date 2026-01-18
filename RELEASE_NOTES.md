@@ -1,32 +1,32 @@
-# Osprey Framework - Latest Release (v0.10.5)
+# Osprey Framework - Latest Release (v0.10.6)
 
-**Bug Fixes & Provider Extensibility**
+**Context Validation & Chat History**
 
-## What's New in v0.10.5
+## What's New in v0.10.6
 
 ### Highlights
 
-- **TUI now works from PyPI installs** (#97) - Fixed missing `styles.tcss` in package
-- **LiteLLM provider extensibility** - Custom providers can integrate without modifying adapter code
-- **Public config API** (#103) - `load_config()` properly exported for channel finder integration
-- **Dev mode fix** (#86) - `osprey deploy up --dev` works when installed from PyPI
+- **Context key validation** - Orchestrator validates execution plans before running, catching invalid key references and ordering errors
+- **Chat history in orchestrator** (#111) - Follow-up queries like "use the same time range" now resolve correctly
+- **Task objective metadata** (#108) - Context entries track what they were created for, enabling intelligent reuse
+- **Release workflow skill** - Claude Code skill for guided release process
 
 ### Added
-- E2E test for LLM channel naming workflow (#103)
-
-### Changed
-- Update ALS Assistant reference to published paper (Phys. Rev. Res. **8**, L012017)
-- Decouple LiteLLM adapter from hardcoded provider checks
-  - Providers now declare LiteLLM routing via class attributes
-  - Structured output detection uses LiteLLM's `supports_response_schema()`
+- **CLI**: Add Claude Code skill for release workflow (`osprey claude install release-workflow`)
+  - Custom SKILL.md wrapper with quick reference for version files and commands
+  - Version consistency check command, pre-release testing steps, tag creation
+- **Orchestration**: Context key validation in execution plans
+  - Validates input key references match actual context keys
+  - Detects ordering errors (step references key from later step)
+  - New `InvalidContextKeyError` exception
+- **Context**: Store task_objective metadata alongside capability context data (#108)
+  - New helper methods: `get_context_metadata()`, `get_all_context_metadata()`
+  - Orchestrator prompt displays task_objective for each available context
 
 ### Fixed
-- **Packaging**: Include TUI `styles.tcss` in package data (#97)
-- **Channel Finder**: Fix `load_config` not defined error (#103)
-- **Deployment**: Fix `--dev` mode for non-editable installs (#86)
-- **Models**: Handle Python-style booleans in LLM JSON responses (#102)
-- **CLI**: Display full absolute paths for plot files (#96)
-- **CI**: Fix deploy-e2e test to test PR code with `--dev` mode
+- **Graph**: Propagate chat history to orchestrator and respond nodes (#111)
+  - Orchestrator now receives full conversation context when `task_depends_on_chat_history=True`
+- **Deployment**: Fix Claude Code config path resolution in pipelines container
 
 ---
 
