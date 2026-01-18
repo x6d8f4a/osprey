@@ -708,14 +708,6 @@ def setup_build_dir(template_path, config, container_cfg, dev_mode=False):
                 shutil.copy2(global_pyproject, repo_src_pyproject)
                 logger.debug(f"Copied user pyproject.toml to {repo_src_pyproject}")
 
-            # Copy Claude Code generator config if present
-            # This file contains phase definitions needed for code generation in containers
-            claude_config = "claude_generator_config.yml"
-            if os.path.exists(claude_config):
-                dst_claude_config = os.path.join(out_dir, claude_config)
-                shutil.copy2(claude_config, dst_claude_config)
-                logger.debug(f"Copied {claude_config} to {dst_claude_config}")
-
             # Copy local osprey for development override (only in dev mode)
             # This will override the PyPI osprey after standard installation
             if dev_mode:
@@ -832,6 +824,27 @@ def setup_build_dir(template_path, config, container_cfg, dev_mode=False):
 
             # Recursively adjust all src/ paths in the config
             adjust_src_paths_recursive(flattened_config, is_pipelines_service)
+
+            # Handle claude_config_path: copy the file and adjust path for pipelines
+            # The config explicitly specifies which file to use, so we copy exactly that
+            # and update the reference to match where we put it
+            claude_generators = (
+                flattened_config.get("execution", {}).get("generators", {}).get("claude_code", {})
+            )
+            claude_config_path = claude_generators.get("claude_config_path")
+            if claude_config_path and os.path.exists(claude_config_path):
+                # Copy the config file to build directory
+                filename = os.path.basename(claude_config_path)
+                dst_path = os.path.join(out_dir, filename)
+                shutil.copy2(claude_config_path, dst_path)
+                logger.debug(f"Copied {claude_config_path} to {dst_path}")
+
+                # Update path in config: pipelines needs absolute path, others use filename
+                if is_pipelines_service:
+                    claude_generators["claude_config_path"] = f"/pipelines/{filename}"
+                    logger.debug(f"Updated claude_config_path for pipelines: /pipelines/{filename}")
+                else:
+                    claude_generators["claude_config_path"] = filename
 
             config_yml_dst = os.path.join(out_dir, "config.yml")
             with open(config_yml_dst, "w") as f:

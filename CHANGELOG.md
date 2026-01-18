@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **Deployment**: Copy `claude_generator_config.yml` to pipelines container
-  - Config file with phase definitions wasn't being copied during `osprey deploy`
-  - Code generation worked in CLI but failed in container with "No phase definitions found"
-  - Build process now copies the config file alongside `requirements.txt` and `pyproject.toml`
+- **Deployment**: Fix Claude Code config path resolution in pipelines container
+  - Pipelines container has working directory `/app/` but files are mounted at `/pipelines/`
+  - Config file was copied but relative path `claude_generator_config.yml` couldn't be found
+  - Now reads `claude_config_path` from config, copies the file, and updates path to absolute `/pipelines/` for pipelines service
 
 ## [0.10.5] - 2026-01-16
 
