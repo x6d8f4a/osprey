@@ -18,6 +18,7 @@ Usage:
             await handler.handle(event)
 """
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from osprey.events import (
@@ -142,9 +143,14 @@ class TUIEventHandler:
 
             # Status updates (logs)
             case StatusEvent(
-                component=component, message=msg, level=level, phase=phase, step=step
+                component=component,
+                message=msg,
+                level=level,
+                phase=phase,
+                step=step,
+                timestamp=ts,
             ):
-                await self._handle_status(component, msg, level, phase, step)
+                await self._handle_status(component, msg, level, phase, step, ts)
 
             # Result events
             case ResultEvent(response=response, success=success):
@@ -440,7 +446,13 @@ class TUIEventHandler:
         self._current_step_number = None
 
     async def _handle_status(
-        self, component: str, message: str, level: str, phase: str | None, step: int | None
+        self,
+        component: str,
+        message: str,
+        level: str,
+        phase: str | None,
+        step: int | None,
+        timestamp: datetime | None = None,
     ) -> None:
         """Handle status event - add log to current block.
 
@@ -456,6 +468,7 @@ class TUIEventHandler:
             level: Log level (info, warning, error, success, etc.)
             phase: Current phase (if available)
             step: Current step number (if available)
+            timestamp: Event timestamp (if available)
         """
         block = None
 
@@ -506,7 +519,7 @@ class TUIEventHandler:
                 "info": None,
             }
             status = status_map.get(level)
-            block.add_log(message, status=status)
+            block.add_log(message, status=status, timestamp=timestamp)
 
             # Track last status/key_info message for meaningful capability results
             if level in ("status", "key_info"):

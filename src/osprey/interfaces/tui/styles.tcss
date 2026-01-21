@@ -661,9 +661,21 @@ LogViewer {
     scrollbar-size: 0 0;
 }
 
-#log-viewer-logs {
+/* LogEntry - horizontal layout for message + timestamp columns */
+LogEntry {
     width: 100%;
     height: auto;
+    layout: horizontal;
+}
+
+LogEntry .log-message {
+    width: 1fr;
+}
+
+LogEntry .log-timestamp {
+    width: auto;
+    min-width: 17;  /* "Jan 20 14:30:45" = 15 chars + padding */
+    text-align: right;
 }
 
 /* =============================================================================

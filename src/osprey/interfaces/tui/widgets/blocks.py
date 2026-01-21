@@ -1,6 +1,7 @@
 """Processing block widgets for the TUI."""
 
 import textwrap
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
@@ -50,7 +51,7 @@ class ProcessingBlock(Static):
         # Input preview for collapsible toggle
         self._input_preview: str = ""
         # LOG section - streaming messages for debugging
-        self._log_messages: list[tuple[str, str]] = []  # [(status, message), ...]
+        self._log_messages: list[tuple[str, str, datetime | None]] = []
         # Track if IN was populated from streaming (vs placeholder)
         self._input_set: bool = False
         # Data dict for extracted information (task, capabilities, steps, etc.)
@@ -306,15 +307,18 @@ class ProcessingBlock(Static):
         # DON'T stop breathing or change header indicator
         # Block remains "active" with breathing animation
 
-    def add_log(self, message: str, status: str = "status") -> None:
+    def add_log(
+        self, message: str, status: str = "status", timestamp: datetime | None = None
+    ) -> None:
         """Add a message to the LOG section.
 
         Args:
             message: The message text.
             status: The message status ('status', 'success', 'error', 'warning').
+            timestamp: Optional timestamp for the log entry.
         """
         if message:
-            self._log_messages.append((status, message))
+            self._log_messages.append((status, message, timestamp))
             self._update_log_display()
             # Track last error message for OUT section on block close
             if status == "error":
@@ -329,7 +333,8 @@ class ProcessingBlock(Static):
         if not self._log_messages:
             return ""
         lines = []
-        for msg_status, msg in self._log_messages:
+        for entry in self._log_messages:
+            msg_status, msg = entry[0], entry[1]
             # Map log_type to Textual CSS theme variables
             # These adapt automatically when theme changes
             color_map = {
@@ -515,6 +520,17 @@ class ProcessingStep(Static):
     Includes a "logs" link to view full log history in a modal.
     """
 
+    class LogAdded(Message):
+        """Posted when a new log is added to this step."""
+
+        def __init__(
+            self, status: str, message: str, timestamp: datetime | None
+        ) -> None:
+            super().__init__()
+            self.status = status
+            self.message = message
+            self.timestamp = timestamp
+
     # Same indicators as ProcessingBlock for consistency
     INDICATOR_PENDING = "·"
     INDICATOR_ACTIVE = "*"
@@ -540,8 +556,8 @@ class ProcessingStep(Static):
         # Breathing animation state
         self._breathing_timer = None
         self._breathing_index = 0
-        # Internal log storage (for debugging, not displayed)
-        self._log_messages: list[tuple[str, str]] = []
+        # Internal log storage (displayed via LogViewer modal)
+        self._log_messages: list[tuple[str, str, datetime | None]] = []
         # Data dict for extracted information
         self._data: dict[str, Any] = {}
         # Track if input was set (for compatibility)
@@ -778,15 +794,18 @@ class ProcessingStep(Static):
             output.set_content(output_msg)
             output.display = True
 
-    def add_log(self, message: str, status: str = "status") -> None:
+    def add_log(
+        self, message: str, status: str = "status", timestamp: datetime | None = None
+    ) -> None:
         """Store log message and show logs link on first log.
 
         Args:
             message: The message text.
             status: The message status.
+            timestamp: Optional timestamp for the log entry.
         """
         if message:
-            self._log_messages.append((status, message))
+            self._log_messages.append((status, message, timestamp))
             # Show logs link as soon as first log arrives
             if self._mounted and len(self._log_messages) == 1:
                 logs_link = self.query_one("#step-logs-link", LogsLink)
@@ -795,6 +814,8 @@ class ProcessingStep(Static):
             if status == "error":
                 self._output_message = message
                 self._last_error_msg = message
+            # Notify any listening LogViewer of the new log
+            self.post_message(self.LogAdded(status, message, timestamp))
 
     def _get_output_width(self) -> int:
         """Get the actual width available for output text wrapping.
