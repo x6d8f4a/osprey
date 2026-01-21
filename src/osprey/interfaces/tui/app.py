@@ -234,9 +234,8 @@ class OspreyTUI(App):
     def action_toggle_plan_progress(self) -> None:
         """Toggle the plan progress bar visibility."""
         progress_bar = self.query_one("#plan-progress", PlanProgressBar)
-        if progress_bar.has_plan():
-            progress_bar.display = not progress_bar.display
-            progress_bar.refresh()  # Force immediate UI update during streaming
+        progress_bar.display = not progress_bar.display
+        progress_bar.refresh()  # Force immediate UI update
 
     def action_exit_app(self) -> None:
         """Exit the application."""
@@ -814,9 +813,9 @@ class OspreyTUI(App):
             state: The final agent state.
             chat_display: The chat display to add the message to.
         """
-        # Hide the plan progress bar now that execution is complete
+        # Mark plan as complete and hide (keeps data for later viewing via Ctrl+O)
         progress_bar = self.query_one("#plan-progress", PlanProgressBar)
-        progress_bar.clear()
+        progress_bar.mark_complete()
 
         content = "(No response)"
         messages = state.get("messages", [])

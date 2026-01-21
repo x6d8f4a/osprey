@@ -48,6 +48,10 @@ class PlanProgressBar(Vertical):
         # Hide todo list initially (will be shown when set_plan is called)
         todo_list = self.query_one("#progress-todos", TodoList)
         todo_list.display = False
+        # Initialize header with empty state
+        header = self.query_one("#progress-header", Static)
+        hint = "[dim](Ctrl-O to hide)[/dim]"
+        header.update(f"Plan: No active plan  {hint}")
 
     def set_plan(self, steps: list[dict]) -> None:
         """Initialize with plan steps (all pending).
@@ -69,7 +73,7 @@ class PlanProgressBar(Vertical):
 
             # Update header
             header = self.query_one("#progress-header", Static)
-            hint = "[dim](Ctrl+O to hide)[/dim]"
+            hint = "[dim](Ctrl-O to hide)[/dim]"
             header.update(f"Plan: 0/{len(steps)} complete  {hint}")
 
         self.display = True  # Show the bar
@@ -98,7 +102,7 @@ class PlanProgressBar(Vertical):
         done = self._states.count("done")
         total = len(self._states)
         header = self.query_one("#progress-header", Static)
-        hint = "[dim](Ctrl+O to hide)[/dim]"
+        hint = "[dim](Ctrl-O to hide)[/dim]"
         header.update(f"Plan: {done}/{total} complete  {hint}")
 
         # Update todo list
@@ -111,13 +115,33 @@ class PlanProgressBar(Vertical):
             todo_list.update_states(self._states)
 
     def clear(self) -> None:
-        """Hide and reset after execution completes."""
+        """Hide and reset for new query (clears all data)."""
         self.display = False
         self._plan_steps = []
         self._states = []
         if self._mounted:
             todo_list = self.query_one("#progress-todos", TodoList)
             todo_list.display = False
+            # Update header to show empty state
+            header = self.query_one("#progress-header", Static)
+            hint = "[dim](Ctrl-O to hide)[/dim]"
+            header.update(f"Plan: No active plan  {hint}")
+        self.refresh()  # Force immediate UI update
+
+    def mark_complete(self) -> None:
+        """Mark all items as done and hide bar (keeps data for later viewing)."""
+        if self._plan_steps:
+            self._states = ["done"] * len(self._plan_steps)
+            if self._mounted:
+                # Update header to show finished state
+                total = len(self._plan_steps)
+                header = self.query_one("#progress-header", Static)
+                hint = "[dim](Ctrl-O to hide)[/dim]"
+                header.update(f"Plan: {total}/{total} complete ✓  {hint}")
+                # Update todo list states
+                todo_list = self.query_one("#progress-todos", TodoList)
+                todo_list.update_states(self._states)
+        self.display = False
         self.refresh()  # Force immediate UI update
 
     def has_plan(self) -> bool:

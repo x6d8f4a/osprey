@@ -33,6 +33,11 @@ class CommandPalette(ModalScreen[str | None]):
             "shortcut": "^l",
             "category": "Session",
         },
+        "toggle_plan_progress": {
+            "label": "Toggle plan",
+            "shortcut": "^o",
+            "category": "Session",
+        },
         "switch_theme": {
             "label": "Switch theme",
             "shortcut": "^t",
