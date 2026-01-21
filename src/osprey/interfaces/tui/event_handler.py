@@ -358,7 +358,7 @@ class TUIEventHandler:
             if step - 1 < len(self.display._plan_step_states):
                 self.display._plan_step_states[step - 1] = "current"
 
-            # Update floating progress bar in-place (instead of creating TodoUpdateStep)
+            # Update floating progress bar in-place
             try:
                 progress_bar = self.display.app.query_one("#plan-progress", PlanProgressBar)
                 progress_bar.update_progress(self.display._plan_step_states)

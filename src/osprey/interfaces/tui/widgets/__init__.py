@@ -15,7 +15,6 @@ from osprey.interfaces.tui.widgets.blocks import (
     TaskExtractionStep,
     TodoItem,
     TodoList,
-    TodoUpdateStep,
     WrappedLabel,
     WrappedStatic,
 )
@@ -54,7 +53,6 @@ __all__ = [
     "OrchestrationStep",
     "TodoItem",
     "TodoList",
-    "TodoUpdateStep",
     "ExecutionStep",
     "ChatDisplay",
     "ChatInput",

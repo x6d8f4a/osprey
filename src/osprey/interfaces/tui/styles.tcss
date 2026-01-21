@@ -558,29 +558,6 @@ OrchestrationStep {
     border: none;
 }
 
-/* =============================================================================
-   Todo Update Step (semi-step for showing todo list updates during execution)
-   ============================================================================= */
-
-TodoUpdateStep {
-    /* Same as ProcessingStep for now - can differentiate later */
-    width: 100%;
-    height: auto;
-    margin: 0 2 1 2;
-    padding: 0 2;
-    background: transparent;
-    border: none;
-}
-
-/* TodoUpdateStep should stay bright even when "success" - override ProcessingStep muted styling */
-TodoUpdateStep.step-success #step-title {
-    color: $text;
-}
-
-TodoUpdateStep.step-success #step-output {
-    color: $text;
-}
-
 /* ExecutionStep should stay bright even when "success" - capability results are important */
 ExecutionStep.step-success #step-title {
     color: $text;

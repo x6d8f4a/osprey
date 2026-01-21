@@ -7,10 +7,7 @@ from typing import Any
 
 from textual.containers import ScrollableContainer
 
-from osprey.interfaces.tui.widgets.blocks import (
-    ProcessingBlock,
-    TodoUpdateStep,
-)
+from osprey.interfaces.tui.widgets.blocks import ProcessingBlock
 from osprey.interfaces.tui.widgets.debug import DebugBlock
 from osprey.interfaces.tui.widgets.messages import ChatMessage
 
@@ -100,10 +97,4 @@ class ChatDisplay(ScrollableContainer):
         """
         message = ChatMessage(content, role, message_type=message_type)
         self.mount(message)
-        self.auto_scroll_if_at_bottom()
-
-    def on_todo_update_step_todos_rendered(
-        self, message: TodoUpdateStep.TodosRendered
-    ) -> None:
-        """Auto-scroll when TodoUpdateStep finishes rendering todos."""
         self.auto_scroll_if_at_bottom()
