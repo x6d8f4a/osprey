@@ -83,6 +83,15 @@ class LogViewer(ModalScreen[None]):
         """Check if log source supports live updates."""
         return not isinstance(self._log_source, list)
 
+    def on_mount(self) -> None:
+        """Register with app for direct log forwarding."""
+        self.app._active_log_viewer = self
+
+    def on_unmount(self) -> None:
+        """Unregister from app."""
+        if getattr(self.app, "_active_log_viewer", None) is self:
+            self.app._active_log_viewer = None
+
     def compose(self) -> ComposeResult:
         """Compose the log viewer layout."""
         with Container(id="log-viewer-container"):
@@ -99,31 +108,21 @@ class LogViewer(ModalScreen[None]):
                 id="log-viewer-footer",
             )
 
-    def on_processing_step_log_added(self, event: ProcessingStep.LogAdded) -> None:
-        """Handle new log from the source ProcessingStep.
+    def receive_log(self, status: str, message: str, timestamp: datetime | None) -> None:
+        """Receive a new log entry (called by App when forwarding messages).
 
-        Only processes logs from our specific log source to avoid
-        cross-contamination between multiple open log viewers.
+        Args:
+            status: The log status/level.
+            message: The log message.
+            timestamp: The log timestamp.
         """
-        # Import here to avoid circular import
-        from osprey.interfaces.tui.widgets.blocks import ProcessingStep
-
-        # Only process if this log came from our source
-        if self._is_live_source() and isinstance(self._log_source, ProcessingStep):
-            # Check if the message came from our log source
-            # Messages bubble up, so we check the sender
-            if event._sender is self._log_source:
-                ts_str = (
-                    f"[$text-disabled]{event.timestamp.strftime('%b %d %H:%M:%S')}[/$text-disabled]"
-                    if event.timestamp
-                    else ""
-                )
-                styled_msg = self._style_message(event.message, event.status)
-                try:
-                    content = self.query_one("#log-viewer-content", VerticalScroll)
-                    content.mount(LogEntry(styled_msg, ts_str))
-                except Exception:
-                    pass  # Widget may not exist during transitions
+        ts_str = timestamp.strftime("%b %d %H:%M:%S") if timestamp else ""
+        styled_msg = self._style_message(message, status)
+        try:
+            content = self.query_one("#log-viewer-content", VerticalScroll)
+            content.mount(LogEntry(styled_msg, ts_str))
+        except Exception:
+            pass  # Widget may not exist during transitions
 
     def _build_log_entries(self) -> list[LogEntry]:
         """Build LogEntry widgets from log data.
@@ -141,11 +140,8 @@ class LogViewer(ModalScreen[None]):
             timestamp = entry[2] if len(entry) > 2 else None
 
             # Format timestamp with date: "Jan 20 14:30:45"
-            ts_str = (
-                f"[$text-disabled]{timestamp.strftime('%b %d %H:%M:%S')}[/$text-disabled]"
-                if timestamp
-                else ""
-            )
+            # Color is applied via CSS on .log-timestamp class
+            ts_str = timestamp.strftime("%b %d %H:%M:%S") if timestamp else ""
 
             # Apply message styling
             styled_msg = self._style_message(msg, status)

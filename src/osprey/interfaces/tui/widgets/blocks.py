@@ -814,8 +814,10 @@ class ProcessingStep(Static):
             if status == "error":
                 self._output_message = message
                 self._last_error_msg = message
-            # Notify any listening LogViewer of the new log
-            self.post_message(self.LogAdded(status, message, timestamp))
+            # Direct call to registered LogViewer (if watching this step)
+            viewer = getattr(self.app, "_active_log_viewer", None)
+            if viewer is not None and viewer._log_source is self:
+                viewer.receive_log(status, message, timestamp)
 
     def _get_output_width(self) -> int:
         """Get the actual width available for output text wrapping.

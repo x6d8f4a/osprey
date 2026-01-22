@@ -676,6 +676,7 @@ LogEntry .log-timestamp {
     width: auto;
     min-width: 17;  /* "Jan 20 14:30:45" = 15 chars + padding */
     text-align: right;
+    color: $text-disabled;
 }
 
 /* =============================================================================
