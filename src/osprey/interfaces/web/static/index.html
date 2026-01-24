@@ -190,6 +190,86 @@
             gap: 8px;
         }
 
+        /* Streaming response area */
+        .streaming-response {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-alt);
+            display: none;
+        }
+        .streaming-response.active {
+            display: block;
+        }
+        .streaming-response-header {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .streaming-indicator {
+            width: 8px;
+            height: 8px;
+            background: #090;
+            border-radius: 50%;
+            animation: breathing 1s ease-in-out infinite;
+        }
+        .streaming-response.complete .streaming-indicator {
+            animation: none;
+        }
+        .streaming-response-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        /* Grouped token events */
+        .event-group {
+            margin-bottom: 4px;
+        }
+        .event-parent {
+            cursor: pointer;
+        }
+        .event-parent .toggle-icon {
+            display: inline-block;
+            width: 12px;
+            transition: transform 0.15s;
+        }
+        .event-parent.expanded .toggle-icon {
+            transform: rotate(90deg);
+        }
+        .event-children {
+            display: none;
+            margin-left: 20px;
+            border-left: 2px solid var(--border);
+            padding-left: 8px;
+        }
+        .event-parent.expanded + .event-children {
+            display: block;
+        }
+        .event-child {
+            padding: 2px 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+        .event-child:last-child {
+            border-bottom: none;
+        }
+        .event-child .token-content {
+            font-family: monospace;
+            background: var(--bg-alt);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+        .event-child .token-time {
+            float: right;
+            font-size: 11px;
+            color: var(--text-faint);
+        }
+
         /* Footer stats */
         .footer {
             padding: 6px 12px;
@@ -280,6 +360,14 @@
         <!-- Events appended here (latest at bottom) -->
     </div>
 
+    <div class="streaming-response" id="streamingResponse">
+        <div class="streaming-response-header">
+            <div class="streaming-indicator"></div>
+            <span>Response</span>
+        </div>
+        <div class="streaming-response-content" id="streamingContent"></div>
+    </div>
+
     <div class="footer">
         <span>Events: <strong id="eventCount">0</strong></span>
         <span>Filtered: <strong id="filteredCount">0</strong></span>
@@ -315,7 +403,12 @@
         const themeToggle = document.getElementById('themeToggle');
         const resetFiltersBtn = document.getElementById('resetFiltersBtn');
         const tooltip = document.getElementById('tooltip');
+        const streamingResponse = document.getElementById('streamingResponse');
+        const streamingContent = document.getElementById('streamingContent');
         let tooltipTimeout = null;
+
+        // Streaming session state for grouped token display
+        let currentStreamingSession = null;  // {parentEl, childrenEl, tokens: [], startTime, nodeName}
 
         // Theme toggle
         function initTheme() {
@@ -416,10 +509,30 @@
                 statusDot.classList.remove('connecting');
                 statusDot.classList.add('streaming');
                 statusText.textContent = 'Streaming...';
+                // Reset streaming response area for new execution
+                streamingResponse.classList.remove('active', 'complete');
+                streamingContent.textContent = '';
+                // Reset streaming session for grouped display
+                currentStreamingSession = null;
             } else if (data.type === 'execution_completed' || data.type === 'execution_error') {
                 statusDot.classList.remove('streaming', 'breathing');
                 statusDot.classList.add('connected');
                 statusText.textContent = 'Ready';
+                // Mark streaming as complete
+                if (streamingResponse.classList.contains('active')) {
+                    streamingResponse.classList.add('complete');
+                }
+                // Finalize streaming session group
+                if (currentStreamingSession) {
+                    finalizeStreamingSession();
+                }
+            } else if (data.type === 'streaming_token') {
+                // Update streaming response viewer with accumulated content
+                streamingResponse.classList.add('active');
+                streamingContent.textContent = data.accumulated_response || '';
+                // Add to grouped token display in timeline
+                handleStreamingToken(data);
+                return; // Don't add as individual event
             }
 
             if (matchesFilters(data)) {
@@ -427,6 +540,106 @@
                 timeline.scrollTop = timeline.scrollHeight;
             }
             updateFilteredCount();
+        }
+
+        // Handle streaming token for grouped display
+        function handleStreamingToken(data) {
+            const time = new Date(data.timestamp);
+
+            // Create new session on first token
+            if (!currentStreamingSession) {
+                currentStreamingSession = {
+                    tokens: [],
+                    startTime: time,
+                    nodeName: data.node_name || 'respond',
+                    parentEl: null,
+                    childrenEl: null
+                };
+                // Create parent event group in timeline
+                createStreamingGroup(data);
+            }
+
+            // Add token to session
+            currentStreamingSession.tokens.push({
+                content: data.token,
+                index: data.token_index,
+                time: time
+            });
+
+            // Add child token row
+            addTokenChild(data);
+
+            // Update parent summary
+            updateStreamingGroupSummary();
+        }
+
+        // Create the parent streaming group element
+        function createStreamingGroup(data) {
+            const group = document.createElement('div');
+            group.className = 'event-group';
+            group.innerHTML = `
+                <div class="event event-parent">
+                    <div class="event-row">
+                        <span class="toggle-icon">▶</span>
+                        <span class="event-tag">LLM Streaming</span>
+                        <span class="event-component" style="color: ${getComponentColor(data.node_name) || 'inherit'}">[${data.node_name || 'respond'}]</span>
+                        <span class="event-msg streaming-summary">Streaming...</span>
+                        <span class="event-time">${new Date(data.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                </div>
+                <div class="event-children"></div>
+            `;
+
+            const parentEl = group.querySelector('.event-parent');
+            const childrenEl = group.querySelector('.event-children');
+
+            parentEl.onclick = () => parentEl.classList.toggle('expanded');
+
+            currentStreamingSession.parentEl = parentEl;
+            currentStreamingSession.childrenEl = childrenEl;
+
+            timeline.appendChild(group);
+            timeline.scrollTop = timeline.scrollHeight;
+        }
+
+        // Add a token as child row
+        function addTokenChild(data) {
+            if (!currentStreamingSession || !currentStreamingSession.childrenEl) return;
+
+            const child = document.createElement('div');
+            child.className = 'event-child';
+            const displayToken = escapeHtml(data.token).replace(/\n/g, '↵').replace(/ /g, '·');
+            child.innerHTML = `
+                <span class="token-time">${new Date(data.timestamp).toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3})}</span>
+                Token ${data.token_index}: <span class="token-content">${displayToken}</span>
+            `;
+            currentStreamingSession.childrenEl.appendChild(child);
+        }
+
+        // Update parent summary with current stats
+        function updateStreamingGroupSummary() {
+            if (!currentStreamingSession || !currentStreamingSession.parentEl) return;
+
+            const summary = currentStreamingSession.parentEl.querySelector('.streaming-summary');
+            if (summary) {
+                summary.textContent = `${currentStreamingSession.tokens.length} tokens...`;
+            }
+        }
+
+        // Finalize streaming session with duration
+        function finalizeStreamingSession() {
+            if (!currentStreamingSession || !currentStreamingSession.parentEl) return;
+
+            const endTime = new Date();
+            const duration = ((endTime - currentStreamingSession.startTime) / 1000).toFixed(2);
+            const tokenCount = currentStreamingSession.tokens.length;
+
+            const summary = currentStreamingSession.parentEl.querySelector('.streaming-summary');
+            if (summary) {
+                summary.textContent = `${tokenCount} tokens in ${duration}s`;
+            }
+
+            currentStreamingSession = null;
         }
 
         // Check filters
@@ -622,6 +835,11 @@
             searchInput.value = '';
             typeFilterEl.innerHTML = '<option value="">All</option>';
             componentFilterEl.innerHTML = '<option value="">All</option>';
+            // Reset streaming response area
+            streamingResponse.classList.remove('active', 'complete');
+            streamingContent.textContent = '';
+            // Reset streaming session
+            currentStreamingSession = null;
         }
 
         // Export YAML

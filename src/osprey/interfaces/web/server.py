@@ -263,15 +263,43 @@ async def _execute_query(
         result = await gateway.process_message(query, graph, base_config)
 
         if result.agent_state:
+            from langchain_core.messages import AIMessageChunk
+
+            # Track accumulated response and token count for streaming
+            accumulated_response = ""
+            token_count = 0
+
             # 6. Stream events using properly prepared state (like CLI)
-            async for chunk in graph.astream(
+            # Use multi-mode streaming to get both typed events and LLM tokens
+            async for mode, chunk in graph.astream(
                 result.agent_state,
                 config=base_config,
-                stream_mode="custom"
+                stream_mode=["custom", "messages"]
             ):
-                event = parse_event(chunk)
-                if event:
-                    await handler.handle(event)
+                if mode == "custom":
+                    # Handle typed events as before
+                    event = parse_event(chunk)
+                    if event:
+                        await handler.handle(event)
+
+                elif mode == "messages":
+                    # Handle LLM token streaming
+                    message_chunk, _metadata = chunk
+                    # Only process AIMessageChunks (streaming tokens), skip full AIMessages
+                    if not isinstance(message_chunk, AIMessageChunk):
+                        continue
+                    if hasattr(message_chunk, "content") and message_chunk.content:
+                        token_count += 1
+                        accumulated_response += message_chunk.content
+                        # Send per-token data with metadata for grouped display
+                        await handler.websocket.send_json({
+                            "type": "streaming_token",
+                            "token": message_chunk.content,
+                            "accumulated_response": accumulated_response,
+                            "token_index": token_count,
+                            "node_name": _metadata.get("langgraph_node", "respond"),
+                            "timestamp": datetime.now().isoformat(),
+                        })
 
         # Send execution completed event
         await handler.websocket.send_json({
