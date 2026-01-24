@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from textual.containers import ScrollableContainer
+from textual.widgets import Markdown
 
-from osprey.interfaces.tui.widgets.blocks import ProcessingBlock
+from osprey.interfaces.tui.widgets.blocks import ExecutionStep, ProcessingBlock
 from osprey.interfaces.tui.widgets.debug import DebugBlock
-from osprey.interfaces.tui.widgets.messages import ChatMessage
+from osprey.interfaces.tui.widgets.messages import ChatMessage, StreamingChatMessage
+
+if TYPE_CHECKING:
+    from textual.widgets._markdown import MarkdownStream
 
 
 class ChatDisplay(ScrollableContainer):
@@ -36,6 +40,14 @@ class ChatDisplay(ScrollableContainer):
         # Plan progress tracking for flow-style updates
         self._plan_steps: list[dict] = []
         self._plan_step_states: list[str] = []
+        # Streaming message widget for LLM token streaming
+        self._streaming_message: StreamingChatMessage | None = None
+        # MarkdownStream for efficient buffered token streaming
+        self._markdown_stream: MarkdownStream | None = None
+        # Event signaling for respond block mount (synchronization)
+        self._respond_block_mounted: asyncio.Event = asyncio.Event()
+        # Debounced scroll timer for streaming
+        self._scroll_timer = None
 
     def start_new_query(self, user_query: str) -> None:
         """Reset blocks for a new query and add user message.
@@ -50,6 +62,10 @@ class ChatDisplay(ScrollableContainer):
         self._pending_messages = {}
         self._plan_steps = []
         self._plan_step_states = []
+        self._streaming_message = None  # Reset streaming state
+        self._markdown_stream = None  # Reset MarkdownStream
+        self._respond_block_mounted = asyncio.Event()  # Reset for new query
+        self._scroll_timer = None
         if self._debug_block:
             self._debug_block.clear()
         self.add_message(user_query, "user")
@@ -98,3 +114,100 @@ class ChatDisplay(ScrollableContainer):
         message = ChatMessage(content, role, message_type=message_type)
         self.mount(message)
         self.auto_scroll_if_at_bottom()
+
+    # --- Streaming Message Methods ---
+
+    def start_streaming_message(self) -> StreamingChatMessage:
+        """Create and mount a new streaming message widget with MarkdownStream.
+
+        Uses Textual's MarkdownStream for efficient buffered token streaming.
+        The stream batches rapid updates automatically and provides proper
+        lifecycle management via stream.stop().
+
+        Call this when the first LLM token arrives to start displaying
+        the streaming response.
+
+        Returns:
+            The newly created StreamingChatMessage widget.
+        """
+        self._streaming_message = StreamingChatMessage(role="assistant")
+        self.mount(self._streaming_message)
+        self.scroll_end(animate=False)
+        # NOTE: Don't get MarkdownStream here - compose() hasn't run yet!
+        # The Markdown widget is created in compose() which runs after mount().
+        # Stream is lazily initialized on first write in append_to_streaming_message().
+        return self._streaming_message
+
+    async def append_to_streaming_message(self, content: str) -> None:
+        """Append content to the streaming message using MarkdownStream.
+
+        Uses MarkdownStream's buffered write for efficient token handling.
+        The stream automatically batches rapid updates to prevent UI lag.
+
+        Args:
+            content: The text chunk to append (typically an LLM token).
+        """
+        if self._streaming_message:
+            # Lazy initialization of MarkdownStream
+            # By now compose() has run, so the Markdown widget exists
+            if self._markdown_stream is None:
+                try:
+                    md_widget = self._streaming_message.query_one(Markdown)
+                    self._markdown_stream = Markdown.get_stream(md_widget)
+                except Exception:
+                    pass
+
+            if self._markdown_stream:
+                await self._markdown_stream.write(content)
+                # Update content buffer for finalization styling
+                self._streaming_message._content_buffer.append(content)
+                # Debounce scroll - wait 50ms for more tokens before scrolling
+                # This prevents flooding Textual's render queue with scroll commands
+                if self._scroll_timer:
+                    self._scroll_timer.stop()
+                self._scroll_timer = self.set_timer(0.05, self._do_scroll)
+
+    def _do_scroll(self) -> None:
+        """Scroll to streaming message after debounce."""
+        self._scroll_timer = None
+        if self._streaming_message:
+            self.scroll_to_widget(self._streaming_message, animate=False)
+
+    async def finalize_streaming_message(self) -> None:
+        """Finalize the streaming message and wait for rendering to complete.
+
+        Awaits MarkdownStream.stop() which flushes the buffer and waits for
+        all widget rendering to complete. This ensures the full response is
+        visible before the final scroll.
+
+        Marks the streaming as complete and updates the widget styling.
+        Clears the internal reference to allow for future streaming messages.
+        """
+        if self._markdown_stream:
+            await self._markdown_stream.stop()  # Waits for render queue to flush
+            self._markdown_stream = None
+        if self._streaming_message:
+            self._streaming_message.finalize()
+            self._streaming_message = None
+        # Final scroll after all rendering is complete
+        self.auto_scroll_if_at_bottom()
+
+    def get_respond_execution_block(self) -> ExecutionStep | None:
+        """Find the LATEST respond capability's ExecutionStep block.
+
+        Searches mounted widgets for ExecutionSteps with capability='respond'
+        and returns the LAST one (most recent). This is important for follow-up
+        queries where multiple respond blocks exist in the DOM.
+
+        Returns:
+            The most recent respond ExecutionStep if found, None otherwise.
+        """
+        try:
+            last_block = None
+            for widget in self.query(ExecutionStep):
+                if widget.capability == "respond":
+                    last_block = widget  # Keep updating to find the latest
+            return last_block
+        except Exception:
+            pass
+        return None

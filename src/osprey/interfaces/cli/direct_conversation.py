@@ -614,13 +614,29 @@ class CLI:
                 # Create typed event handler for resume execution
                 handler = CLIEventHandler(console=self.console, verbose=self.show_streaming_updates)
 
-                async for chunk in self.graph.astream(
-                    result.resume_command, config=self.base_config, stream_mode="custom"
+                # Track if we've streamed LLM response tokens
+                streamed_response = False
+
+                async for mode, chunk in self.graph.astream(
+                    result.resume_command, config=self.base_config, stream_mode=["custom", "messages"]
                 ):
-                    # Parse and handle typed events
-                    event = parse_event(chunk)
-                    if event:
-                        await handler.handle(event)
+                    if mode == "custom":
+                        # Parse and handle typed events
+                        event = parse_event(chunk)
+                        if event:
+                            await handler.handle(event)
+                    elif mode == "messages":
+                        # Handle LLM token streaming
+                        message_chunk, _metadata = chunk
+                        if hasattr(message_chunk, "content") and message_chunk.content:
+                            if not streamed_response:
+                                self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                streamed_response = True
+                            print(message_chunk.content, end="", flush=True)
+
+                # Print newline after streaming completes
+                if streamed_response:
+                    print()
 
                 # After resuming, check if there are more interrupts or if execution completed
                 state = self.graph.get_state(config=self.base_config)
@@ -640,7 +656,7 @@ class CLI:
                     await self._process_user_input(user_input)
                 else:
                     # Execution completed successfully
-                    await self._show_final_result(state.values)
+                    await self._show_final_result(state.values, skip_text_response=streamed_response)
 
             except Exception as e:
                 self.console.print(f"[{Styles.ERROR}]❌ Resume error: {e}[/{Styles.ERROR}]")
@@ -729,16 +745,35 @@ class CLI:
             original_level = root_logger.level
             root_logger.setLevel(logging.WARNING)
 
+            # Track if we've streamed LLM response tokens
+            streamed_response = False
+
             try:
-                # Stream events and process through handler
-                async for chunk in self.graph.astream(
-                    input_data, config=self.base_config, stream_mode="custom"
+                # Stream events using multi-mode: custom events + LLM message tokens
+                # Both modes arrive through a single ordered stream with mode tags
+                async for mode, chunk in self.graph.astream(
+                    input_data, config=self.base_config, stream_mode=["custom", "messages"]
                 ):
-                    # Parse and handle typed events
-                    event = parse_event(chunk)
-                    if event:
-                        await handler.handle(event)
+                    if mode == "custom":
+                        # Parse and handle typed events
+                        event = parse_event(chunk)
+                        if event:
+                            await handler.handle(event)
+                    elif mode == "messages":
+                        # Handle LLM token streaming
+                        # chunk is a tuple (message_chunk, metadata)
+                        message_chunk, _metadata = chunk
+                        if hasattr(message_chunk, "content") and message_chunk.content:
+                            if not streamed_response:
+                                # Print header before first token
+                                self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                streamed_response = True
+                            # Print token directly to console (no newline, immediate flush)
+                            print(message_chunk.content, end="", flush=True)
             finally:
+                # Print newline after streaming completes
+                if streamed_response:
+                    print()  # End the streamed response line
                 # Restore original logging level
                 root_logger.setLevel(original_level)
 
@@ -779,13 +814,14 @@ class CLI:
                 return
 
             # No interrupt, show final result
-            await self._show_final_result(state.values)
+            # Skip text response if we already streamed it
+            await self._show_final_result(state.values, skip_text_response=streamed_response)
 
         except Exception as e:
             self.console.print(f"[{Styles.ERROR}]❌ Execution error: {e}[/{Styles.ERROR}]")
             logger.exception("Error during graph execution")
 
-    async def _show_final_result(self, result: dict[str, Any]):
+    async def _show_final_result(self, result: dict[str, Any], skip_text_response: bool = False):
         """Display the final result from agent graph execution with figures, commands, and notebooks.
 
         Extracts and displays the final response from the completed agent
@@ -795,7 +831,7 @@ class CLI:
 
         Result Processing:
         1. Extract execution step results for debugging information
-        2. Search messages list for the latest AI response
+        2. Search messages list for the latest AI response (unless skip_text_response)
         3. Filter out human messages to find agent responses
         4. Display formatted response or fallback completion message
         5. Extract and display generated figures with file paths
@@ -809,6 +845,9 @@ class CLI:
 
         :param result: Complete agent state containing messages and execution data
         :type result: dict[str, Any]
+        :param skip_text_response: If True, skip displaying the text response
+            (used when response was already streamed to console)
+        :type skip_text_response: bool
 
         .. note::
            The method displays execution step count for debugging purposes,
@@ -856,21 +895,22 @@ class CLI:
             f"[system]📊 Execution completed (execution_step_results: {len(step_results)} records)[/system]"
         )
 
-        # Extract and display the main text response
+        # Extract and display the main text response (skip if already streamed)
         text_response = None
-        messages = result.get("messages", [])
-        if messages:
-            # Get the latest AI message
-            for msg in reversed(messages):
-                if hasattr(msg, "content") and msg.content:
-                    if not hasattr(msg, "type") or msg.type != "human":
-                        text_response = msg.content
-                        self.console.print(f"[system]🤖 {msg.content}[/system]")
-                        break
+        if not skip_text_response:
+            messages = result.get("messages", [])
+            if messages:
+                # Get the latest AI message
+                for msg in reversed(messages):
+                    if hasattr(msg, "content") and msg.content:
+                        if not hasattr(msg, "type") or msg.type != "human":
+                            text_response = msg.content
+                            self.console.print(f"[system]🤖 {msg.content}[/system]")
+                            break
 
-        if not text_response:
-            # Fallback if no messages found
-            self.console.print("[system]✅ Execution completed[/system]")
+            if not text_response:
+                # Fallback if no messages found
+                self.console.print("[system]✅ Execution completed[/system]")
 
         # Extract and display additional content
         figures_output = self._extract_figures_for_cli(result)

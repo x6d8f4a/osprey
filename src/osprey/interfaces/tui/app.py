@@ -7,6 +7,7 @@ import asyncio
 import uuid
 from typing import Any
 
+from langchain_core.messages import AIMessageChunk
 from langgraph.checkpoint.memory import MemorySaver
 from textual import work
 from textual.app import App, ComposeResult
@@ -687,18 +688,62 @@ class OspreyTUI(App):
             # Start event consumer before streaming
             consumer_task = asyncio.create_task(self._consume_events(user_input, chat_display))
 
+            # Track if we've streamed LLM response tokens (to avoid duplicate display)
+            streamed_response = False
+
             try:
-                # Stream events to queue (consumer processes them)
-                async for chunk in self.graph.astream(
+                # Stream events using multi-mode: custom events + LLM message tokens
+                # Both modes arrive through a single ordered stream with mode tags
+                async for mode, chunk in self.graph.astream(
                     input_data,
                     config=self.base_config,
-                    stream_mode="custom",
+                    stream_mode=["custom", "messages"],
                 ):
-                    await chat_display._event_queue.put(chunk)
+                    if mode == "custom":
+                        # Route typed events to the event queue for processing
+                        await chat_display._event_queue.put(chunk)
+                    elif mode == "messages":
+                        # Handle LLM token streaming
+                        # chunk is a tuple (message_chunk, metadata)
+                        message_chunk, _metadata = chunk
+                        # Only process AIMessageChunks (streaming tokens), skip full AIMessages
+                        # (LangGraph yields both: chunks during streaming, then full message on return)
+                        if not isinstance(message_chunk, AIMessageChunk):
+                            continue
+                        if hasattr(message_chunk, "content") and message_chunk.content:
+                            # Start streaming message widget if not already started
+                            if not streamed_response:
+                                # Hide progress bar when streaming starts
+                                progress_bar = self.query_one("#plan-progress", PlanProgressBar)
+                                progress_bar.mark_complete()
+                                # Wait for respond block to be mounted (event signaling)
+                                # This is more reliable than arbitrary sleep
+                                try:
+                                    await asyncio.wait_for(
+                                        chat_display._respond_block_mounted.wait(), timeout=0.2
+                                    )
+                                except asyncio.TimeoutError:
+                                    pass  # Proceed anyway, just won't update block status
+                                # Update respond block to show streaming status
+                                respond_block = chat_display.get_respond_execution_block()
+                                if respond_block:
+                                    respond_block.set_partial_output("Response streaming...")
+                                chat_display.start_streaming_message()
+                                streamed_response = True
+                            # Append token to streaming message (async for MarkdownStream)
+                            await chat_display.append_to_streaming_message(message_chunk.content)
 
                 # Wait for queue to be fully processed
                 await chat_display._event_queue.join()
             finally:
+                # Finalize streaming message if we were streaming
+                if streamed_response:
+                    # Update respond block status
+                    respond_block = chat_display.get_respond_execution_block()
+                    if respond_block:
+                        respond_block.set_complete("success", "Response generated")
+                    # Await finalization - stream.stop() waits for all rendering
+                    await chat_display.finalize_streaming_message()
                 # Cancel consumer when done
                 consumer_task.cancel()
                 try:
@@ -724,8 +769,10 @@ class OspreyTUI(App):
                 )
                 return
 
-            # Show final response
-            self._show_final_response(state.values, chat_display)
+            # Show final response only if we didn't stream it
+            # (streaming already displayed the response incrementally)
+            if not streamed_response:
+                self._show_final_response(state.values, chat_display)
 
         except Exception as e:
             chat_display.add_message(f"Error: {e}", "assistant", message_type="agent")

@@ -26,3 +26,35 @@ class ChatMessage(Static):
     def compose(self) -> ComposeResult:
         """Compose the message with content."""
         yield Markdown(self.message_content, classes="message-content")
+
+
+class StreamingChatMessage(ChatMessage):
+    """A chat message that supports incremental streaming updates.
+
+    This widget displays LLM response tokens as they arrive, providing
+    real-time feedback to users during response generation. Uses MarkdownStream
+    for efficient buffered token handling (see chat_display.py).
+    """
+
+    def __init__(self, role: str = "assistant", **kwargs):
+        """Initialize a streaming chat message.
+
+        Args:
+            role: The role (typically 'assistant' for streaming responses).
+        """
+        # Initialize with empty content and 'streaming' message type
+        super().__init__("", role, message_type="streaming", **kwargs)
+        self._content_buffer: list[str] = []
+
+    def compose(self) -> ComposeResult:
+        """Compose the message with an empty Markdown widget for streaming updates."""
+        yield Markdown("", classes="message-content")
+
+    def finalize(self) -> None:
+        """Mark streaming as complete and update styling.
+
+        Removes the 'streaming' style class and adds the 'agent' class
+        for final message appearance.
+        """
+        self.remove_class("message-type-streaming")
+        self.add_class("message-type-agent")

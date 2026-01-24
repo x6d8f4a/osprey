@@ -379,6 +379,10 @@ class TUIEventHandler:
         block.set_active()
         self.display.auto_scroll_if_at_bottom()
 
+        # Signal that respond block is ready (for streaming synchronization)
+        if name == "respond" and hasattr(self.display, "_respond_block_mounted"):
+            self.display._respond_block_mounted.set()
+
         # Track current capability context for log routing
         self._current_capability = name
         self._current_step_number = step

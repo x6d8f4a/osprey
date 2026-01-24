@@ -1231,6 +1231,21 @@ class ExecutionStep(ProcessingStep):
         self.remove_class("step-active")
         self.add_class(f"step-{status}")
 
+    def set_partial_output(self, text: str, status: str = "pending") -> None:
+        """Show partial output while block is still active (keeps breathing).
+
+        Unlike set_output()/set_complete(), this doesn't mark the block as complete.
+        Used for real-time status updates during streaming (e.g., "Response streaming...").
+
+        Args:
+            text: The output text to display.
+            status: The status for styling (ignored, block stays active).
+        """
+        if self._mounted and text:
+            output = self.query_one("#step-output", WrappedStatic)
+            output.set_content(text)
+            output.display = True
+
     def set_llm_prompt(self, prompt: str | dict[str, str]) -> None:
         """Override to mark as smart/infrastructure step."""
         super().set_llm_prompt(prompt)
