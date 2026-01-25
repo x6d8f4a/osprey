@@ -298,6 +298,7 @@ async def _execute_query(
                             "accumulated_response": accumulated_response,
                             "token_index": token_count,
                             "node_name": _metadata.get("langgraph_node", "respond"),
+                            "session_id": thread_id,
                             "timestamp": datetime.now().isoformat(),
                         })
 
