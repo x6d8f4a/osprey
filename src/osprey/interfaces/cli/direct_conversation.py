@@ -618,13 +618,17 @@ class CLI:
                 # Track if we've streamed LLM response tokens
                 streamed_response = False
 
-                async for mode, chunk in self.graph.astream(
+                async for ns, mode, chunk in self.graph.astream(
                     result.resume_command,
                     config=self.base_config,
-                    stream_mode=["custom", "messages"],
+                    stream_mode=["custom", "messages", "updates"],
                     subgraphs=True,
                 ):
-                    if mode == "custom":
+                    if mode == "updates":
+                        # Skip state updates - CLI doesn't need retry tracking UI
+                        continue
+
+                    elif mode == "custom":
                         # Parse and handle typed events
                         event = parse_event(chunk)
                         if event:
@@ -764,15 +768,21 @@ class CLI:
             streamed_response = False
 
             try:
-                # Stream events using multi-mode: custom events + LLM message tokens
-                # Both modes arrive through a single ordered stream with mode tags
-                async for mode, chunk in self.graph.astream(
+                # Stream events using multi-mode: custom events + LLM message tokens + state updates
+                # All modes arrive through a single ordered stream with mode tags
+                # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
+                # "updates" mode enables tracking state changes like generation_attempt for retry distinction
+                async for ns, mode, chunk in self.graph.astream(
                     input_data,
                     config=self.base_config,
-                    stream_mode=["custom", "messages"],
+                    stream_mode=["custom", "messages", "updates"],
                     subgraphs=True,
                 ):
-                    if mode == "custom":
+                    if mode == "updates":
+                        # Skip state updates - CLI doesn't need retry tracking UI
+                        continue
+
+                    elif mode == "custom":
                         # Parse and handle typed events
                         event = parse_event(chunk)
                         if event:

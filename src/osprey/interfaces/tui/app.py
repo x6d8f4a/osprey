@@ -690,17 +690,29 @@ class OspreyTUI(App):
 
             # Track if we've streamed LLM response tokens (to avoid duplicate display)
             streamed_response = False
+            # Track retry attempts from state updates
+            current_generation_attempt = 1
 
             try:
-                # Stream events using multi-mode: custom events + LLM message tokens
-                # Both modes arrive through a single ordered stream with mode tags
-                async for mode, chunk in self.graph.astream(
+                # Stream events using multi-mode: custom events + LLM message tokens + state updates
+                # All modes arrive through a single ordered stream with mode tags
+                # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
+                # "updates" mode enables tracking state changes like generation_attempt for retry distinction
+                async for ns, mode, chunk in self.graph.astream(
                     input_data,
                     config=self.base_config,
-                    stream_mode=["custom", "messages"],
+                    stream_mode=["custom", "messages", "updates"],
                     subgraphs=True,
                 ):
-                    if mode == "custom":
+                    if mode == "updates":
+                        # Track state changes for retry attempt distinction
+                        # generation_attempt is incremented by generator node on each retry
+                        if isinstance(chunk, dict) and "generation_attempt" in chunk:
+                            current_generation_attempt = chunk["generation_attempt"]
+                        # Skip updates - TUI doesn't display retry attempts separately yet
+                        continue
+
+                    elif mode == "custom":
                         # Route typed events to the event queue for processing
                         await chat_display._event_queue.put(chunk)
 
