@@ -268,17 +268,27 @@ async def _execute_query(
             # Track accumulated response and token count for streaming
             accumulated_response = ""
             token_count = 0
+            current_generation_attempt = 1  # Track retry attempts from state updates
 
             # 6. Stream events using properly prepared state (like CLI)
             # Use multi-mode streaming to get both typed events and LLM tokens
             # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
+            # "updates" mode enables tracking state changes like generation_attempt for retry distinction
             async for ns, mode, chunk in graph.astream(
                 result.agent_state,
                 config=base_config,
-                stream_mode=["custom", "messages"],
+                stream_mode=["custom", "messages", "updates"],
                 subgraphs=True,
             ):
-                if mode == "custom":
+                if mode == "updates":
+                    # Track state changes for retry attempt distinction
+                    # generation_attempt is incremented by generator node on each retry
+                    if isinstance(chunk, dict) and "generation_attempt" in chunk:
+                        current_generation_attempt = chunk["generation_attempt"]
+                    # Don't send updates to client - just track internally
+                    continue
+
+                elif mode == "custom":
                     # Handle typed events
                     event = parse_event(chunk)
                     if event:
@@ -294,6 +304,7 @@ async def _execute_query(
                         token_count += 1
                         accumulated_response += message_chunk.content
                         # Send per-token data with metadata for grouped display
+                        # Include generation_attempt for retry distinction
                         await handler.websocket.send_json({
                             "type": "streaming_token",
                             "token": message_chunk.content,
@@ -302,6 +313,7 @@ async def _execute_query(
                             "node_name": _metadata.get("langgraph_node", "respond"),
                             "session_id": thread_id,
                             "timestamp": datetime.now().isoformat(),
+                            "generation_attempt": current_generation_attempt,
                         })
 
         # Send execution completed event

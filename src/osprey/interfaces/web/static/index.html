@@ -240,7 +240,7 @@
       .streaming-response {
         border-top: 1px solid var(--border);
         background: var(--bg-alt);
-        padding: 12px;
+        padding: 4px 12px 12px 12px;
         display: none;
         /* Use min/max height for flexible sizing */
         min-height: 150px;
@@ -344,13 +344,38 @@
       }
 
       /* Streaming tabs */
-      .streaming-tabs {
+      /* Container for tabs + close button (flex container, not scrollable) */
+      .streaming-tabs-container {
         display: flex;
+        align-items: center; /* Vertically align tabs and button */
         gap: 4px;
         border-bottom: 1px solid var(--border);
         padding-bottom: 4px;
         margin-bottom: 8px;
-        flex-wrap: wrap;
+      }
+      /* Tabs area (scrollable) */
+      .streaming-tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: nowrap; /* Don't wrap tabs */
+        overflow-x: auto; /* Horizontal scrolling */
+        overflow-y: hidden;
+        flex: 1; /* Take remaining space */
+        scrollbar-width: thin; /* Firefox */
+      }
+      /* Webkit scrollbar styling for tabs */
+      .streaming-tabs::-webkit-scrollbar {
+        height: 6px;
+      }
+      .streaming-tabs::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      .streaming-tabs::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+      .streaming-tabs::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
       }
       .streaming-tab {
         padding: 4px 12px;
@@ -360,11 +385,34 @@
         border-radius: 4px 4px 0 0;
         background: var(--bg);
         color: var(--text-muted);
+        flex-shrink: 0; /* Prevent tabs from shrinking */
+        white-space: nowrap; /* Prevent text from wrapping inside tab */
       }
       .streaming-tab.active {
         background: var(--bg-alt);
         color: var(--text);
         border-bottom-color: var(--bg-alt);
+      }
+      /* Close button for streaming viewer (fixed on right) */
+      .streaming-close-btn {
+        flex-shrink: 0; /* Don't shrink */
+        width: 24px;
+        height: 24px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--text-muted);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .streaming-close-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text);
       }
       .streaming-tab-panel {
         display: none;
@@ -529,8 +577,17 @@
     </div>
 
     <div class="streaming-response" id="streamingResponse">
-      <div class="streaming-tabs" id="streamingTabs">
-        <!-- Tabs will be added dynamically -->
+      <div class="streaming-tabs-container">
+        <div class="streaming-tabs" id="streamingTabs">
+          <!-- Tabs will be added dynamically -->
+        </div>
+        <button
+          class="streaming-close-btn"
+          id="streamingCloseBtn"
+          title="Close streaming viewer"
+        >
+          ×
+        </button>
       </div>
       <div class="streaming-tab-content" id="streamingTabContent">
         <!-- Tab content panels will be added dynamically -->
@@ -733,8 +790,10 @@
         const sessionId = data.session_id || "default";
         const nodeName = data.node_name || "respond";
 
-        // Key by BOTH session and node for separate groups per component
-        const groupKey = `${sessionId}_${nodeName}`;
+        // Key by session, node, AND attempt for retry distinction
+        // Each retry attempt (generation_attempt 1, 2, 3...) gets its own tab
+        const attempt = data.generation_attempt || 1; // Default to 1 for respond node
+        const groupKey = `${sessionId}_${nodeName}_attempt${attempt}`;
 
         // Create new session on first token OR if group changed (new query or different component)
         if (
@@ -764,10 +823,11 @@
           // Create tab for new streaming group (keyed by groupKey)
           createStreamingTab(groupKey, nodeName);
 
-          // Auto-show viewer unless user has hidden it
-          if (!streamingViewerHidden) {
-            streamingResponse.classList.add("active");
-          }
+          // Always auto-show viewer when streaming starts (ignore previous close action)
+          // This is a debug tool - developers need to see streaming if it's happening
+          streamingViewerHidden = false; // Reset hidden state
+          streamingResponse.classList.add("active");
+          streamingToggle.style.display = "none"; // Hide footer button when auto-shown
         }
 
         // Add token to session
@@ -1179,10 +1239,11 @@ Raw structure:
         // Process events in order
         for (const event of events) {
           if (event.type === "streaming_token") {
-            // Build groupKey for this token
+            // Build groupKey for this token (including attempt for retry distinction)
             const sessionId = event.session_id || "default";
             const nodeName = event.node_name || "respond";
-            const groupKey = `${sessionId}_${nodeName}`;
+            const attempt = event.generation_attempt || 1;
+            const groupKey = `${sessionId}_${nodeName}_attempt${attempt}`;
 
             // Only render each group once (when we hit its first token)
             if (!renderedGroups.has(groupKey)) {
@@ -1649,10 +1710,14 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
         const tabsContainer = document.getElementById("streamingTabs");
         const contentContainer = document.getElementById("streamingTabContent");
 
-        // Create tab button with component name
+        // Create tab button with component name and attempt number
         const tab = document.createElement("div");
         tab.className = "streaming-tab";
-        tab.textContent = `[${nodeName}]`;
+        // Extract attempt number from groupKey for display
+        const attemptNum = groupKey.match(/attempt(\d+)$/)?.[1];
+        tab.textContent = attemptNum
+          ? `[${nodeName}] #${attemptNum}`
+          : `[${nodeName}]`;
         tab.onclick = () => activateStreamingTab(groupKey);
 
         // Create content panel
@@ -1705,7 +1770,9 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
 
           // Auto-scroll to bottom to show latest text
           // The scrollable container is #streamingTabContent (.streaming-tab-content)
-          const tabContentContainer = document.getElementById("streamingTabContent");
+          const tabContentContainer = document.getElementById(
+            "streamingTabContent",
+          );
           tabContentContainer.scrollTop = tabContentContainer.scrollHeight;
         }
       }
@@ -1746,9 +1813,19 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
         streamingViewerHidden = !streamingViewerHidden;
         if (streamingViewerHidden) {
           streamingResponse.classList.remove("active");
+          streamingToggle.style.display = "inline"; // Show footer button
         } else if (Object.keys(streamingTabs).length > 0) {
           streamingResponse.classList.add("active");
+          streamingToggle.style.display = "none"; // Hide footer button
         }
+      };
+
+      // Close button for streaming viewer
+      const streamingCloseBtn = document.getElementById("streamingCloseBtn");
+      streamingCloseBtn.onclick = () => {
+        streamingViewerHidden = true;
+        streamingResponse.classList.remove("active");
+        streamingToggle.style.display = "inline"; // Show footer button when closed
       };
 
       // Event listeners
