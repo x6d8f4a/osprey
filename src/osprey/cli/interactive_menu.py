@@ -2581,6 +2581,23 @@ def show_generate_help():
     )
     console.print()
 
+    # soft-ioc option
+    console.print(
+        f"[{Styles.HEADER}][→] soft-ioc - Simulated control system for development[/{Styles.HEADER}]"
+    )
+    console.print()
+    console.print("  • Generates caproto-based EPICS soft IOC from channel database")
+    console.print("  • Uses channel database from your channel_finder config")
+    console.print("  • Auto-detects PV types and access modes from naming conventions")
+    console.print("  • Supports mock_style (simulated values) or passthrough backends")
+    console.print(
+        f"  • Ready to run: just [{Styles.VALUE}]pip install caproto && python <ioc>.py[/{Styles.VALUE}]"
+    )
+    console.print(
+        f"  • [{Styles.DIM}]Perfect for: Testing without real hardware, development mode[/{Styles.DIM}]"
+    )
+    console.print()
+
     input("Press ENTER to continue...")
 
 
@@ -2645,6 +2662,10 @@ def show_generate_menu() -> str | None:
             Choice(
                 "[→] claude-config  - Claude Code generator configuration",
                 value="generate_claude_config",
+            ),
+            Choice(
+                "[→] soft-ioc       - Simulated control system for development",
+                value="generate_soft_ioc",
             ),
             Choice("─" * 60, value=None, disabled=True),
             Choice("[?] help           - Detailed descriptions and usage guide", value="show_help"),
@@ -2976,6 +2997,8 @@ def handle_generate_action():
             handle_generate_mcp_server()
         elif action == "generate_claude_config":
             handle_generate_claude_config()
+        elif action == "generate_soft_ioc":
+            handle_generate_soft_ioc()
         elif action == "show_help":
             show_generate_help()
             # Loop continues - returns to generate menu after help
@@ -3340,6 +3363,71 @@ def handle_generate_claude_config():
         console.print(f"[dim]{traceback.format_exc()}[/dim]")
         console.print()
         input("Press ENTER to continue...")
+
+
+def handle_generate_soft_ioc():
+    """Handle interactive soft IOC generation."""
+    console.clear()
+    console.print(f"\n{Messages.header('Generate Soft IOC')}\n")
+    console.print("[dim]Creates a simulated control system from your channel database[/dim]\n")
+
+    from pathlib import Path
+
+    import click
+
+    from osprey.cli.generate_cmd import soft_ioc
+
+    # Check for config.yml
+    config_path = Path.cwd() / "config.yml"
+    if not config_path.exists():
+        console.print(f"\n{Messages.error('No config.yml found in current directory')}")
+        console.print()
+        console.print("  Run [accent]osprey init[/accent] to create a project first.")
+        console.print()
+        input("Press ENTER to continue...")
+        return
+
+    # Ask about options
+    use_init = questionary.confirm(
+        "Run interactive setup wizard?",
+        default=True,
+        style=custom_style,
+    ).ask()
+
+    if use_init is None:
+        return
+
+    dry_run = questionary.confirm(
+        "Dry-run mode (preview without writing files)?",
+        default=False,
+        style=custom_style,
+    ).ask()
+
+    if dry_run is None:
+        return
+
+    try:
+        # Build CLI args
+        args = []
+        if use_init:
+            args.append("--init")
+        if dry_run:
+            args.append("--dry-run")
+
+        # Invoke the command
+        ctx = click.Context(soft_ioc)
+        ctx.invoke(soft_ioc, config_path=None, output_file=None, dry_run=dry_run, init=use_init)
+
+    except click.Abort:
+        pass
+    except Exception as e:
+        console.print(f"\n{Messages.error(f'Generation failed: {e}')}")
+        import traceback
+
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
+
+    console.print()
+    input("Press ENTER to continue...")
 
 
 # ============================================================================

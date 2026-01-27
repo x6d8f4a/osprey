@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dependencies**: Add `caproto` to core dependencies for soft IOC generation
+- **CLI**: Add `osprey generate soft-ioc` command for generating Python soft IOCs
+  - Generates caproto-based EPICS soft IOCs from channel databases
+  - Supports all 4 channel database types (flat, template, hierarchical, middle_layer)
+  - Auto-detects database type, infers PV types and access modes from naming conventions
+  - Two simulation backends: `passthrough` (no-op) and `mock_style` (archiver-like behavior)
+  - Optional SP/RB pairings file for setpoint-readback tracking with noise
+  - Dry-run mode for previewing generation without writing files
+  - `--init` flag for interactive simulation config setup (uses channel database from `channel_finder` config)
+  - Auto-offers interactive setup when `simulation:` section is missing from config.yml
 - **Connectors**: Add unit tests for `EPICSArchiverConnector`
   - 26 tests covering connect/disconnect, get_data, error handling, metadata, and factory integration
   - Mock fixtures matching real `archivertools` library format (secs/nanos columns)
