@@ -1425,11 +1425,11 @@ Raw structure:
           (e) => e.type !== "streaming_token" && matchesFilters(e),
         ).length;
 
-        // Count streaming groups that match filters (1 per group = session + component)
+        // Count individual streaming tokens that match filters
         const filteringForStreaming = typeFilter === "LLM Streaming";
         const hasSearch = searchText.trim().length > 0;
 
-        let streamingGroupCount = 0;
+        let streamingTokenCount = 0;
         completedStreamingSessions.forEach((session) => {
           // Check component filter
           const matchesCompFilter =
@@ -1439,19 +1439,21 @@ Raw structure:
           if ((filteringForStreaming || !typeFilter) && matchesCompFilter) {
             // Check search filter
             if (hasSearch) {
-              const hasMatch = session.tokens.some((t) =>
+              // Count only tokens that match the search text
+              const matchingTokens = session.tokens.filter((t) =>
                 (t.token || t.content || "")
                   .toLowerCase()
                   .includes(searchText.toLowerCase()),
               );
-              if (hasMatch) streamingGroupCount++;
+              streamingTokenCount += matchingTokens.length;
             } else {
-              streamingGroupCount++;
+              // No search filter - count all tokens in this session
+              streamingTokenCount += session.tokens.length;
             }
           }
         });
 
-        filteredCount.textContent = nonStreamingCount + streamingGroupCount;
+        filteredCount.textContent = nonStreamingCount + streamingTokenCount;
       }
 
       // Execute
