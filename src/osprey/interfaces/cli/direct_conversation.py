@@ -619,7 +619,10 @@ class CLI:
                 streamed_response = False
 
                 async for mode, chunk in self.graph.astream(
-                    result.resume_command, config=self.base_config, stream_mode=["custom", "messages"]
+                    result.resume_command,
+                    config=self.base_config,
+                    stream_mode=["custom", "messages"],
+                    subgraphs=True,
                 ):
                     if mode == "custom":
                         # Parse and handle typed events
@@ -628,16 +631,22 @@ class CLI:
                             await handler.handle(event)
                     elif mode == "messages":
                         # Handle LLM token streaming
-                        message_chunk, _metadata = chunk
+                        message_chunk, metadata = chunk
                         # Only process AIMessageChunks (streaming tokens), skip full AIMessages
                         if not isinstance(message_chunk, AIMessageChunk):
                             continue
                         if hasattr(message_chunk, "content") and message_chunk.content:
-                            if not streamed_response:
-                                self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
-                                handler.start_response_streaming()
-                                streamed_response = True
-                            print(message_chunk.content, end="", flush=True)
+                            # Identify the source node from metadata
+                            node_name = metadata.get("langgraph_node", "") if metadata else ""
+
+                            # Only stream respond tokens to console
+                            # Code generation tokens are suppressed (shown via events instead)
+                            if node_name != "python_code_generator":
+                                if not streamed_response:
+                                    self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                    handler.start_response_streaming()
+                                    streamed_response = True
+                                print(message_chunk.content, end="", flush=True)
 
                 # Print newline after streaming completes
                 if streamed_response:
@@ -758,7 +767,10 @@ class CLI:
                 # Stream events using multi-mode: custom events + LLM message tokens
                 # Both modes arrive through a single ordered stream with mode tags
                 async for mode, chunk in self.graph.astream(
-                    input_data, config=self.base_config, stream_mode=["custom", "messages"]
+                    input_data,
+                    config=self.base_config,
+                    stream_mode=["custom", "messages"],
+                    subgraphs=True,
                 ):
                     if mode == "custom":
                         # Parse and handle typed events
@@ -768,18 +780,24 @@ class CLI:
                     elif mode == "messages":
                         # Handle LLM token streaming
                         # chunk is a tuple (message_chunk, metadata)
-                        message_chunk, _metadata = chunk
+                        message_chunk, metadata = chunk
                         # Only process AIMessageChunks (streaming tokens), skip full AIMessages
                         if not isinstance(message_chunk, AIMessageChunk):
                             continue
                         if hasattr(message_chunk, "content") and message_chunk.content:
-                            if not streamed_response:
-                                # Print header before first token
-                                self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
-                                handler.start_response_streaming()
-                                streamed_response = True
-                            # Print token directly to console (no newline, immediate flush)
-                            print(message_chunk.content, end="", flush=True)
+                            # Identify the source node from metadata
+                            node_name = metadata.get("langgraph_node", "") if metadata else ""
+
+                            # Only stream respond tokens to console
+                            # Code generation tokens are suppressed (shown via events instead)
+                            if node_name != "python_code_generator":
+                                if not streamed_response:
+                                    # Print header before first token
+                                    self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                    handler.start_response_streaming()
+                                    streamed_response = True
+                                # Print token directly to console (no newline, immediate flush)
+                                print(message_chunk.content, end="", flush=True)
             finally:
                 # Print newline after streaming completes
                 if streamed_response:

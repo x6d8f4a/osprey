@@ -93,6 +93,7 @@ def create_generator_node():
 
             # Generate code with error feedback from previous attempts
             # Same interface for all generators - clean Protocol-based design
+            # Native LangGraph streaming captures tokens automatically via subgraphs=True
             generated_code = await generator.generate_code(
                 request,  # Pass request with execution_folder_path
                 state.get("error_chain", []),  # Use service state for error tracking

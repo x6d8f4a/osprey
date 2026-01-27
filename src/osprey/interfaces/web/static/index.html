@@ -236,15 +236,21 @@
         gap: 8px;
       }
 
-      /* Streaming response area */
+      /* Streaming response area - flexible height bottom panel */
       .streaming-response {
         border-top: 1px solid var(--border);
         background: var(--bg-alt);
         padding: 12px;
         display: none;
+        /* Use min/max height for flexible sizing */
+        min-height: 150px;
+        max-height: 40vh;
+        overflow-y: auto;
+        flex-shrink: 0;
       }
       .streaming-response.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
       .streaming-response-header {
         font-weight: bold;
@@ -379,6 +385,11 @@
         word-break: break-word;
         font-family: inherit;
         line-height: 1.5;
+      }
+      /* Make tab content scrollable within fixed-height panel */
+      .streaming-tab-content {
+        flex: 1;
+        overflow-y: auto;
       }
 
       /* Meta info section (for streaming event structure) */
@@ -577,7 +588,7 @@
       let streamingViewerHidden = false; // User preference to hide streaming viewer
 
       // Streaming viewer tabs state
-      let streamingTabs = {}; // {sessionId: {tab, panel, content}}
+      let streamingTabs = {}; // {groupKey: {tab, panel, content}} where groupKey = sessionId_nodeName
       let activeStreamingTab = null;
 
       // Theme toggle
@@ -722,12 +733,15 @@
         const sessionId = data.session_id || "default";
         const nodeName = data.node_name || "respond";
 
-        // Create new session on first token OR if session changed (new query)
+        // Key by BOTH session and node for separate groups per component
+        const groupKey = `${sessionId}_${nodeName}`;
+
+        // Create new session on first token OR if group changed (new query or different component)
         if (
           !currentStreamingSession ||
-          currentStreamingSession.sessionId !== sessionId
+          currentStreamingSession.groupKey !== groupKey
         ) {
-          // Finalize previous session if exists (for back-to-back queries)
+          // Finalize previous session if exists (for back-to-back queries or component changes)
           if (currentStreamingSession) {
             finalizeStreamingSession();
           }
@@ -737,6 +751,7 @@
             startTime: time,
             nodeName: nodeName,
             sessionId: sessionId,
+            groupKey: groupKey,
             parentEl: null,
             childrenEl: null,
             groupId: null,
@@ -746,8 +761,8 @@
           // Create parent event group in timeline
           createStreamingGroup(data);
 
-          // Create tab for new streaming session
-          createStreamingTab(sessionId, nodeName);
+          // Create tab for new streaming group (keyed by groupKey)
+          createStreamingTab(groupKey, nodeName);
 
           // Auto-show viewer unless user has hidden it
           if (!streamingViewerHidden) {
@@ -773,13 +788,16 @@
         // Update parent summary
         updateStreamingGroupSummary();
 
-        // Update tab content with accumulated response
-        updateStreamingTabContent(sessionId, data.accumulated_response || "");
+        // Update tab content with accumulated response (build from current session's tokens)
+        const accumulatedResponse = currentStreamingSession.tokens
+          .map((t) => t.token || t.content || "")
+          .join("");
+        updateStreamingTabContent(groupKey, accumulatedResponse);
       }
 
       // Create the parent streaming group element
       function createStreamingGroup(data) {
-        const sessionId = currentStreamingSession.sessionId;
+        const groupKey = currentStreamingSession.groupKey;
         const nodeName = data.node_name || "respond";
 
         // Explanatory text for developers building their own interface
@@ -814,7 +832,7 @@ Raw structure:
                 </div>
                 <div class="event-children">
                     <div class="details-actions">
-                        <button class="copy-btn" data-session-id="${sessionId}">Copy Text</button>
+                        <button class="copy-btn" data-group-key="${groupKey}">Copy Text</button>
                     </div>
                     <div class="meta-header">Original Event Format (for building your own interface):</div>
                     <div class="meta-info">
@@ -834,7 +852,7 @@ Raw structure:
 
         // Set up copy button click handler
         const copyBtn = group.querySelector(".copy-btn");
-        copyBtn.onclick = (e) => copyStreamingJson(e, sessionId);
+        copyBtn.onclick = (e) => copyStreamingJson(e, groupKey);
 
         // Tooltip will be added after streaming completes (in finalizeStreamingSession)
 
@@ -940,8 +958,8 @@ Raw structure:
           tokensHeader.textContent = `Tokens (${tokenCount}):`;
         }
 
-        // Finalize streaming tab (stop animation)
-        finalizeStreamingTab(currentStreamingSession.sessionId);
+        // Finalize streaming tab (stop animation) - use groupKey
+        finalizeStreamingTab(currentStreamingSession.groupKey);
 
         // Store completed session for later rebuild during filtering
         completedStreamingSessions.push({ ...currentStreamingSession });
@@ -1147,7 +1165,7 @@ Raw structure:
             .join("");
       }
 
-      // Refresh timeline - rebuild grouped view for streaming tokens by session
+      // Refresh timeline - rebuild grouped view for streaming tokens by group (session + component)
       function refreshTimeline() {
         timeline.innerHTML = "";
 
@@ -1155,22 +1173,24 @@ Raw structure:
         const filteringForStreaming = typeFilter === "LLM Streaming";
         const hasSearch = searchText.trim().length > 0;
 
-        // Track which sessions we've rendered (by first token timestamp)
-        const renderedSessions = new Set();
+        // Track which groups we've rendered (by groupKey = sessionId_nodeName)
+        const renderedGroups = new Set();
 
         // Process events in order
         for (const event of events) {
           if (event.type === "streaming_token") {
-            // Find which session this token belongs to
+            // Build groupKey for this token
             const sessionId = event.session_id || "default";
+            const nodeName = event.node_name || "respond";
+            const groupKey = `${sessionId}_${nodeName}`;
 
-            // Only render each session once (when we hit its first token)
-            if (!renderedSessions.has(sessionId)) {
-              renderedSessions.add(sessionId);
+            // Only render each group once (when we hit its first token)
+            if (!renderedGroups.has(groupKey)) {
+              renderedGroups.add(groupKey);
 
-              // Find the completed session for this sessionId
+              // Find the completed session for this groupKey
               const session = completedStreamingSessions.find(
-                (s) => s.sessionId === sessionId,
+                (s) => s.groupKey === groupKey,
               );
 
               if (session) {
@@ -1231,7 +1251,7 @@ Raw structure:
         const endTime = session.endTime || new Date();
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         const nodeName = session.nodeName;
-        const sessionId = session.sessionId;
+        const groupKey = session.groupKey;
 
         // Explanatory text for developers building their own interface
         const firstToken = allTokens[0]?.token || "Hello";
@@ -1273,7 +1293,7 @@ Raw structure:
                 </div>
                 <div class="event-children">
                     <div class="details-actions">
-                        <button class="copy-btn" data-session-id="${sessionId}">Copy Text</button>
+                        <button class="copy-btn" data-group-key="${groupKey}">Copy Text</button>
                     </div>
                     <div class="meta-info">
                         <div class="meta-header">Original Event Format (for building your own interface):</div>
@@ -1292,7 +1312,7 @@ Raw structure:
 
         // Set up copy button click handler
         const copyBtn = group.querySelector(".copy-btn");
-        copyBtn.onclick = (e) => copyStreamingJson(e, sessionId);
+        copyBtn.onclick = (e) => copyStreamingJson(e, groupKey);
 
         // Add tooltip for streaming group (like other events)
         const streamingData = {
@@ -1344,7 +1364,7 @@ Raw structure:
           (e) => e.type !== "streaming_token" && matchesFilters(e),
         ).length;
 
-        // Count streaming groups that match filters (1 per session)
+        // Count streaming groups that match filters (1 per group = session + component)
         const filteringForStreaming = typeFilter === "LLM Streaming";
         const hasSearch = searchText.trim().length > 0;
 
@@ -1583,13 +1603,13 @@ Raw structure:
         tooltip.classList.remove("visible");
       }
 
-      // Copy streaming session JSON to clipboard
-      function copyStreamingJson(e, sessionId) {
+      // Copy streaming session JSON to clipboard (keyed by groupKey)
+      function copyStreamingJson(e, groupKey) {
         e.stopPropagation();
 
-        // Find the session
+        // Find the session by groupKey
         const session = completedStreamingSessions.find(
-          (s) => s.sessionId === sessionId,
+          (s) => s.groupKey === groupKey,
         );
         if (!session) return;
 
@@ -1624,16 +1644,16 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
         setTimeout(() => (e.target.textContent = "Copy Text"), 1500);
       }
 
-      // Create a new streaming tab for a session
-      function createStreamingTab(sessionId, nodeName) {
+      // Create a new streaming tab for a session (keyed by groupKey = sessionId_nodeName)
+      function createStreamingTab(groupKey, nodeName) {
         const tabsContainer = document.getElementById("streamingTabs");
         const contentContainer = document.getElementById("streamingTabContent");
 
-        // Create tab button
+        // Create tab button with component name
         const tab = document.createElement("div");
         tab.className = "streaming-tab";
-        tab.textContent = `Stream ${Object.keys(streamingTabs).length + 1}`;
-        tab.onclick = () => activateStreamingTab(sessionId);
+        tab.textContent = `[${nodeName}]`;
+        tab.onclick = () => activateStreamingTab(groupKey);
 
         // Create content panel
         const panel = document.createElement("div");
@@ -1649,16 +1669,16 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
         tabsContainer.appendChild(tab);
         contentContainer.appendChild(panel);
 
-        streamingTabs[sessionId] = {
+        streamingTabs[groupKey] = {
           tab: tab,
           panel: panel,
           content: panel.querySelector(".streaming-tab-panel-content"),
         };
 
         // Activate this new tab
-        activateStreamingTab(sessionId);
+        activateStreamingTab(groupKey);
 
-        return streamingTabs[sessionId];
+        return streamingTabs[groupKey];
       }
 
       // Activate a streaming tab
@@ -1680,7 +1700,13 @@ async for mode, chunk in graph.astream(state, config, stream_mode=["custom", "me
       // Update streaming tab content
       function updateStreamingTabContent(sessionId, content) {
         if (streamingTabs[sessionId]) {
-          streamingTabs[sessionId].content.textContent = content;
+          const contentEl = streamingTabs[sessionId].content;
+          contentEl.textContent = content;
+
+          // Auto-scroll to bottom to show latest text
+          // The scrollable container is #streamingTabContent (.streaming-tab-content)
+          const tabContentContainer = document.getElementById("streamingTabContent");
+          tabContentContainer.scrollTop = tabContentContainer.scrollHeight;
         }
       }
 

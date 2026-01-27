@@ -215,3 +215,46 @@ class ChatDisplay(ScrollableContainer):
         except Exception:
             pass
         return None
+
+    def get_python_execution_block(self) -> ExecutionStep | None:
+        """Find the LATEST Python capability's ExecutionStep block.
+
+        Searches mounted widgets for ExecutionSteps with capability='python'
+        and returns the LAST one (most recent).
+
+        Returns:
+            The most recent Python ExecutionStep if found, None otherwise.
+        """
+        try:
+            last_block = None
+            for widget in self.query(ExecutionStep):
+                if widget.capability == "python":
+                    last_block = widget  # Keep updating to find the latest
+            return last_block
+        except Exception:
+            pass
+        return None
+
+    async def handle_code_generation_token(self, content: str) -> None:
+        """Handle a code generation streaming token.
+
+        Routes the token to the current Python execution block for display.
+        This enables real-time visibility into the code being generated.
+
+        Args:
+            content: The code token to append.
+        """
+        python_block = self.get_python_execution_block()
+        if python_block:
+            python_block.append_code_token(content)
+            # Debounce scroll like streaming response
+            if self._scroll_timer:
+                self._scroll_timer.stop()
+            self._scroll_timer = self.set_timer(0.05, self._do_scroll_to_python_block)
+
+    def _do_scroll_to_python_block(self) -> None:
+        """Scroll to Python block after debounce."""
+        self._scroll_timer = None
+        python_block = self.get_python_execution_block()
+        if python_block:
+            self.scroll_to_widget(python_block, animate=False)

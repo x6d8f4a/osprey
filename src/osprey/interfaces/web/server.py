@@ -271,13 +271,15 @@ async def _execute_query(
 
             # 6. Stream events using properly prepared state (like CLI)
             # Use multi-mode streaming to get both typed events and LLM tokens
-            async for mode, chunk in graph.astream(
+            # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
+            async for ns, mode, chunk in graph.astream(
                 result.agent_state,
                 config=base_config,
-                stream_mode=["custom", "messages"]
+                stream_mode=["custom", "messages"],
+                subgraphs=True,
             ):
                 if mode == "custom":
-                    # Handle typed events as before
+                    # Handle typed events
                     event = parse_event(chunk)
                     if event:
                         await handler.handle(event)
