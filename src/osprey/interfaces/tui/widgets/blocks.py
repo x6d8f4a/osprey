@@ -1193,9 +1193,6 @@ class ExecutionStep(ProcessingStep):
         """
         super().__init__(capability, **kwargs)
         self.capability = capability
-        # Code generation streaming buffer
-        self._code_gen_buffer: str = ""
-        self._code_gen_active: bool = False
 
     def set_complete(self, status: str = "success", output_msg: str = "") -> None:
         """Override with conditional indicator coloring.
@@ -1248,45 +1245,6 @@ class ExecutionStep(ProcessingStep):
             output = self.query_one("#step-output", WrappedStatic)
             output.set_content(text)
             output.display = True
-
-    def append_code_token(self, content: str) -> None:
-        """Append a code generation streaming token.
-
-        Accumulates tokens and shows a rolling preview of the generated code.
-        This enables real-time visibility into code being generated.
-
-        Args:
-            content: The code token to append.
-        """
-        if not self._code_gen_active:
-            self._code_gen_active = True
-            self._code_gen_buffer = ""
-            self.add_log("Code generation streaming...", status="status")
-
-        self._code_gen_buffer += content
-
-        # Show rolling preview (last 500 chars to keep it manageable)
-        if len(self._code_gen_buffer) > 500:
-            preview = "..." + self._code_gen_buffer[-500:]
-        else:
-            preview = self._code_gen_buffer
-
-        # Update partial output with code preview
-        if self._mounted:
-            output = self.query_one("#step-output", WrappedStatic)
-            # Show as code block preview
-            output.set_content(f"Generating code:\n{preview}")
-            output.display = True
-
-    def finalize_code_generation(self) -> None:
-        """Finalize code generation streaming.
-
-        Called when code generation is complete to update the display.
-        """
-        self._code_gen_active = False
-        if self._code_gen_buffer:
-            char_count = len(self._code_gen_buffer)
-            self.add_log(f"Generated {char_count} characters of code", status="success")
 
     def set_llm_prompt(self, prompt: str | dict[str, str]) -> None:
         """Override to mark as smart/infrastructure step."""

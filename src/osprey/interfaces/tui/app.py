@@ -690,6 +690,8 @@ class OspreyTUI(App):
 
             # Track if we've streamed LLM response tokens (to avoid duplicate display)
             streamed_response = False
+            streamed_code = False  # Track code generation streaming
+            previous_node = None  # Track node transitions for immediate finalization
             # Track retry attempts from state updates
             current_generation_attempt = 1
 
@@ -728,12 +730,34 @@ class OspreyTUI(App):
                             # Identify the source node from metadata
                             node_name = metadata.get("langgraph_node", "") if metadata else ""
 
+                            # Detect node transition: finalize code immediately when transitioning away from code generator
+                            if previous_node == "python_code_generator" and node_name != "python_code_generator":
+                                # Code generation just ended, finalize immediately
+                                if streamed_code:
+                                    full_code = await chat_display.finalize_code_generation_message()
+                                    python_block = chat_display.get_python_execution_block()
+                                    if python_block:
+                                        line_count = len(full_code.split('\n')) if full_code else 0
+                                        python_block.set_complete("success", f"Code generated ({line_count} lines)")
+                                    streamed_code = False  # Mark as finalized
+
+                            previous_node = node_name
+
                             # Route based on source node
                             if node_name == "python_code_generator":
-                                # Code generation streaming - route to execution block
-                                await chat_display.handle_code_generation_token(
-                                    message_chunk.content
-                                )
+                                # CODE GENERATION STREAMING - Route to chat flow
+                                if not streamed_code:
+                                    # Update ExecutionStep status (no preview)
+                                    python_block = chat_display.get_python_execution_block()
+                                    if python_block:
+                                        python_block.set_partial_output("Generating code...")
+
+                                    # Start collapsible code message in chat
+                                    await chat_display.start_code_generation_message()
+                                    streamed_code = True
+
+                                # Append token to chat message
+                                await chat_display.append_to_code_generation_message(message_chunk.content)
                             else:
                                 # Response streaming (respond node or unknown source)
                                 # Start streaming message widget if not already started
@@ -761,6 +785,17 @@ class OspreyTUI(App):
                 # Wait for queue to be fully processed
                 await chat_display._event_queue.join()
             finally:
+                # Finalize code generation message if we were streaming code
+                if streamed_code:
+                    # Finalize code generation message (auto-collapses)
+                    full_code = await chat_display.finalize_code_generation_message()
+
+                    # Update ExecutionStep with status (no code preview)
+                    python_block = chat_display.get_python_execution_block()
+                    if python_block:
+                        line_count = len(full_code.split('\n')) if full_code else 0
+                        python_block.set_complete("success", f"Code generated ({line_count} lines)")
+
                 # Finalize streaming message if we were streaming
                 if streamed_response:
                     # Update respond block status and set full response

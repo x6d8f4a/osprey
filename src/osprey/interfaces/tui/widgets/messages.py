@@ -1,13 +1,18 @@
 """Message widgets for the TUI."""
 
+from typing import Any
+
 from textual.app import ComposeResult
+from textual.events import Click, Key
 from textual.widgets import Markdown, Static
 
 
 class ChatMessage(Static):
     """A single chat message widget styled as a card/block."""
 
-    def __init__(self, content: str, role: str = "user", message_type: str = "", **kwargs):
+    def __init__(
+        self, content: str, role: str = "user", message_type: str = "", **kwargs
+    ):
         """Initialize a chat message.
 
         Args:
@@ -48,7 +53,8 @@ class StreamingChatMessage(ChatMessage):
         self._markdown_widget: Markdown | None = None
 
     def compose(self) -> ComposeResult:
-        """Compose the message with an empty Markdown widget for streaming updates."""
+        """Compose the message with an empty Markdown widget for streaming
+        updates."""
         yield Markdown("", classes="message-content")
 
     def on_mount(self) -> None:
@@ -76,3 +82,142 @@ class StreamingChatMessage(ChatMessage):
         """
         self.remove_class("message-type-streaming")
         self.add_class("message-type-agent")
+
+
+class CollapsibleCodeMessage(Static):
+    """A collapsible message for code generation with link-style expander.
+
+    This widget displays code generation tokens as they stream in,
+    with a link-style toggle for expanding/collapsing. During streaming,
+    the code is shown expanded. After completion, it auto-collapses to
+    keep the chat flow clean while allowing users to expand and review
+    the generated code anytime.
+    """
+
+    DEFAULT_CSS = """
+    CollapsibleCodeMessage {
+        margin: 1 0;
+        padding: 0;
+    }
+
+    CollapsibleCodeMessage .code-toggle-link {
+        color: $text-muted;
+        text-style: none;
+    }
+
+    CollapsibleCodeMessage .code-toggle-link:hover {
+        text-style: underline;
+    }
+
+    CollapsibleCodeMessage .code-toggle-link:focus {
+        text-style: bold;
+    }
+
+    CollapsibleCodeMessage .code-content {
+        margin: 0;
+        padding: 0;
+    }
+    """
+
+    def __init__(self, **kwargs):
+        """Initialize a collapsible code message.
+
+        The message starts with content visible during streaming and
+        transitions to collapsed state after finalization.
+        """
+        super().__init__(**kwargs)
+        self._content_buffer: list[str] = []
+        self._markdown_stream: Any = None
+        self._is_collapsed = False
+        self._markdown_widget: Markdown | None = None
+
+    def compose(self) -> ComposeResult:
+        """Compose with link-style toggle and markdown content."""
+        # Link-style toggle (like logs/prompt/response links)
+        yield Static(
+            "code (streaming...)", classes="code-toggle-link", id="code-toggle"
+        )
+        # Content (Markdown widget, initially visible)
+        yield Markdown("", classes="code-content", id="code-content")
+
+    def on_mount(self) -> None:
+        """Store references after mount."""
+        self._markdown_widget = self.query_one("#code-content", Markdown)
+        # Make toggle clickable
+        toggle = self.query_one("#code-toggle", Static)
+        toggle.can_focus = True
+
+    def get_markdown_widget(self) -> Markdown:
+        """Get the Markdown widget for streaming.
+
+        Returns:
+            The child Markdown widget.
+        """
+        if self._markdown_widget is None:
+            self._markdown_widget = self.query_one("#code-content", Markdown)
+        return self._markdown_widget
+
+    async def append_token(self, content: str) -> None:
+        """Append a streaming token using MarkdownStream.
+
+        Args:
+            content: The token content to append.
+        """
+        # Lazy initialization of MarkdownStream
+        if self._markdown_stream is None:
+            md_widget = self.get_markdown_widget()
+            self._markdown_stream = Markdown.get_stream(md_widget)
+
+        if self._markdown_stream:
+            await self._markdown_stream.write(content)
+            self._content_buffer.append(content)
+
+    async def finalize(self) -> None:
+        """Finalize streaming and auto-collapse.
+
+        This method:
+        1. Stops the MarkdownStream and waits for rendering to complete
+        2. Auto-collapses and updates toggle text
+        3. Hides the code content
+        """
+        if self._markdown_stream:
+            await self._markdown_stream.stop()  # Wait for render to complete
+            self._markdown_stream = None
+
+        # Auto-collapse and update toggle text
+        self._is_collapsed = True
+        toggle = self.query_one("#code-toggle", Static)
+        toggle.update("code (click to show)")
+
+        # Hide content
+        content = self.query_one("#code-content", Markdown)
+        content.display = False
+
+    def on_click(self, event: Click) -> None:
+        """Handle click on toggle link."""
+        toggle = self.query_one("#code-toggle", Static)
+        if toggle in event.widget.ancestors_with_self:
+            self._toggle_visibility()
+
+    def on_key(self, event: Key) -> None:
+        """Handle Enter key on toggle link."""
+        if event.key == "enter":
+            toggle = self.query_one("#code-toggle", Static)
+            if toggle.has_focus:
+                self._toggle_visibility()
+
+    def _toggle_visibility(self) -> None:
+        """Toggle code visibility."""
+        content = self.query_one("#code-content", Markdown)
+        toggle = self.query_one("#code-toggle", Static)
+
+        if self._is_collapsed:
+            # Expand
+            content.display = True
+            toggle.update("code (click to hide)")
+            self._is_collapsed = False
+        else:
+            # Collapse
+            content.display = False
+            toggle.update("code (click to show)")
+            self._is_collapsed = True

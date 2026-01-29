@@ -10,7 +10,11 @@ from textual.widgets import Markdown
 
 from osprey.interfaces.tui.widgets.blocks import ExecutionStep, ProcessingBlock
 from osprey.interfaces.tui.widgets.debug import DebugBlock
-from osprey.interfaces.tui.widgets.messages import ChatMessage, StreamingChatMessage
+from osprey.interfaces.tui.widgets.messages import (
+    ChatMessage,
+    CollapsibleCodeMessage,
+    StreamingChatMessage,
+)
 
 if TYPE_CHECKING:
     from textual.widgets._markdown import MarkdownStream
@@ -44,6 +48,8 @@ class ChatDisplay(ScrollableContainer):
         self._streaming_message: StreamingChatMessage | None = None
         # MarkdownStream for efficient buffered token streaming
         self._markdown_stream: MarkdownStream | None = None
+        # Collapsible code generation message for code streaming
+        self._code_gen_message: CollapsibleCodeMessage | None = None
         # Event signaling for respond block mount (synchronization)
         self._respond_block_mounted: asyncio.Event = asyncio.Event()
         # Debounced scroll timer for streaming
@@ -64,6 +70,7 @@ class ChatDisplay(ScrollableContainer):
         self._plan_step_states = []
         self._streaming_message = None  # Reset streaming state
         self._markdown_stream = None  # Reset MarkdownStream
+        self._code_gen_message = None  # Reset code generation message
         self._respond_block_mounted = asyncio.Event()  # Reset for new query
         self._scroll_timer = None
         if self._debug_block:
@@ -195,6 +202,75 @@ class ChatDisplay(ScrollableContainer):
             self._streaming_message = None
         # Final scroll after all rendering is complete
         self.auto_scroll_if_at_bottom()
+
+    # --- Code Generation Streaming Methods ---
+
+    async def start_code_generation_message(self) -> CollapsibleCodeMessage:
+        """Create and mount a new collapsible code message for streaming.
+
+        Similar to start_streaming_message, but creates a CollapsibleCodeMessage
+        that will auto-collapse after streaming completes. This allows users to
+        see the "thinking" process during code generation but keeps the chat flow
+        clean afterward.
+
+        Returns:
+            The newly created CollapsibleCodeMessage widget.
+        """
+        self._code_gen_message = CollapsibleCodeMessage()
+        await self.mount(self._code_gen_message)
+        self.scroll_end(animate=False)
+        return self._code_gen_message
+
+    async def append_to_code_generation_message(self, content: str) -> None:
+        """Append content to the streaming code generation message.
+
+        Uses MarkdownStream (via CollapsibleCodeMessage.append_token) for
+        efficient buffered token handling.
+
+        Args:
+            content: The code token to append.
+        """
+        if self._code_gen_message:
+            await self._code_gen_message.append_token(content)
+            # Debounced scroll (same as respond streaming)
+            if self._scroll_timer:
+                self._scroll_timer.stop()
+            self._scroll_timer = self.set_timer(0.05, self._do_scroll_to_code_message)
+
+    def _do_scroll_to_code_message(self) -> None:
+        """Scroll to code generation message after debounce."""
+        self._scroll_timer = None
+        if self._code_gen_message:
+            self.scroll_to_widget(self._code_gen_message, animate=False)
+
+    async def finalize_code_generation_message(self) -> str:
+        """Finalize the code generation message and return full content.
+
+        Awaits the CollapsibleCodeMessage.finalize() which:
+        1. Stops the MarkdownStream and waits for rendering to complete
+        2. Auto-collapses the message with a preview in the title
+
+        Returns:
+            The full generated code content.
+        """
+        if self._code_gen_message:
+            await self._code_gen_message.finalize()  # Auto-collapse
+            full_content = "".join(self._code_gen_message._content_buffer)
+            self._code_gen_message = None
+            # Final scroll after collapse
+            self.auto_scroll_if_at_bottom()
+            return full_content
+        return ""
+
+    def get_code_generation_content(self) -> str:
+        """Get the current code generation buffer.
+
+        Returns:
+            The accumulated code content during streaming, or empty string.
+        """
+        if self._code_gen_message:
+            return "".join(self._code_gen_message._content_buffer)
+        return ""
 
     def get_respond_execution_block(self) -> ExecutionStep | None:
         """Find the LATEST respond capability's ExecutionStep block.
