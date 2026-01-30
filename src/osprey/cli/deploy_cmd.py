@@ -204,14 +204,18 @@ def deploy(action: str, project: str, config: str, detached: bool, dev: bool, ex
         elif action == "build":
             # Just prepare compose files without starting services
             console.print("🔨 Building compose files...")
-            _, compose_files = prepare_compose_files(config_path, dev_mode=dev, expose_network=expose)
+            _, compose_files = prepare_compose_files(
+                config_path, dev_mode=dev, expose_network=expose
+            )
             console.print("\n✅ Compose files built successfully:")
             for compose_file in compose_files:
                 console.print(f"  • {compose_file}")
 
         elif action == "clean":
             # clean_deployment expects compose_files list, so prepare them first
-            _, compose_files = prepare_compose_files(config_path, dev_mode=dev, expose_network=expose)
+            _, compose_files = prepare_compose_files(
+                config_path, dev_mode=dev, expose_network=expose
+            )
             clean_deployment(compose_files)
 
         elif action == "rebuild":
