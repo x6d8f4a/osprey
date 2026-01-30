@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mock fixtures matching real `archivertools` library format (secs/nanos columns)
 
 ### Fixed
+- **Security**: Bind MCP server template to localhost by default (#126)
+  - Prevents unintended network exposure when generating MCP server configurations
+- **CLI**: Auto-prompt to switch control system mode when configuring EPICS gateway
+  - After setting a production gateway (ALS, APS, custom), prompts user to switch from 'mock' to 'epics' mode
+  - Handles edge cases: missing config key, other control system types (tango, labview)
 - **Connectors**: Fix `EPICSArchiverConnector` timestamp handling for real `archivertools` library
   - Real library returns DataFrame with `secs`/`nanos` columns and RangeIndex
   - Connector now properly converts secs/nanos to DatetimeIndex and removes those columns
