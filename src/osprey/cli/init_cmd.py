@@ -177,6 +177,21 @@ def init(
             context=context if context else None,
         )
 
+        # Generate manifest for migration support
+        manifest_context = {
+            "default_provider": context.get("default_provider", "cborg") if context else "cborg",
+            "default_model": context.get("default_model", "anthropic/claude-haiku")
+            if context
+            else "anthropic/claude-haiku",
+        }
+        manager.generate_manifest(
+            project_dir=project_path,
+            project_name=project_name,
+            template_name=template,
+            registry_style=registry_style,
+            context=manifest_context,
+        )
+
         console.print("  ✓ Creating application code...", style=Styles.SUCCESS)
         console.print("  ✓ Creating service configurations...", style=Styles.SUCCESS)
         console.print("  ✓ Creating project configuration...", style=Styles.SUCCESS)
