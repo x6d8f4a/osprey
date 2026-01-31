@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CLI**: Add `osprey migrate` command for project version migration
+  - `migrate init` creates manifest for existing projects (retroactive)
+  - `migrate check` compares project version against installed OSPREY
+  - `migrate run` performs three-way diff analysis and generates merge guidance
+  - Classifies files as AUTO_COPY, PRESERVE, MERGE, NEW, or DATA
+  - Generates `_migration/` directory with detailed merge prompts for AI-assisted merging
+  - Supports exact version recreation via temporary virtualenv
+- **Templates**: Add manifest generation during `osprey init`
+  - `.osprey-manifest.json` records OSPREY version, template, registry style, and all init options
+  - Includes SHA256 checksums for all trackable project files
+  - Stores reproducible command string for exact project recreation
+- **Assist**: Add `migrate-project` task for AI-assisted migrations
+  - Instructions for Claude Code integration with merge workflow
+  - Step-by-step guide for handling three-way conflicts
 - **Dependencies**: Add `caproto` to core dependencies for soft IOC generation
 - **CLI**: Add `osprey generate soft-ioc` command for generating Python soft IOCs
   - Generates caproto-based EPICS soft IOCs from channel databases
@@ -32,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 5 tests covering port open/closed detection, timeout handling, and error cases
 
 ### Fixed
+- **Dependencies**: Pin `claude-agent-sdk>=0.1.26` to fix CBORG proxy beta header incompatibility
 - **Security**: Bind docker/podman services to localhost by default (#126)
   - Prevents unintended network exposure when generating server configurations with `osprey deploy up`
   - Use `--expose` option to bind to public interfaces, if firewalling/authentification is set up properly

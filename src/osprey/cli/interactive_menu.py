@@ -1492,6 +1492,15 @@ def run_interactive_init() -> str:
             force=True,
         )
 
+        # Generate manifest for migration support
+        manager.generate_manifest(
+            project_dir=project_path,
+            project_name=project_name,
+            template_name=template,
+            registry_style=registry_style,
+            context=context,
+        )
+
         msg = Messages.success("Project created at:")
         path = Messages.path(str(project_path))
         console.print(f"\n{msg} {path}\n")
