@@ -3454,7 +3454,7 @@ def handle_generate_soft_ioc():
         ctx.invoke(soft_ioc, config_path=None, output_file=None, dry_run=dry_run, init=use_init)
 
     except click.Abort:
-        pass
+        console.print(f"\n{Messages.info('Generation cancelled by user.')}")
     except Exception as e:
         console.print(f"\n{Messages.error(f'Generation failed: {e}')}")
         import traceback

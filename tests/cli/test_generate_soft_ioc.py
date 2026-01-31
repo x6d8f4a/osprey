@@ -561,10 +561,6 @@ simulation:
 
         monkeypatch.chdir(tmp_path)
 
-        # Make the mock do nothing (it's async)
-        async def mock_offer_coro(*args, **kwargs):
-            pass
-
         mock_offer.return_value = None
 
         # Setup mock
