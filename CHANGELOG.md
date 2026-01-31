@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.7] - 2026-01-31
+
 ### Added
 - **CLI**: Add `osprey migrate` command for project version migration
   - `migrate init` creates manifest for existing projects (retroactive)
@@ -70,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reuse PV objects instead of creating new ones per read
   - Prevents subscription flood that causes caproto race condition (`deque mutated during iteration`)
   - Adds thread-safe locking for PV cache access
+- **Config**: Fix control system type update regex to handle comment lines
+  - Config files with comments between `control_system:` and `type:` now update correctly
 
 ## [0.10.6] - 2026-01-18
 

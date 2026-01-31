@@ -1,32 +1,39 @@
-# Osprey Framework - Latest Release (v0.10.6)
+# Osprey Framework - Latest Release (v0.10.7)
 
-**Context Validation & Chat History**
+**Migration & Simulation**
 
-## What's New in v0.10.6
+## What's New in v0.10.7
 
 ### Highlights
 
-- **Context key validation** - Orchestrator validates execution plans before running, catching invalid key references and ordering errors
-- **Chat history in orchestrator** (#111) - Follow-up queries like "use the same time range" now resolve correctly
-- **Task objective metadata** (#108) - Context entries track what they were created for, enabling intelligent reuse
-- **Release workflow skill** - Claude Code skill for guided release process
+- **Project migration system** - New `osprey migrate` command for upgrading projects between OSPREY versions with AI-assisted merge guidance
+- **Soft IOC generation** - Generate caproto-based EPICS soft IOCs from channel databases for offline development
+- **AskSage provider** (#122) - New LLM provider for AskSage API access
+- **Local simulation preset** - Easy setup for connecting to local soft IOCs
 
 ### Added
-- **CLI**: Add Claude Code skill for release workflow (`osprey claude install release-workflow`)
-  - Custom SKILL.md wrapper with quick reference for version files and commands
-  - Version consistency check command, pre-release testing steps, tag creation
-- **Orchestration**: Context key validation in execution plans
-  - Validates input key references match actual context keys
-  - Detects ordering errors (step references key from later step)
-  - New `InvalidContextKeyError` exception
-- **Context**: Store task_objective metadata alongside capability context data (#108)
-  - New helper methods: `get_context_metadata()`, `get_all_context_metadata()`
-  - Orchestrator prompt displays task_objective for each available context
+- **CLI**: Add `osprey migrate` command for project version migration
+  - `migrate init` creates manifest for existing projects (retroactive)
+  - `migrate check` compares project version against installed OSPREY
+  - `migrate run` performs three-way diff analysis and generates merge guidance
+  - Classifies files as AUTO_COPY, PRESERVE, MERGE, NEW, or DATA
+- **Templates**: Add manifest generation during `osprey init`
+  - `.osprey-manifest.json` records OSPREY version, template, registry style
+  - Includes SHA256 checksums for all trackable project files
+- **CLI**: Add `osprey generate soft-ioc` command for generating Python soft IOCs
+  - Generates caproto-based EPICS soft IOCs from channel databases
+  - Supports all 4 channel database types
+  - Two simulation backends: `passthrough` and `mock_style`
+- **Models**: Add AskSage provider for LLM access (#122)
+- **Config**: Add "Local Simulation" preset to EPICS gateway configuration
 
 ### Fixed
-- **Graph**: Propagate chat history to orchestrator and respond nodes (#111)
-  - Orchestrator now receives full conversation context when `task_depends_on_chat_history=True`
-- **Deployment**: Fix Claude Code config path resolution in pipelines container
+- **Dependencies**: Pin `claude-agent-sdk>=0.1.26` to fix CBORG proxy beta header incompatibility
+- **Security**: Bind docker/podman services to localhost by default (#126)
+- **Connectors**: Fix `EPICSArchiverConnector` timestamp handling
+- **Connectors**: Fix EPICS connector PV cache to prevent soft IOC crashes
+- **Execution**: Fix channel limits database path resolution in subprocess execution
+- **Config**: Fix control system type update regex to handle comment lines
 
 ---
 
@@ -47,8 +54,8 @@ pip install --upgrade "osprey-framework[all]"
 ## What's Next?
 
 Check out our [documentation](https://als-apg.github.io/osprey) for:
-- TUI mode guide
-- Artifact system API reference
+- Project migration guide
+- Soft IOC generation tutorial
 - Complete tutorial series
 
 ## Contributors
