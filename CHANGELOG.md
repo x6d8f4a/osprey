@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mock fixtures matching real `archivertools` library format (secs/nanos columns)
 
 ### Fixed
+- **Dependencies**: Pin `claude-agent-sdk>=0.1.26` to fix CBORG proxy beta header incompatibility
 - **Connectors**: Fix `EPICSArchiverConnector` timestamp handling for real `archivertools` library
   - Real library returns DataFrame with `secs`/`nanos` columns and RangeIndex
   - Connector now properly converts secs/nanos to DatetimeIndex and removes those columns
