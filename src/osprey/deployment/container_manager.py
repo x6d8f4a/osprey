@@ -430,7 +430,7 @@ def _copy_local_framework_for_override(out_dir):
                 if "No module named build" in result.stderr:
                     logger.warning(
                         "The 'build' package is required for --dev mode. Install with: "
-                        'pip install ".[dev]" (editable) or pip install osprey-framework[dev]'
+                        r'pip install build or pip install -e ".\[dev]"'
                     )
                 else:
                     logger.warning(f"Failed to build osprey wheel: {result.stderr}")
@@ -1120,7 +1120,7 @@ def clean_deployment(compose_files, config=None):
     logger.success("Cleanup completed")
 
 
-def prepare_compose_files(config_path, dev_mode=False):
+def prepare_compose_files(config_path, dev_mode=False, expose_network=False):
     """Prepare compose files from configuration.
 
     Loads configuration and generates all necessary compose files for deployment.
@@ -1129,6 +1129,8 @@ def prepare_compose_files(config_path, dev_mode=False):
     :type config_path: str
     :param dev_mode: Development mode - copy local framework to containers
     :type dev_mode: bool
+    :param expose_network: Expose services to all network interfaces (0.0.0.0)
+    :type expose_network: bool
     :return: Tuple of (config dict, list of compose file paths)
     :rtype: tuple[dict, list[str]]
     :raises RuntimeError: If configuration loading fails
@@ -1139,6 +1141,20 @@ def prepare_compose_files(config_path, dev_mode=False):
             config = config.raw_config
     except Exception as e:
         raise RuntimeError(f"Could not load config file {config_path}: {e}") from e
+
+    # Handle network exposure setting
+    # Default to localhost-only binding for security (Issue #126)
+    if "deployment" not in config:
+        config["deployment"] = {}
+    if expose_network:
+        config["deployment"]["bind_address"] = "0.0.0.0"
+        logger.warning(
+            "Network exposure enabled: services will bind to 0.0.0.0 (all interfaces). "
+            "Ensure proper authentication is configured!"
+        )
+    elif "bind_address" not in config.get("deployment", {}):
+        config["deployment"]["bind_address"] = "127.0.0.1"
+        logger.info("Services will bind to localhost only (127.0.0.1) for security")
 
     # Get deployed services list
     deployed_services = config.get("deployed_services", [])
@@ -1175,7 +1191,7 @@ def prepare_compose_files(config_path, dev_mode=False):
     return config, compose_files
 
 
-def deploy_up(config_path, detached=False, dev_mode=False):
+def deploy_up(config_path, detached=False, dev_mode=False, expose_network=False):
     """Start services using container runtime (Docker or Podman).
 
     :param config_path: Path to the configuration file
@@ -1184,8 +1200,10 @@ def deploy_up(config_path, detached=False, dev_mode=False):
     :type detached: bool
     :param dev_mode: Development mode for local framework testing
     :type dev_mode: bool
+    :param expose_network: Expose services to all network interfaces (0.0.0.0)
+    :type expose_network: bool
     """
-    config, compose_files = prepare_compose_files(config_path, dev_mode)
+    config, compose_files = prepare_compose_files(config_path, dev_mode, expose_network)
 
     # Verify container runtime is actually running
     is_running, error_msg = verify_runtime_is_running(config)
@@ -1269,15 +1287,17 @@ def deploy_down(config_path, dev_mode=False):
     os.execvp(cmd[0], cmd)
 
 
-def deploy_restart(config_path, detached=False):
+def deploy_restart(config_path, detached=False, expose_network=False):
     """Restart services using container runtime (Docker or Podman).
 
     :param config_path: Path to the configuration file
     :type config_path: str
     :param detached: Run in detached mode
     :type detached: bool
+    :param expose_network: Expose services to all network interfaces (0.0.0.0)
+    :type expose_network: bool
     """
-    config, compose_files = prepare_compose_files(config_path)
+    config, compose_files = prepare_compose_files(config_path, expose_network=expose_network)
 
     # Verify container runtime is actually running
     is_running, error_msg = verify_runtime_is_running(config)
@@ -1514,7 +1534,7 @@ def show_status(config_path):
     console.print()
 
 
-def rebuild_deployment(config_path, detached=False, dev_mode=False):
+def rebuild_deployment(config_path, detached=False, dev_mode=False, expose_network=False):
     """Rebuild deployment from scratch (clean + up).
 
     :param config_path: Path to the configuration file
@@ -1523,8 +1543,10 @@ def rebuild_deployment(config_path, detached=False, dev_mode=False):
     :type detached: bool
     :param dev_mode: Development mode for local framework testing
     :type dev_mode: bool
+    :param expose_network: Expose services to all network interfaces (0.0.0.0)
+    :type expose_network: bool
     """
-    config, compose_files = prepare_compose_files(config_path, dev_mode)
+    config, compose_files = prepare_compose_files(config_path, dev_mode, expose_network)
 
     # Verify container runtime is actually running (for the rebuild phase)
     is_running, error_msg = verify_runtime_is_running(config)

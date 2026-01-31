@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Connectors**: Add unit tests for `EPICSArchiverConnector`
+  - 26 tests covering connect/disconnect, get_data, error handling, metadata, and factory integration
+  - Mock fixtures matching real `archivertools` library format (secs/nanos columns)
+
 ### Fixed
-- **Deployment**: Prevent API keys from being written to build config files (#118)
+- **Security**: Bind MCP server template to localhost by default (#126)
+  - Prevents unintended network exposure when generating MCP server configurations
+- **CLI**: Auto-prompt to switch control system mode when configuring EPICS gateway
+  - After setting a production gateway (ALS, APS, custom), prompts user to switch from 'mock' to 'epics' mode
+  - Handles edge cases: missing config key, other control system types (tango, labview)
+- **Connectors**: Fix `EPICSArchiverConnector` timestamp handling for real `archivertools` library
+  - Real library returns DataFrame with `secs`/`nanos` columns and RangeIndex
+  - Connector now properly converts secs/nanos to DatetimeIndex and removes those columns
+  - Fallback preserves backward compatibility for other DataFrame formats
+- **Deployment**: Fix `--dev` mode error message showing broken install instructions (#119)
+  - Rich markup was stripping `[dev]` from the message due to bracket interpretation
+  - Error now correctly shows: `pip install build or pip install -e ".[dev]"`
   - `osprey deploy build` was expanding `${VAR}` placeholders to actual values in `build/services/pipelines/config.yml`
   - Now preserves `${VAR}` placeholders; secrets are resolved at container runtime from environment variables
 
@@ -2441,4 +2457,3 @@ This release represents the framework's first complete domain-specific applicati
 ---
 
 *This is an early access release. We welcome feedback and contributions!*
-
