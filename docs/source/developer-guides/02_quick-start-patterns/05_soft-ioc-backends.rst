@@ -16,11 +16,18 @@ Soft IOC Custom Backends
 
    **Recommended:**
 
-   - Understanding of control system simulation requirements
-   - Experience with physics simulation libraries (pyAT, OCELOT) for custom backends
+   - Having successfully generated and run a basic soft IOC before attempting custom backends
 
 Overview
 ========
+
+Custom backends let you build simulation environments that mirror your real control system's
+behavior—setpoints that respond with realistic dynamics, readbacks that drift, faults that
+trigger at the right moments. This enables testing agent workflows, validating recovery
+strategies, and iterating on control logic without requiring hardware access.
+
+This feature extends soft IOCs generated with the :ref:`cli-generate-soft-ioc` command.
+Before implementing custom backends, ensure you can generate and run a basic soft IOC first.
 
 The soft IOC generator supports composable simulation backends:
 

@@ -477,15 +477,12 @@ Custom output location:
 
 See :doc:`04_mcp-capability-generation` for complete workflow.
 
+.. _cli-generate-soft-ioc:
+
 osprey generate soft-ioc
 ------------------------
 
 Generate a pure Python EPICS soft IOC for testing control system integrations without requiring real hardware or an EPICS base installation.
-
-.. note::
-   Generated IOCs are **completely self-contained** with no Osprey runtime dependency.
-   The simulation backend code is embedded directly in the generated Python file,
-   making them easy to distribute and run standalone.
 
 **Syntax:**
 

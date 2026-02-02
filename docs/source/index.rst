@@ -38,7 +38,7 @@ Key Features
 * **Facility Data Integration**: :doc:`Automatic retrieval from archiver appliances, channel databases, and knowledge bases <developer-guides/05_production-systems/02_data-source-integration>` with intelligent downsampling for large time-series datasets
 * **LangGraph Foundation**: Native StateGraph workflows with :doc:`checkpoints, interrupts <developer-guides/01_understanding-the-framework/03_langgraph-integration>`, and :doc:`persistent state management <developer-guides/03_core-framework-systems/01_state-management-architecture>`
 * **Safety-First Design**: :ref:`Transparent execution plans <planning-mode-example>` with :doc:`human approval workflows <developer-guides/05_production-systems/01_human-approval-workflows>` and network-level isolation for control room deployment
-* **Proven in Production**: Deployed at :doc:`Lawrence Berkeley National Laboratory's Advanced Light Source <example-applications/als-assistant>` managing hundreds of thousands of control channels across accelerator operations
+* **Proven in Production**: Deployed at :doc:`Lawrence Berkeley National Laboratory's Advanced Light Source <example-applications/als-assistant>` managing tens of thousands of control channels across accelerator operations
 
 
 Documentation Structure
