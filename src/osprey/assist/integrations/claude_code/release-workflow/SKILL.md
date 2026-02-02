@@ -1,5 +1,5 @@
 ---
-name: release-workflow
+name: osprey-release
 description: >
   Guides through the complete OSPREY release workflow. Use when the user wants
   to create a release, bump versions, publish to PyPI, create a tag, or needs

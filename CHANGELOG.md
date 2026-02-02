@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.8] - 2026-02-02
+
 ### Added
 - **Skills**: Improve release workflow skill with full step-by-step guidance and CHANGELOG sanitization
 - **Generators**: Add pluggable simulation backends for soft IOCs
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MATLAB Middle Layer exports may produce bare strings (e.g., `"SR:DCCT"`) instead of single-element arrays
   - Without the fix, iterating over string produces `['S', 'R', ':', 'D', 'C', 'C', 'T']` instead of `['SR:DCCT']`
   - Normalizes strings to lists in `_extract_channels_from_field()` and `list_channel_names()`
+- **Skills**: Fix release workflow skill name to follow `osprey-` naming convention
 
 ## [0.10.7] - 2026-01-31
 

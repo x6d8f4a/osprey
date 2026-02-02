@@ -12,7 +12,7 @@ This package contains:
 """
 
 # Version information
-__version__ = "0.10.7"
+__version__ = "0.10.8"
 
 __all__ = ["__version__"]
 

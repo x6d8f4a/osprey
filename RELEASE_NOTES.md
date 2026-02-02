@@ -1,39 +1,28 @@
-# Osprey Framework - Latest Release (v0.10.7)
+# Osprey Framework - Latest Release (v0.10.8)
 
-**Migration & Simulation**
+**Pluggable Simulation Backends**
 
-## What's New in v0.10.7
+## What's New in v0.10.8
 
 ### Highlights
 
-- **Project migration system** - New `osprey migrate` command for upgrading projects between OSPREY versions with AI-assisted merge guidance
-- **Soft IOC generation** - Generate caproto-based EPICS soft IOCs from channel databases for offline development
-- **AskSage provider** (#122) - New LLM provider for AskSage API access
-- **Local simulation preset** - Easy setup for connecting to local soft IOCs
+- **Pluggable simulation backends for soft IOCs** - Runtime backend loading from config.yml, chainable backends, and SimulationBackend protocol for custom physics
+- **Improved release workflow skill** - Full step-by-step guidance with CHANGELOG sanitization
 
 ### Added
-- **CLI**: Add `osprey migrate` command for project version migration
-  - `migrate init` creates manifest for existing projects (retroactive)
-  - `migrate check` compares project version against installed OSPREY
-  - `migrate run` performs three-way diff analysis and generates merge guidance
-  - Classifies files as AUTO_COPY, PRESERVE, MERGE, NEW, or DATA
-- **Templates**: Add manifest generation during `osprey init`
-  - `.osprey-manifest.json` records OSPREY version, template, registry style
-  - Includes SHA256 checksums for all trackable project files
-- **CLI**: Add `osprey generate soft-ioc` command for generating Python soft IOCs
-  - Generates caproto-based EPICS soft IOCs from channel databases
-  - Supports all 4 channel database types
-  - Two simulation backends: `passthrough` and `mock_style`
-- **Models**: Add AskSage provider for LLM access (#122)
-- **Config**: Add "Local Simulation" preset to EPICS gateway configuration
+- **Skills**: Improve release workflow skill with full step-by-step guidance and CHANGELOG sanitization
+- **Generators**: Add pluggable simulation backends for soft IOCs
+  - Runtime backend loading from `config.yml` - change behavior without regenerating IOC code
+  - Built-in backends: `passthrough` (no-op) and `mock_style` (archiver-like behavior)
+  - `ChainedBackend` for composing multiple backends (base + overrides)
+  - `SimulationBackend` protocol for custom physics implementations
+  - Documentation guide for custom backend development
 
 ### Fixed
-- **Dependencies**: Pin `claude-agent-sdk>=0.1.26` to fix CBORG proxy beta header incompatibility
-- **Security**: Bind docker/podman services to localhost by default (#126)
-- **Connectors**: Fix `EPICSArchiverConnector` timestamp handling
-- **Connectors**: Fix EPICS connector PV cache to prevent soft IOC crashes
-- **Execution**: Fix channel limits database path resolution in subprocess execution
-- **Config**: Fix control system type update regex to handle comment lines
+- **Templates**: Fix `pyproject.toml` template using wrong package search path
+- **Generators**: Fix `config_updater` functions returning wrong type
+- **Channel Finder**: Fix string ChannelNames causing character-by-character iteration
+- **Skills**: Fix release workflow skill name to follow `osprey-` naming convention
 
 ---
 
@@ -54,8 +43,7 @@ pip install --upgrade "osprey-framework[all]"
 ## What's Next?
 
 Check out our [documentation](https://als-apg.github.io/osprey) for:
-- Project migration guide
-- Soft IOC generation tutorial
+- Soft IOC simulation backend guide
 - Complete tutorial series
 
 ## Contributors
