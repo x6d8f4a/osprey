@@ -84,8 +84,21 @@ class LogViewer(ModalScreen[None]):
         return not isinstance(self._log_source, list)
 
     def on_mount(self) -> None:
-        """Register with app for direct log forwarding."""
+        """Register with app for direct log forwarding and set max height."""
         self.app._active_log_viewer = self
+
+        # Calculate max content height based on screen size to prevent cut-off
+        # while allowing auto-adapt when content is smaller
+        screen_height = self.screen.size.height
+        max_container_height = int(screen_height * 0.8)
+
+        # Fixed overhead: header (~2) + footer (~2) + container padding (2) + margins (~2)
+        fixed_overhead = 8
+
+        max_content_height = max_container_height - fixed_overhead
+
+        content = self.query_one("#log-viewer-content", VerticalScroll)
+        content.styles.max_height = max_content_height
 
     def on_unmount(self) -> None:
         """Unregister from app."""
