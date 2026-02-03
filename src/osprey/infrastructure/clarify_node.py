@@ -20,8 +20,6 @@ from osprey.prompts.loader import get_framework_prompts
 from osprey.utils.config import get_model_config
 from osprey.utils.logger import get_logger
 
-logger = get_logger("clarify_node")
-
 
 # --- Pydantic Model for Clarifying Questions ---
 

@@ -55,10 +55,27 @@ PHASE_DISPLAY_NAMES = {
 
 # Component to phase mapping
 COMPONENT_PHASE_MAP = {
+    # Infrastructure phases (T/C/O/R)
     "task_extraction": "task_extraction",
     "classifier": "classification",
     "orchestrator": "planning",
     "router": "execution",
+
+    # Capabilities (route to execution)
+    "clarify": "execution",        # Clarification capability
+    "respond": "execution",        # Response generation capability
+    "python": "execution",         # Python code execution
+    "memory": "execution",         # Memory operations
+    "time_range_parsing": "execution",  # Time parsing
+
+    # Sub-services (route to execution during capability execution)
+    "python_generator": "execution",   # Python code generation service
+    "python_executor": "execution",    # Python code execution service
+
+    # Infrastructure/Utility (special handling - suppress or route carefully)
+    "StateManager": None,          # Infrastructure logs - suppress from user UI
+    "error": "execution",          # Error handling logs
+    "gateway": "execution",        # Gateway minimal logging
 }
 
 # Phase to component mapping (for block registration)
@@ -531,6 +548,17 @@ class TUIEventHandler:
             step: Current step number (if available)
             timestamp: Event timestamp (if available)
         """
+        # PRIORITY 0: Suppress infrastructure utility logs (e.g., StateManager)
+        # This must happen BEFORE block resolution to prevent routing to wrong blocks
+        mapped_phase = COMPONENT_PHASE_MAP.get(component)
+        if mapped_phase is None and component in COMPONENT_PHASE_MAP:
+            # Component explicitly mapped to None - suppress from user UI
+            # This applies to infrastructure utilities like StateManager
+            # Only show critical errors, suppress info/debug/status logs
+            if level not in ("error", "warning"):
+                return  # Suppress non-critical infrastructure logs
+            # For errors/warnings, fall through to remaining priorities
+
         block = None
 
         # PRIORITY 1: If capability is executing, route to its execution block
@@ -553,14 +581,25 @@ class TUIEventHandler:
             if mapped_phase and mapped_phase in self.current_blocks:
                 block = self.current_blocks[mapped_phase]
 
-        # PRIORITY 3: Fall back to current phase block (but not for execution)
+        # PRIORITY 3: Fall back to current phase block ONLY if component maps to that phase
+        # This prevents logs from other components (router, orchestrator) leaking into unrelated blocks
         if not block and self.current_phase and self.current_phase != "execution":
-            block = self.current_blocks.get(self.current_phase)
+            # Only use current_phase fallback if:
+            # 1. Component explicitly maps to current_phase, OR
+            # 2. Component has no mapping AND no better match exists
+            mapped_phase = COMPONENT_PHASE_MAP.get(component)
 
-        # PRIORITY 4: Fall back to any block containing the component name
+            # If component maps to a different phase, don't use current_phase as fallback
+            if mapped_phase is None or mapped_phase == self.current_phase:
+                block = self.current_blocks.get(self.current_phase)
+
+        # PRIORITY 4: Fall back to block that starts with component name
+        # More precise than substring match to avoid false positives
         if not block:
             for key, b in self.current_blocks.items():
-                if component in key:
+                # Match blocks like "classifier", "orchestrator", "router"
+                # but not partial matches like "or" in "orchestrator"
+                if key == component or key.startswith(f"{component}_"):
                     block = b
                     break
 
