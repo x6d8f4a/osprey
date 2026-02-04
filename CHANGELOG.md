@@ -28,10 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaces generated `data/tools/` scripts with first-class CLI commands
   - LLM channel namer available as library via `osprey.services.channel_finder.tools.llm_channel_namer`
 
+- **ARIEL**: Add `osprey ariel web` command to launch web interface
+- **ARIEL**: Add `osprey ariel purge` command for database cleanup
+- **ARIEL**: Inline enhancement during ingestion (no separate enhance step)
+
 ### Changed
 - **Templates**: Simplify `control_assistant` template (~130 → ~40 files)
   - `registry.py.j2` now uses `extend_framework_registry()` with prompt providers only
   - Capabilities, services, and database tools no longer generated from templates
+- **ARIEL**: Simplify full-text search to use raw_text field directly
+- **ARIEL**: Add base_url support for OpenAI-compatible APIs (CBORG, etc.)
+- **ARIEL**: Fix text embedding max_input_tokens None handling
 
 ## [0.10.9] - 2026-02-08
 
@@ -68,11 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ChainedBackend` for composing multiple backends (base + overrides)
   - `SimulationBackend` protocol for custom physics implementations
   - Documentation guide for custom backend development
-
-### Changed
-- **ARIEL**: Simplify full-text search to use raw_text field directly
-- **ARIEL**: Add base_url support for OpenAI-compatible APIs (CBORG, etc.)
-- **ARIEL**: Fix text embedding max_input_tokens None handling
 
 ### Fixed
 - **Templates**: Fix `pyproject.toml` template using wrong package search path

@@ -12,11 +12,8 @@ from typing import TYPE_CHECKING
 
 import click
 
-# Import get_config at module level for easier patching in tests
-try:
-    from osprey.config import get_config
-except ImportError:
-    from osprey.utils.config import get_config
+# Import get_config_value at module level for easier patching in tests
+from osprey.utils.config import get_config_value
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -45,7 +42,7 @@ def status_command(output_json: bool) -> None:
 
         try:
             # Load config (get_config imported at module level)
-            config_dict = get_config("ariel", {})
+            config_dict = get_config_value("ariel", {})
             if not config_dict:
                 return {"status": "error", "message": "ARIEL not configured"}
 
@@ -66,7 +63,9 @@ def status_command(output_json: bool) -> None:
                     "status": "healthy" if healthy else "unhealthy",
                     "message": message,
                     "database": {
-                        "uri": config.database.uri.split("@")[-1] if "@" in config.database.uri else config.database.uri,
+                        "uri": config.database.uri.split("@")[-1]
+                        if "@" in config.database.uri
+                        else config.database.uri,
                         "connected": healthy,
                     },
                     "entries": stats.get("total_entries", 0),
@@ -81,7 +80,9 @@ def status_command(output_json: bool) -> None:
                     ],
                     "enhancement_modules": {
                         "text_embedding": config.is_enhancement_module_enabled("text_embedding"),
-                        "semantic_processor": config.is_enhancement_module_enabled("semantic_processor"),
+                        "semantic_processor": config.is_enhancement_module_enabled(
+                            "semantic_processor"
+                        ),
                     },
                     "search_modules": {
                         "keyword": config.is_search_module_enabled("keyword"),
@@ -123,7 +124,7 @@ def migrate_command(rollback: bool) -> None:
         from osprey.services.ariel_search.database.migrate import run_migrations
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             click.echo("Error: ARIEL not configured in config.yml", err=True)
             raise SystemExit(1)
@@ -150,7 +151,9 @@ def migrate_command(rollback: bool) -> None:
 
 
 @ariel_group.command("ingest")
-@click.option("--source", "-s", required=True, type=click.Path(exists=True), help="Source file path")
+@click.option(
+    "--source", "-s", required=True, type=click.Path(exists=True), help="Source file path"
+)
 @click.option(
     "--adapter",
     "-a",
@@ -176,10 +179,11 @@ def ingest_command(
 
     async def _ingest() -> None:
         from osprey.services.ariel_search import ARIELConfig, create_ariel_service
+        from osprey.services.ariel_search.enhancement import create_enhancers_from_config
         from osprey.services.ariel_search.ingestion import get_adapter
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             click.echo("Error: ARIEL not configured in config.yml", err=True)
             raise SystemExit(1)
@@ -198,6 +202,11 @@ def ingest_command(
         click.echo(f"Using adapter: {adapter_instance.source_system_name}")
         click.echo(f"Source: {source}")
 
+        # Get enabled enhancement modules
+        enhancers = create_enhancers_from_config(config)
+        if enhancers:
+            click.echo(f"Enhancement modules: {[e.name for e in enhancers]}")
+
         if dry_run:
             # Just count entries
             count = 0
@@ -207,19 +216,47 @@ def ingest_command(
                     click.echo(f"  Parsed {count} entries...")
 
             click.echo(f"\nDry run complete: {count} entries would be ingested")
+            if enhancers:
+                click.echo(f"Enhancement modules would run: {[e.name for e in enhancers]}")
             return
 
-        # Full ingestion
+        # Full ingestion with enhancement
         service = await create_ariel_service(config)
         async with service:
             count = 0
-            async for entry in adapter_instance.fetch_entries(since=since, limit=limit):
-                await service.repository.upsert_entry(entry)
-                count += 1
-                if count % 100 == 0:
-                    click.echo(f"  Ingested {count} entries...")
+            enhanced_count = 0
+            async with service.pool.connection() as conn:
+                async for entry in adapter_instance.fetch_entries(since=since, limit=limit):
+                    # Store entry
+                    await service.repository.upsert_entry(entry)
+                    count += 1
+
+                    # Run enabled enhancement modules
+                    if enhancers:
+                        for enhancer in enhancers:
+                            try:
+                                await enhancer.enhance(entry, conn)
+                                await service.repository.mark_enhancement_complete(
+                                    entry["entry_id"],
+                                    enhancer.name,
+                                )
+                                enhanced_count += 1
+                            except Exception as e:
+                                await service.repository.mark_enhancement_failed(
+                                    entry["entry_id"],
+                                    enhancer.name,
+                                    str(e),
+                                )
+
+                    if count % 100 == 0:
+                        if enhancers:
+                            click.echo(f"  Ingested and enhanced {count} entries...")
+                        else:
+                            click.echo(f"  Ingested {count} entries...")
 
             click.echo(f"\nIngestion complete: {count} entries stored")
+            if enhancers:
+                click.echo(f"Enhancement complete: {enhanced_count} enhancements applied")
 
     asyncio.run(_ingest())
 
@@ -245,7 +282,7 @@ def enhance_command(module: str | None, force: bool, limit: int) -> None:
         from osprey.services.ariel_search.enhancement import create_enhancers_from_config
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             click.echo("Error: ARIEL not configured in config.yml", err=True)
             raise SystemExit(1)
@@ -311,7 +348,7 @@ def models_command() -> None:
         from osprey.services.ariel_search import ARIELConfig, create_ariel_service
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             click.echo("Error: ARIEL not configured in config.yml", err=True)
             raise SystemExit(1)
@@ -353,7 +390,7 @@ def search_command(query: str, mode: str, limit: int, output_json: bool) -> None
         from osprey.services.ariel_search import ARIELConfig, SearchMode, create_ariel_service
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             return {"error": "ARIEL not configured"}
 
@@ -431,7 +468,7 @@ def reembed_command(
         )
 
         # Load config (get_config imported at module level)
-        config_dict = get_config("ariel", {})
+        config_dict = get_config_value("ariel", {})
         if not config_dict:
             click.echo("Error: ARIEL not configured in config.yml", err=True)
             raise SystemExit(1)
@@ -581,6 +618,146 @@ def reembed_command(
             click.echo(f"  Errors: {errors}")
 
     asyncio.run(_reembed())
+
+
+@ariel_group.command("web")
+@click.option("--port", "-p", type=int, default=8085, help="Port to run on")
+@click.option("--host", "-h", default="127.0.0.1", help="Host to bind to")
+@click.option("--reload", is_flag=True, help="Enable auto-reload for development")
+def web_command(port: int, host: str, reload: bool) -> None:
+    """Launch the ARIEL web interface.
+
+    Starts a FastAPI server providing a web-based search interface
+    for ARIEL with support for search, browsing, and entry creation.
+
+    Example:
+        osprey ariel web                    # Start on localhost:8085
+        osprey ariel web --port 8080        # Custom port
+        osprey ariel web --host 0.0.0.0     # Bind to all interfaces
+        osprey ariel web --reload           # Development mode with auto-reload
+    """
+    import sys
+    from pathlib import Path
+
+    # Check if ARIEL is configured
+    config_dict = get_config_value("ariel", {})
+    if not config_dict:
+        click.echo("Error: ARIEL not configured in config.yml", err=True)
+        click.echo("Add an 'ariel:' section to your config.yml file.", err=True)
+        raise SystemExit(1)
+
+    # Find the web app directory
+    web_app_dir = Path(__file__).parent.parent / "templates" / "services" / "ariel-web" / "app"
+    if not web_app_dir.exists():
+        click.echo(f"Error: Web app not found at {web_app_dir}", err=True)
+        raise SystemExit(1)
+
+    # Add app directory to path for imports
+    sys.path.insert(0, str(web_app_dir))
+
+    click.echo(f"Starting ARIEL Web Interface on http://{host}:{port}")
+    click.echo("Press Ctrl+C to stop\n")
+
+    try:
+        import uvicorn
+
+        uvicorn.run(
+            "main:app",
+            host=host,
+            port=port,
+            reload=reload,
+            app_dir=str(web_app_dir),
+            log_level="info",
+        )
+    except ImportError as err:
+        click.echo("Error: uvicorn not installed. Install with: pip install uvicorn", err=True)
+        raise SystemExit(1) from err
+    except KeyboardInterrupt:
+        click.echo("\nShutting down...")
+
+
+@ariel_group.command("purge")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+@click.option("--embeddings-only", is_flag=True, help="Only purge embedding tables, keep entries")
+def purge_command(yes: bool, embeddings_only: bool) -> None:
+    """Purge all ARIEL data from the database.
+
+    WARNING: This permanently deletes all logbook entries and embeddings!
+    Use --embeddings-only to keep entries but clear embedding tables.
+
+    Example:
+        osprey ariel purge              # Interactive confirmation
+        osprey ariel purge -y           # Skip confirmation
+        osprey ariel purge --embeddings-only  # Keep entries, clear embeddings
+    """
+
+    async def _purge() -> None:
+        from osprey.services.ariel_search import ARIELConfig
+        from osprey.services.ariel_search.database.connection import create_connection_pool
+
+        # Load config (get_config imported at module level)
+        config_dict = get_config_value("ariel", {})
+        if not config_dict:
+            click.echo("Error: ARIEL not configured in config.yml", err=True)
+            raise SystemExit(1)
+
+        config = ARIELConfig.from_dict(config_dict)
+
+        # Get current counts for display
+        pool = await create_connection_pool(config.database)
+
+        try:
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    # Get entry count
+                    await cur.execute("SELECT COUNT(*) FROM enhanced_entries")
+                    row = await cur.fetchone()
+                    entry_count = row[0] if row else 0
+
+                    # Get embedding tables
+                    await cur.execute("""
+                        SELECT table_name FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name LIKE 'embeddings_%'
+                    """)
+                    embedding_tables = [r[0] for r in await cur.fetchall()]
+
+            # Show what will be deleted
+            click.echo("\n⚠️  WARNING: This will permanently delete:")
+            if embeddings_only:
+                click.echo(f"  - Embedding tables: {embedding_tables or '(none)'}")
+                click.echo(f"  - Entries will be KEPT ({entry_count} entries)")
+            else:
+                click.echo(f"  - All {entry_count} logbook entries")
+                click.echo(f"  - All embedding tables: {embedding_tables or '(none)'}")
+                click.echo("  - All ingestion history")
+
+            # Confirm
+            if not yes:
+                if not click.confirm("\nAre you sure you want to continue?"):
+                    click.echo("Aborted.")
+                    return
+
+            # Perform purge
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    if embeddings_only:
+                        # Only drop embedding tables
+                        for table in embedding_tables:
+                            await cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE")  # noqa: S608
+                            click.echo(f"  Dropped {table}")
+                        click.echo("\n✓ Embedding tables purged. Entries preserved.")
+                    else:
+                        # Full purge - truncate all tables
+                        await cur.execute("TRUNCATE enhanced_entries CASCADE")
+                        await cur.execute("TRUNCATE ingestion_runs CASCADE")
+                        for table in embedding_tables:
+                            await cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE")  # noqa: S608
+                        click.echo("\n✓ All ARIEL data purged.")
+
+        finally:
+            await pool.close()
+
+    asyncio.run(_purge())
 
 
 __all__ = ["ariel_group"]
