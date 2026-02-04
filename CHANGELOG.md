@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ARIEL**: Add PostgreSQL service template for `osprey deploy up`
 - **ARIEL**: Add ARIEL Web service template with REST API and static frontend
 - **ARIEL**: Enable ARIEL services by default in `control_assistant` template
+- **Tests**: Add ARIEL Web API route tests (44 tests)
+- **Tests**: Add ARIEL E2E pipeline tests (ingest -> enhance -> search)
+- **Tests**: Add LLM Judge `evaluate_text` method for search evaluation
 
 ### Changed
 - **Templates**: Simplify `control_assistant` template (~130 → ~40 files)

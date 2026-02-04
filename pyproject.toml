@@ -141,6 +141,7 @@ dev = [
     "build",  # Required for 'osprey deploy up --dev' to build local wheel
     "testcontainers[postgres]>=4.0.0",  # Real PostgreSQL for integration tests
     "docker>=7.0.0",  # Docker SDK for testcontainers availability check
+    "fastapi>=0.109.0",  # For ARIEL Web API tests
 ]
 
 # Storage backends (databases, PostgreSQL checkpointing, vector/memory storage)
