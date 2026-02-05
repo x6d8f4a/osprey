@@ -33,6 +33,17 @@ from osprey.registry import get_registry, initialize_registry
 from osprey.utils.config import get_current_application, get_full_configuration, get_pipeline_config
 from osprey.utils.logger import get_logger
 
+# Event parsing for unified streaming system
+from osprey.events.parser import parse_event
+from osprey.events.types import (
+    CapabilityCompleteEvent,
+    CapabilityStartEvent,
+    OspreyEvent,
+    PhaseCompleteEvent,
+    PhaseStartEvent,
+    StatusEvent,
+)
+
 logger = get_logger("pipeline")
 
 # Global log capture system
@@ -436,6 +447,98 @@ class Pipeline:
             status_parts.append(f"({step}/{total_steps})")
 
         # Build final status message
+        if status_parts:
+            status_msg = f"{': '.join(status_parts)} - {message}"
+        else:
+            status_msg = message
+
+        return {
+            "event": {
+                "type": "status",
+                "data": {
+                    "description": status_msg,
+                    "done": complete or error,
+                },
+            }
+        }
+
+    def _format_streaming_event_from_typed(self, event: OspreyEvent) -> dict:
+        """Format a typed event into an OpenWebUI status event.
+
+        Converts typed Osprey events (StatusEvent, PhaseStartEvent, etc.) into
+        the OpenWebUI status event format for real-time UI updates.
+
+        Args:
+            event: Typed event object (StatusEvent, PhaseStartEvent, etc.)
+
+        Returns:
+            OpenWebUI status event dict with formatted message
+        """
+        # Extract common fields with safe defaults
+        message = getattr(event, "message", "Processing...")
+        component = getattr(event, "component", "")
+
+        # Handle different event types
+        if isinstance(event, StatusEvent):
+            step = event.step
+            total_steps = event.total_steps
+            phase = event.phase or ""
+            complete = False
+            error = event.level == "error"
+
+        elif isinstance(event, PhaseStartEvent):
+            step = None
+            total_steps = None
+            phase = event.phase
+            message = getattr(event, "description", None) or f"{event.phase} started"
+            complete = False
+            error = False
+
+        elif isinstance(event, PhaseCompleteEvent):
+            step = None
+            total_steps = None
+            phase = event.phase
+            message = f"{event.phase} complete"
+            complete = True
+            error = not event.success
+
+        elif isinstance(event, CapabilityStartEvent):
+            step = event.step_number
+            total_steps = event.total_steps
+            phase = "Execution"
+            message = event.description or event.capability_name
+            complete = False
+            error = False
+
+        elif isinstance(event, CapabilityCompleteEvent):
+            step = None
+            total_steps = None
+            phase = "Execution"
+            message = event.error_message if event.error_message else "Capability complete"
+            complete = True
+            error = not event.success
+
+        else:
+            # Fallback for other event types
+            step = None
+            total_steps = None
+            phase = ""
+            complete = False
+            error = False
+
+        logger.debug(f"Status event captured: '{message}' from {component}")
+
+        # Use existing formatting logic for message construction
+        status_parts = []
+
+        if phase and phase != component:
+            status_parts.append(f"{phase}")
+        elif component:
+            status_parts.append(f"{component.replace('_', ' ').title()}")
+
+        if step and total_steps:
+            status_parts.append(f"({step}/{total_steps})")
+
         if status_parts:
             status_msg = f"{': '.join(status_parts)} - {message}"
         else:
@@ -939,9 +1042,35 @@ class Pipeline:
 
                         # Handle custom events (status events)
                         elif mode == "custom":
-                            # Check event type from dict structure (no parse_event needed)
-                            if chunk.get("event_type") == "status":
-                                status_event = self._format_streaming_event(chunk)
+                            # Parse typed event from stream chunk
+                            event = parse_event(chunk)
+
+                            # Filter for displayable events
+                            should_display = False
+
+                            if isinstance(event, StatusEvent):
+                                # Only display user-facing status levels, skip debug/info
+                                should_display = event.level in (
+                                    "status",
+                                    "key_info",
+                                    "success",
+                                    "warning",
+                                    "error",
+                                )
+                            elif isinstance(
+                                event,
+                                (
+                                    PhaseStartEvent,
+                                    PhaseCompleteEvent,
+                                    CapabilityStartEvent,
+                                    CapabilityCompleteEvent,
+                                ),
+                            ):
+                                # Always display phase/capability lifecycle events
+                                should_display = True
+
+                            if should_display:
+                                status_event = self._format_streaming_event_from_typed(event)
                                 stream_queue.put(("status_event", status_event))
 
                         # Handle LLM token streaming
