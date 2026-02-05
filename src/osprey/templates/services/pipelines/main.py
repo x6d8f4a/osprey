@@ -21,6 +21,7 @@ from collections.abc import Generator, Iterator
 from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import AIMessageChunk
 from pydantic import BaseModel, Field
 
 from osprey.graph import create_graph
@@ -850,22 +851,26 @@ class Pipeline:
                     user_msg = interrupt.value.get("user_message", "Input required")
                     yield f"{user_msg}\n"
                 else:
-                    # Normal completion - extract final response
-                    response = self._extract_response_from_state(state.values)
-                    if response:
-                        # Handle large responses by chunking them for streaming
-                        if len(response) > 50000:  # 50KB threshold for chunking
-                            logger.info(
-                                f"Large response detected ({len(response)} chars), chunking for streaming..."
-                            )
-                            chunk_size = 50000
-                            for i in range(0, len(response), chunk_size):
-                                chunk = response[i : i + chunk_size]
-                                yield chunk
+                    # Normal completion - check if response was already streamed
+                    # This provides fallback for non-streaming scenarios
+                    if not self._last_response_was_streamed:
+                        # Fallback: extract final response from state (old behavior)
+                        response = self._extract_response_from_state(state.values)
+                        if response:
+                            # Handle large responses by chunking for streaming
+                            if len(response) > 50000:  # 50KB threshold
+                                logger.info(
+                                    f"Large response detected ({len(response)} chars)"
+                                )
+                                chunk_size = 50000
+                                for i in range(0, len(response), chunk_size):
+                                    chunk = response[i : i + chunk_size]
+                                    yield chunk
+                            else:
+                                yield response
                         else:
-                            yield response
-                    else:
-                        yield "✅ Execution completed"
+                            yield "✅ Execution completed"
+                    # else: response was already streamed, nothing more to do
 
             finally:
                 loop.close()
@@ -879,35 +884,110 @@ class Pipeline:
     def _execute_graph_with_streaming(
         self, input_data: Any, config: dict, loop: asyncio.AbstractEventLoop
     ):
-        """Execute graph with streaming in sync context and yield events"""
+        """Execute graph with streaming in sync context and yield events
 
-        # Use a queue to bridge async streaming with sync generator
+        Uses unified streaming system with 3-value unpacking to capture:
+        - Status events (mode="custom")
+        - LLM token streaming (mode="messages")
+        - State updates for retry tracking (mode="updates")
 
+        Stores streaming metadata in instance variables:
+        - self._last_response_was_streamed: bool
+        - self._last_accumulated_response: str
+        """
+
+        # Use queue to bridge async streaming with sync generator (single pipe)
         stream_queue = queue.Queue()
         exception_holder = [None]
+
+        # State tracking for streaming behavior
+        accumulated_response = [""]  # Use list for closure access
+        code_streaming_active = [False]  # Track if code fence is open
+        current_generation_attempt = [1]  # Track retry attempts
+        response_was_streamed = [False]  # Track if any response tokens arrived
+
+        # Initialize instance variables for metadata
+        self._last_response_was_streamed = False
+        self._last_accumulated_response = ""
 
         def run_async_streaming():
             """Run async streaming in a separate thread"""
             try:
 
                 async def stream_execution():
-                    async for chunk in self._graph.astream(
-                        input_data, config=config, stream_mode="custom"
+                    # CRITICAL: Single pipe with 3-value unpacking
+                    # Expanding consumer to handle all modes from unified stream
+                    async for ns, mode, chunk in self._graph.astream(
+                        input_data,
+                        config=config,
+                        stream_mode=["custom", "messages", "updates"],
+                        subgraphs=True,  # Enable nested service streaming
                     ):
-                        # Debug: Log all chunks to see what we're receiving
-                        logger.debug(f"Received chunk: {chunk}")
+                        # Track state updates for retry distinction
+                        if mode == "updates":
+                            if isinstance(chunk, dict) and "generation_attempt" in chunk:
+                                new_attempt = chunk["generation_attempt"]
+                                # Close code fence on new retry attempt
+                                if (
+                                    new_attempt > current_generation_attempt[0]
+                                    and code_streaming_active[0]
+                                ):
+                                    stream_queue.put(("response_token", "\n```\n"))
+                                    code_streaming_active[0] = False
+                                current_generation_attempt[0] = new_attempt
+                            continue  # Don't send state updates to client
 
-                        # Handle custom streaming events from get_stream_writer()
-                        if chunk.get("event_type") == "status":
-                            status_event = self._format_streaming_event(chunk)
-                            stream_queue.put(("status_event", status_event))
-                        else:
-                            logger.debug(
-                                f"Non-status chunk: {type(chunk)} {list(chunk.keys()) if isinstance(chunk, dict) else str(chunk)[:100]}"
-                            )
+                        # Handle custom events (status events)
+                        elif mode == "custom":
+                            # Check event type from dict structure (no parse_event needed)
+                            if chunk.get("event_type") == "status":
+                                status_event = self._format_streaming_event(chunk)
+                                stream_queue.put(("status_event", status_event))
 
-                    # Signal completion
-                    stream_queue.put(("done", None))
+                        # Handle LLM token streaming
+                        elif mode == "messages":
+                            message_chunk, metadata = chunk
+                            # Only process AIMessageChunks (streaming tokens)
+                            if (
+                                isinstance(message_chunk, AIMessageChunk)
+                                and message_chunk.content
+                            ):
+                                node_name = metadata.get("langgraph_node", "respond")
+                                response_was_streamed[0] = True
+
+                                # Code generation tokens
+                                if node_name == "python_code_generator":
+                                    # Open code fence on first token
+                                    if not code_streaming_active[0]:
+                                        code_streaming_active[0] = True
+                                        stream_queue.put(
+                                            ("response_token", "\n```python\n")
+                                        )
+                                    # Stream code token
+                                    stream_queue.put(
+                                        ("response_token", message_chunk.content)
+                                    )
+
+                                # Response tokens from respond node
+                                elif node_name == "respond":
+                                    # Close code fence on node transition from code generator
+                                    if code_streaming_active[0]:
+                                        stream_queue.put(("response_token", "\n```\n"))
+                                        code_streaming_active[0] = False
+
+                                    accumulated_response[0] += message_chunk.content
+                                    stream_queue.put(
+                                        ("response_token", message_chunk.content)
+                                    )
+
+                    # Close any open code fence at end
+                    if code_streaming_active[0]:
+                        stream_queue.put(("response_token", "\n```\n"))
+
+                    # Signal completion with response metadata
+                    stream_queue.put(
+                        ("done", (response_was_streamed[0], accumulated_response[0]))
+                    )
 
                 # Run the async execution
                 loop.run_until_complete(stream_execution())
@@ -921,14 +1001,24 @@ class Pipeline:
         thread.daemon = True
         thread.start()
 
-        # Yield streaming events as they arrive
+        # Consume queue and yield to OpenWebUI (single pipe consumer)
         while True:
             try:
                 event_type, data = stream_queue.get(timeout=1.0)
 
                 if event_type == "status_event":
+                    # Yield status events as dicts (OpenWebUI protocol)
+                    yield data
+                elif event_type == "response_token":
+                    # Yield response tokens as strings (OpenWebUI protocol)
                     yield data
                 elif event_type == "done":
+                    # Store completion metadata in instance variables
+                    if isinstance(data, tuple):
+                        (
+                            self._last_response_was_streamed,
+                            self._last_accumulated_response,
+                        ) = data
                     break
                 elif event_type == "error":
                     # Clear status and show error

@@ -137,6 +137,7 @@ memory = [
 
 # Development and testing
 dev = [
+    "build>=1.0.0",  # Required for --dev mode wheel building (osprey deploy up --dev)
     "pytest",
     "pytest-asyncio",
     "pytest-cov",  # Code coverage reporting
