@@ -22,6 +22,6 @@ else
     echo "Using PyPI osprey version"
 fi
 
-# Start the FastAPI application
-echo "Starting ARIEL web server..."
-exec uvicorn main:app --host 0.0.0.0 --port 8085
+# Start the FastAPI application using native osprey interface
+echo "Starting ARIEL web server from native osprey interface..."
+exec uvicorn osprey.interfaces.ariel.app:create_app --factory --host 0.0.0.0 --port 8085

@@ -646,9 +646,6 @@ def web_command(port: int, host: str, reload: bool) -> None:
         osprey ariel web --host 0.0.0.0     # Bind to all interfaces
         osprey ariel web --reload           # Development mode with auto-reload
     """
-    import sys
-    from pathlib import Path
-
     # Check if ARIEL is configured
     config_dict = get_config_value("ariel", {})
     if not config_dict:
@@ -656,31 +653,16 @@ def web_command(port: int, host: str, reload: bool) -> None:
         click.echo("Add an 'ariel:' section to your config.yml file.", err=True)
         raise SystemExit(1)
 
-    # Find the web app directory
-    web_app_dir = Path(__file__).parent.parent / "templates" / "services" / "ariel-web" / "app"
-    if not web_app_dir.exists():
-        click.echo(f"Error: Web app not found at {web_app_dir}", err=True)
-        raise SystemExit(1)
-
-    # Add app directory to path for imports
-    sys.path.insert(0, str(web_app_dir))
-
     click.echo(f"Starting ARIEL Web Interface on http://{host}:{port}")
     click.echo("Press Ctrl+C to stop\n")
 
     try:
-        import uvicorn
+        from osprey.interfaces.ariel import run_web
 
-        uvicorn.run(
-            "main:app",
-            host=host,
-            port=port,
-            reload=reload,
-            app_dir=str(web_app_dir),
-            log_level="info",
-        )
+        run_web(host=host, port=port, reload=reload)
     except ImportError as err:
-        click.echo("Error: uvicorn not installed. Install with: pip install uvicorn", err=True)
+        click.echo("Error: Required dependencies not installed.", err=True)
+        click.echo("Install with: pip install 'osprey-framework[web]'", err=True)
         raise SystemExit(1) from err
     except KeyboardInterrupt:
         click.echo("\nShutting down...")

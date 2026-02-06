@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ARIEL**: Simplify full-text search to use raw_text field directly
 - **ARIEL**: Add base_url support for OpenAI-compatible APIs (CBORG, etc.)
 - **ARIEL**: Fix text embedding max_input_tokens None handling
+- **ARIEL**: Migrate web interface to native Osprey interface
+  - Move from `templates/services/ariel-web/app/` to `src/osprey/interfaces/ariel/`
+  - Treat ARIEL web as first-class interface alongside CLI and TUI
+  - Template now thin Docker wrapper that installs and runs native interface
+  - Simplify CLI command to import from `osprey.interfaces.ariel`
+  - Add `[web]` optional dependency group for local development (`pip install osprey-framework[web]`)
 
 ## [0.10.9] - 2026-02-08
 

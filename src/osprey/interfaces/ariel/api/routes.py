@@ -12,12 +12,11 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Request
 
-from .schemas import (
+from osprey.interfaces.ariel.api.schemas import (
     EntriesListResponse,
     EntryCreateRequest,
     EntryCreateResponse,
     EntryResponse,
-    FusionStrategy,
     SearchMode,
     SearchRequest,
     SearchResponse,
@@ -98,9 +97,7 @@ async def search(request: Request, search_req: SearchRequest) -> SearchResponse:
         if search_req.assembly_max_chars is not None:
             advanced_config["assembly_max_chars"] = search_req.assembly_max_chars
         if search_req.assembly_max_chars_per_item is not None:
-            advanced_config["assembly_max_chars_per_item"] = (
-                search_req.assembly_max_chars_per_item
-            )
+            advanced_config["assembly_max_chars_per_item"] = search_req.assembly_max_chars_per_item
 
         # Processing config (RAG mode)
         if search_req.temperature is not None:
