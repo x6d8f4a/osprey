@@ -2,9 +2,17 @@
 
 This module provides the public API for the ARIEL search service.
 
+Two clean interfaces for search:
+- **Pipelines** (deterministic): For KEYWORD, SEMANTIC, RAG, MULTI modes
+- **Agent** (agentic): For AGENT mode - uses AgentExecutor with search tools
+
 See 04_OSPREY_INTEGRATION.md Section 9.1 for the public API specification.
 """
 
+from osprey.services.ariel_search.agent import (
+    AgentExecutor,
+    AgentResult,
+)
 from osprey.services.ariel_search.capability import (
     close_ariel_service,
     get_ariel_search_service,
@@ -60,6 +68,9 @@ __all__ = [
     "create_ariel_service",
     "get_ariel_search_service",
     "reset_ariel_service",
+    # Agent
+    "AgentExecutor",
+    "AgentResult",
     # Config classes
     "ARIELConfig",
     "DatabaseConfig",

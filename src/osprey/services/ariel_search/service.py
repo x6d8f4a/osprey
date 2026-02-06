@@ -1,14 +1,15 @@
 """ARIEL Search Service.
 
 This module provides the main ARIELSearchService class that orchestrates
-database, search modules, and the ReAct agent.
+the search pipelines and agent executor. The service routes queries to
+either a deterministic Pipeline (for KEYWORD, SEMANTIC, RAG, MULTI modes)
+or an AgentExecutor (for AGENT mode).
 
 See 04_OSPREY_INTEGRATION.md Section 5 for specification.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -25,16 +26,14 @@ from osprey.services.ariel_search.models import (
     EmbeddingTableInfo,
     SearchMode,
 )
-from osprey.services.ariel_search.prompts import get_system_prompt
-from osprey.services.ariel_search.tools import create_search_tools
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
     from psycopg_pool import AsyncConnectionPool
 
     from osprey.models.embeddings.base import BaseEmbeddingProvider
     from osprey.services.ariel_search.config import ARIELConfig
     from osprey.services.ariel_search.database.repository import ARIELRepository
+    from osprey.services.ariel_search.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +41,16 @@ logger = logging.getLogger(__name__)
 class ARIELSearchService:
     """Main service class for ARIEL search functionality.
 
-    This service:
-    - Manages the database connection pool
-    - Creates and manages the ReAct agent
-    - Provides the main search interface
+    This service provides two clean interfaces for search:
+    - **Pipelines** (deterministic): For KEYWORD, SEMANTIC, RAG, MULTI modes
+    - **Agent** (agentic): For AGENT mode
+
+    The service routes queries based on SearchMode:
+    - KEYWORD: KeywordRetriever → TopK → Identity → JSON
+    - SEMANTIC: SemanticRetriever → TopK → Identity → JSON
+    - RAG: SemanticRetriever → ContextWindow → SingleLLM → Citation
+    - MULTI: HybridRetriever(K+S, RRF) → TopK → Identity → JSON
+    - AGENT: AgentExecutor (ReAct with search tools)
 
     Usage:
         config = ARIELConfig.from_dict(config_dict)
@@ -58,7 +63,6 @@ class ARIELSearchService:
         config: ARIELConfig,
         pool: AsyncConnectionPool,
         repository: ARIELRepository,
-        llm: BaseChatModel | None = None,
     ) -> None:
         """Initialize the service.
 
@@ -66,78 +70,40 @@ class ARIELSearchService:
             config: ARIEL configuration
             pool: Database connection pool
             repository: Database repository
-            llm: Optional LLM for the agent (lazy-loaded if not provided)
         """
         self.config = config
         self.pool = pool
         self.repository = repository
-        self._llm = llm
         self._embedder: BaseEmbeddingProvider | None = None
-        self._agent = None
         self._validated_search_model = False
-
-    # === Lazy-loaded Properties ===
-
-    def _get_llm(self) -> BaseChatModel:
-        """Lazy-load the LLM for the agent.
-
-        Uses config.reasoning.llm_model_id and llm_provider (GAP-C007).
-
-        Returns:
-            Configured BaseChatModel instance
-        """
-        if self._llm is None:
-            model_id = self.config.reasoning.llm_model_id
-            provider = self.config.reasoning.llm_provider
-
-            if provider == "openai":
-                try:
-                    from langchain_openai import ChatOpenAI
-
-                    self._llm = ChatOpenAI(
-                        model=model_id,
-                        temperature=self.config.reasoning.temperature,
-                        base_url=self.config.reasoning.base_url,
-                    )
-                except ImportError as err:
-                    raise ConfigurationError(
-                        "langchain_openai is required for ARIEL agent with OpenAI provider. "
-                        "Install with: pip install langchain-openai",
-                        config_key="reasoning.llm_provider",
-                    ) from err
-            elif provider == "anthropic":
-                try:
-                    from langchain_anthropic import ChatAnthropic
-
-                    self._llm = ChatAnthropic(
-                        model=model_id,
-                        temperature=self.config.reasoning.temperature,
-                    )
-                except ImportError as err:
-                    raise ConfigurationError(
-                        "langchain_anthropic is required for ARIEL agent with Anthropic provider. "
-                        "Install with: pip install langchain-anthropic",
-                        config_key="reasoning.llm_provider",
-                    ) from err
-            else:
-                raise ConfigurationError(
-                    f"Unsupported LLM provider: {provider}. "
-                    "Supported providers: openai, anthropic",
-                    config_key="reasoning.llm_provider",
-                )
-
-        return self._llm
 
     def _get_embedder(self) -> BaseEmbeddingProvider:
         """Lazy-load the embedding provider.
+
+        Uses Osprey's provider configuration system to select the appropriate
+        embedding provider based on config.embedding.provider.
 
         Returns:
             Configured embedding provider instance
         """
         if self._embedder is None:
-            from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
+            provider_name = self.config.embedding.provider
 
-            self._embedder = OllamaEmbeddingProvider()
+            # Dynamic provider selection based on config
+            if provider_name == "ollama":
+                from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
+
+                self._embedder = OllamaEmbeddingProvider()
+            else:
+                # For other providers, default to Ollama for now
+                # Additional providers can be added here as they are implemented
+                logger.warning(
+                    f"Embedding provider '{provider_name}' not yet supported, "
+                    f"falling back to 'ollama'"
+                )
+                from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
+
+                self._embedder = OllamaEmbeddingProvider()
 
         return self._embedder
 
@@ -157,6 +123,110 @@ class ARIELSearchService:
 
         self._validated_search_model = True
 
+    # === Pipeline Factory ===
+
+    def _build_pipeline(self, mode: SearchMode) -> Pipeline:
+        """Build a pipeline for the given search mode.
+
+        Args:
+            mode: Search mode to build pipeline for
+
+        Returns:
+            Configured Pipeline instance
+
+        Raises:
+            ConfigurationError: If required modules are not enabled
+        """
+        from osprey.services.ariel_search.pipeline import Pipeline
+        from osprey.services.ariel_search.pipeline.assemblers import (
+            ContextWindowAssembler,
+            TopKAssembler,
+        )
+        from osprey.services.ariel_search.pipeline.formatters import (
+            CitationFormatter,
+            JSONFormatter,
+        )
+        from osprey.services.ariel_search.pipeline.processors import (
+            IdentityProcessor,
+            SingleLLMProcessor,
+        )
+        from osprey.services.ariel_search.pipeline.retrievers import (
+            HybridRetriever,
+            KeywordRetriever,
+            RRFFusion,
+            SemanticRetriever,
+        )
+
+        match mode:
+            case SearchMode.KEYWORD:
+                if not self.config.is_search_module_enabled("keyword"):
+                    raise ConfigurationError(
+                        "Keyword search module not enabled",
+                        config_key="search_modules.keyword.enabled",
+                    )
+                return Pipeline(
+                    retriever=KeywordRetriever(self.repository, self.config),
+                    assembler=TopKAssembler(),
+                    processor=IdentityProcessor(),
+                    formatter=JSONFormatter(),
+                )
+
+            case SearchMode.SEMANTIC:
+                if not self.config.is_search_module_enabled("semantic"):
+                    raise ConfigurationError(
+                        "Semantic search module not enabled",
+                        config_key="search_modules.semantic.enabled",
+                    )
+                return Pipeline(
+                    retriever=SemanticRetriever(self.repository, self.config, self._get_embedder()),
+                    assembler=TopKAssembler(),
+                    processor=IdentityProcessor(),
+                    formatter=JSONFormatter(),
+                )
+
+            case SearchMode.RAG:
+                if not self.config.is_search_module_enabled("semantic"):
+                    raise ConfigurationError(
+                        "Semantic search module required for RAG mode",
+                        config_key="search_modules.semantic.enabled",
+                    )
+                return Pipeline(
+                    retriever=SemanticRetriever(self.repository, self.config, self._get_embedder()),
+                    assembler=ContextWindowAssembler(),
+                    processor=SingleLLMProcessor(),
+                    formatter=CitationFormatter(),
+                )
+
+            case SearchMode.MULTI:
+                # Build hybrid retriever with available retrievers
+                retrievers = []
+                if self.config.is_search_module_enabled("keyword"):
+                    retrievers.append(KeywordRetriever(self.repository, self.config))
+                if self.config.is_search_module_enabled("semantic"):
+                    retrievers.append(
+                        SemanticRetriever(self.repository, self.config, self._get_embedder())
+                    )
+
+                if not retrievers:
+                    raise ConfigurationError(
+                        "No search modules enabled for MULTI mode",
+                        config_key="search_modules",
+                    )
+
+                return Pipeline(
+                    retriever=HybridRetriever(retrievers, RRFFusion()),
+                    assembler=TopKAssembler(),
+                    processor=IdentityProcessor(),
+                    formatter=JSONFormatter(),
+                )
+
+            case _:
+                # AGENT and VISION modes are not handled by pipeline
+                raise ConfigurationError(
+                    f"Mode {mode.value} is not supported by pipeline",
+                    config_key="modes",
+                )
+
     # === Main Search Interface ===
 
     async def search(
@@ -167,15 +237,17 @@ class ARIELSearchService:
         time_range: tuple[Any, Any] | None = None,
         mode: SearchMode | None = None,
     ) -> ARIELSearchResult:
-        """Execute a search using the ARIEL agent.
+        """Execute a search using ARIEL pipelines or agent.
 
         This is the main entry point for searching the logbook.
+        Routes to Pipeline (deterministic) or AgentExecutor (agentic)
+        based on the search mode.
 
         Args:
             query: Natural language query
             max_results: Maximum results (default from config)
             time_range: Optional (start, end) datetime tuple
-            mode: Optional search mode hint
+            mode: Optional search mode (default: MULTI)
 
         Returns:
             ARIELSearchResult with entries, answer, and sources
@@ -194,13 +266,11 @@ class ARIELSearchService:
         self,
         request: ARIELSearchRequest,
     ) -> ARIELSearchResult:
-        """Invoke the ARIEL agent with a search request.
+        """Invoke ARIEL with a search request.
 
-        This method:
-        1. Validates configuration on first call
-        2. Creates search tools from enabled modules
-        3. Runs the ReAct agent with timeout enforcement
-        4. Returns structured results
+        Routes to either Pipeline or AgentExecutor based on mode:
+        - KEYWORD, SEMANTIC, RAG, MULTI: Pipeline (deterministic)
+        - AGENT: AgentExecutor (agentic orchestration)
 
         Args:
             request: Search request with query and parameters
@@ -213,26 +283,15 @@ class ARIELSearchService:
             if self.config.is_search_module_enabled("semantic"):
                 await self._validate_search_model()
 
-            # Create search tools with captured context
-            tools = create_search_tools(
-                config=self.config,
-                repository=self.repository,
-                embedder_loader=self._get_embedder,
-                request=request,
-            )
+            # Get the mode (first mode in list, default to MULTI)
+            mode = request.modes[0] if request.modes else SearchMode.MULTI
 
-            if not tools:
-                return ARIELSearchResult(
-                    entries=(),
-                    answer=None,
-                    sources=(),
-                    search_modes_used=(),
-                    reasoning="No search modules enabled in configuration",
-                )
-
-            # Build and run the agent
-            result = await self._run_agent(request, tools)
-            return result
+            if mode == SearchMode.AGENT:
+                # Route to AgentExecutor for agentic orchestration
+                return await self._run_agent_executor(request)
+            else:
+                # Route to Pipeline for deterministic search
+                return await self._run_pipeline(request, mode)
 
         except SearchTimeoutError as e:
             # Return graceful timeout result instead of propagating exception
@@ -250,135 +309,142 @@ class ARIELSearchService:
             raise
         except Exception as e:
             logger.exception(f"Search failed: {e}")
+            mode = request.modes[0] if request.modes else SearchMode.MULTI
             raise SearchExecutionError(
                 f"Search execution failed: {e}",
-                search_mode="multi",
+                search_mode=mode.value,
                 query=request.query,
             ) from e
 
-    async def _run_agent(
+    async def _run_pipeline(
         self,
         request: ARIELSearchRequest,
-        tools: list[Any],
+        mode: SearchMode,
     ) -> ARIELSearchResult:
-        """Run the ReAct agent with the given request and tools.
-
-        Uses asyncio.wait_for for timeout enforcement.
+        """Run a search pipeline for the given mode.
 
         Args:
             request: Search request
-            tools: List of LangChain StructuredTool instances
+            mode: Search mode (KEYWORD, SEMANTIC, RAG, or MULTI)
 
         Returns:
             ARIELSearchResult
         """
-        try:
-            from langgraph.prebuilt import create_react_agent
+        from osprey.services.ariel_search.pipeline import PipelineConfig
+        from osprey.services.ariel_search.pipeline.types import (
+            ProcessorConfig,
+            RetrievalConfig,
+        )
 
-            # Get LLM
-            llm = self._get_llm()
+        # Build the pipeline for this mode
+        pipeline = self._build_pipeline(mode)
 
-            # Create the agent with system prompt
-            # See 03_AGENTIC_REASONING.md Section 2.4
-            system_prompt = get_system_prompt(self.config)
-            agent = create_react_agent(
-                model=llm,
-                tools=tools,
-                prompt=system_prompt,
-            )
+        # Build pipeline config from request
+        retrieval_config = RetrievalConfig(
+            max_results=request.max_results,
+            start_date=request.time_range[0] if request.time_range else None,
+            end_date=request.time_range[1] if request.time_range else None,
+        )
 
-            # Build initial messages (just the user query, system prompt is in agent)
-            initial_messages = [
-                {"role": "user", "content": request.query},
-            ]
+        # Build processor config for RAG mode
+        processor_config = ProcessorConfig(
+            provider=self.config.reasoning.provider,
+            model_id=self.config.reasoning.model_id,
+            temperature=self.config.reasoning.temperature,
+        )
 
-            # Calculate recursion limit from max_iterations
-            # LangGraph counts each model call and tool execution as separate steps
-            # So we need to double max_iterations (model + tool = 1 iteration)
-            # Add 1 for the final response
-            # See 03_AGENTIC_REASONING.md Section 3.2
-            recursion_limit = (self.config.reasoning.max_iterations * 2) + 1
+        pipeline_config = PipelineConfig(
+            retrieval=retrieval_config,
+            processor=processor_config,
+        )
 
-            # Run with timeout and recursion limit
-            # See 03_AGENTIC_REASONING.md Section 2.1 for timeout specification
-            try:
-                result = await asyncio.wait_for(
-                    agent.ainvoke(
-                        {"messages": initial_messages},
-                        config={"recursion_limit": recursion_limit},
-                    ),
-                    timeout=self.config.reasoning.total_timeout_seconds,
-                )
-            except asyncio.TimeoutError as err:
-                # Wrap in SearchTimeoutError per GAP-C005
-                raise SearchTimeoutError(
-                    message=f"Agent execution timed out after {self.config.reasoning.total_timeout_seconds}s",
-                    timeout_seconds=self.config.reasoning.total_timeout_seconds,
-                    operation="agent execution",
-                ) from err
+        # Execute pipeline
+        result = await pipeline.execute(request.query, pipeline_config)
 
-            # Extract results from agent response
-            return self._parse_agent_result(result, request)
+        # Convert pipeline result to ARIELSearchResult
+        return self._convert_pipeline_result(result, mode)
 
-        except ImportError as err:
-            raise ConfigurationError(
-                "langgraph is required for ARIEL agent. "
-                "Install with: pip install langgraph",
-                config_key="reasoning",
-            ) from err
-
-    def _parse_agent_result(
+    def _convert_pipeline_result(
         self,
-        result: dict[str, Any],
-        request: ARIELSearchRequest,
+        result: Any,  # PipelineResult
+        mode: SearchMode,
     ) -> ARIELSearchResult:
-        """Parse the agent's result into ARIELSearchResult.
+        """Convert pipeline result to ARIELSearchResult.
 
         Args:
-            result: Raw agent result
-            request: Original search request
+            result: PipelineResult from pipeline execution
+            mode: Search mode used
 
         Returns:
-            Structured ARIELSearchResult
+            ARIELSearchResult
         """
-        messages = result.get("messages", [])
+        response = result.response
 
-        # Extract the final answer from the last AI message
+        # Extract entries from response content
+        entries = []
+        sources = []
         answer = None
-        for msg in reversed(messages):
-            if hasattr(msg, "content") and msg.type == "ai":
-                answer = msg.content
-                break
 
-        # Extract entry IDs from citations in the answer
-        sources: list[str] = []
-        if answer:
-            import re
-
-            # Find [entry-XXX] or [#XXX] patterns
-            citation_pattern = r"\[(?:entry-)?#?(\w+)\]"
-            matches = re.findall(citation_pattern, answer)
-            sources = list(dict.fromkeys(matches))  # Dedupe preserving order
-
-        # Determine which search modes were used from tool calls
-        search_modes_used: list[SearchMode] = []
-        for msg in messages:
-            if hasattr(msg, "tool_calls"):
-                for tool_call in msg.tool_calls:
-                    tool_name = tool_call.get("name", "")
-                    if tool_name == "keyword_search" and SearchMode.KEYWORD not in search_modes_used:
-                        search_modes_used.append(SearchMode.KEYWORD)
-                    elif tool_name == "semantic_search" and SearchMode.SEMANTIC not in search_modes_used:
-                        search_modes_used.append(SearchMode.SEMANTIC)
-                    elif tool_name == "rag_search" and SearchMode.RAG not in search_modes_used:
-                        search_modes_used.append(SearchMode.RAG)
+        if response.format_type == "json" and isinstance(response.content, dict):
+            # JSON format from IdentityProcessor
+            items = response.content.get("items", [])
+            for item in items:
+                entry = item.get("entry", {})
+                entries.append(entry)
+                if entry_id := entry.get("entry_id"):
+                    sources.append(entry_id)
+        elif response.format_type == "citation" and isinstance(response.content, str):
+            # Citation format from SingleLLMProcessor (RAG)
+            answer = response.content
+            # Extract sources from metadata
+            sources = response.metadata.get("citations", [])
+            # Get entries from metadata if available
+            items = response.metadata.get("items", [])
+            entries = [item.get("entry", {}) for item in items if item.get("entry")]
 
         return ARIELSearchResult(
-            entries=(),  # V2: Populate from tool results
+            entries=tuple(entries),
             answer=answer,
             sources=tuple(sources),
-            search_modes_used=tuple(search_modes_used),
-            reasoning="",
+            search_modes_used=(mode,),
+            reasoning=f"Pipeline execution: {result.processor_type}",
+        )
+
+    async def _run_agent_executor(
+        self,
+        request: ARIELSearchRequest,
+    ) -> ARIELSearchResult:
+        """Run the AgentExecutor for agentic search.
+
+        Args:
+            request: Search request
+
+        Returns:
+            ARIELSearchResult
+        """
+        from osprey.services.ariel_search.agent import AgentExecutor
+
+        # Create agent executor
+        executor = AgentExecutor(
+            repository=self.repository,
+            config=self.config,
+            embedder_loader=self._get_embedder,
+        )
+
+        # Execute agent
+        agent_result = await executor.execute(
+            query=request.query,
+            max_results=request.max_results,
+            time_range=request.time_range,
+        )
+
+        # Convert agent result to ARIELSearchResult
+        return ARIELSearchResult(
+            entries=agent_result.entries,
+            answer=agent_result.answer,
+            sources=agent_result.sources,
+            search_modes_used=agent_result.search_modes_used,
+            reasoning=agent_result.reasoning,
         )
 
     # === Health Check ===
