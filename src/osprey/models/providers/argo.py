@@ -150,11 +150,3 @@ class ArgoProviderAdapter(BaseProvider):
             timeout=timeout,
             model_id=model_id or self.health_check_model_id,
         )
-
-
-# Attempt to refresh available models at import time (best effort)
-try:
-    ArgoProviderAdapter.get_available_models(force_refresh=True)
-except Exception:
-    # Import-time failures should not break provider load
-    pass

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Registry**: Config-driven provider loading skips unused provider imports (#138)
+  - Eliminates ~30s startup delay on air-gapped machines caused by timeout on provider network calls
+  - Removes module-level `get_available_models(force_refresh=True)` from `argo.py` and `asksage.py`
+
 ### Changed
 - **Docs**: Update citation to published APL Machine Learning paper (doi:10.1063/5.0306302)
 
