@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.9] - 2026-02-08
+
 ### Fixed
 - **Registry**: Config-driven provider loading skips unused provider imports (#138)
   - Eliminates ~30s startup delay on air-gapped machines caused by timeout on provider network calls
@@ -14,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Argo**: Add structured output handler for Argo provider
   - Argo API does not support the `response_format` parameter; structured output now uses direct httpx calls with JSON schema prompting
   - Includes `_clean_json_response()` to strip markdown fences and fix Python-style booleans
+- **Tests**: Fix e2e LLM provider tests broken by config-driven provider filtering
+  - Test config's `models` section only listed `openai`, causing all other providers to be skipped
+  - Test fixtures now add `models` entries for all available providers
+- **Tests**: Remove flaky `gpt-4o` from e2e test matrix (80% pass rate on react_agent due to extra fields in structured output)
 
 ### Changed
 - **Docs**: Update citation to published APL Machine Learning paper (doi:10.1063/5.0306302)

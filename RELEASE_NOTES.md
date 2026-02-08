@@ -1,28 +1,31 @@
-# Osprey Framework - Latest Release (v0.10.8)
+# Osprey Framework - Latest Release (v0.10.9)
 
-**Pluggable Simulation Backends**
+**Config-Driven Provider Loading & Capability Slash Commands**
 
-## What's New in v0.10.8
+## What's New in v0.10.9
 
 ### Highlights
 
-- **Pluggable simulation backends for soft IOCs** - Runtime backend loading from config.yml, chainable backends, and SimulationBackend protocol for custom physics
-- **Improved release workflow skill** - Full step-by-step guidance with CHANGELOG sanitization
+- **Config-driven provider loading** - Registry skips unused provider imports, eliminating ~30s startup delay on air-gapped machines
+- **Argo structured output** - Structured output support for Argo provider via direct httpx calls with JSON schema prompting
+- **Capability slash commands** - Forward unregistered slash commands to capabilities for domain-specific actions
 
 ### Added
-- **Skills**: Improve release workflow skill with full step-by-step guidance and CHANGELOG sanitization
-- **Generators**: Add pluggable simulation backends for soft IOCs
-  - Runtime backend loading from `config.yml` - change behavior without regenerating IOC code
-  - Built-in backends: `passthrough` (no-op) and `mock_style` (archiver-like behavior)
-  - `ChainedBackend` for composing multiple backends (base + overrides)
-  - `SimulationBackend` protocol for custom physics implementations
-  - Documentation guide for custom backend development
+- **CLI**: Add `--channel-finder-mode` and `--code-generator` options to `osprey init`
+  - Options are included in manifest's `reproducible_command` for full project recreation
+- **Capabilities**: Add capability-specific slash commands
+  - Unregistered slash commands (e.g., `/beam:diagnostic`, `/verbose`) are forwarded to capabilities
+  - `slash_command()` helper and `BaseCapability.slash_command()` method for reading commands
+  - Commands are execution-scoped (reset each conversation turn)
 
 ### Fixed
-- **Templates**: Fix `pyproject.toml` template using wrong package search path
-- **Generators**: Fix `config_updater` functions returning wrong type
-- **Channel Finder**: Fix string ChannelNames causing character-by-character iteration
-- **Skills**: Fix release workflow skill name to follow `osprey-` naming convention
+- **Registry**: Config-driven provider loading skips unused provider imports (#138)
+  - Eliminates ~30s startup delay on air-gapped machines
+- **Argo**: Structured output handler for Argo provider (JSON schema prompting via httpx)
+- **Tests**: Fix e2e LLM provider tests broken by config-driven provider filtering
+
+### Changed
+- **Docs**: Update citation to published APL Machine Learning paper (doi:10.1063/5.0306302)
 
 ---
 
@@ -43,7 +46,7 @@ pip install --upgrade "osprey-framework[all]"
 ## What's Next?
 
 Check out our [documentation](https://als-apg.github.io/osprey) for:
-- Soft IOC simulation backend guide
+- Capability slash commands guide
 - Complete tutorial series
 
 ## Contributors
