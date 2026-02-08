@@ -7,6 +7,7 @@ Services included:
 - memory_storage: User memory persistence and retrieval
 - python_executor: Code execution and analysis services
 - channel_finder: Channel address discovery and search
+- ariel_search: Electronic logbook search and retrieval
 """
 
 # Note: Services are imported on-demand to avoid circular dependencies

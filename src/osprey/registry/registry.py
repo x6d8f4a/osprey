@@ -379,6 +379,15 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     provides=["ARCHIVER_DATA"],
                     requires=["CHANNEL_ADDRESSES"],
                 ),
+                # Logbook search capability (native framework-level)
+                CapabilityRegistration(
+                    name="logbook_search",
+                    module_path="osprey.capabilities.logbook_search",
+                    class_name="LogbookSearchCapability",
+                    description="Search and query historical logbook entries",
+                    provides=["LOGBOOK_SEARCH_RESULTS"],
+                    requires=[],
+                ),
             ],
             # Framework-level context classes
             context_classes=[
@@ -421,6 +430,11 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     module_path="osprey.capabilities.archiver_retrieval",
                     class_name="ArchiverDataContext",
                 ),
+                ContextClassRegistration(
+                    context_type="LOGBOOK_SEARCH_RESULTS",
+                    module_path="osprey.capabilities.logbook_search",
+                    class_name="LogbookSearchResultsContext",
+                ),
             ],
             # Framework-level data sources
             data_sources=[
@@ -459,6 +473,15 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     provides=["CHANNEL_ADDRESSES"],
                     requires=[],
                 ),
+                # ARIEL logbook search service (framework-level)
+                ServiceRegistration(
+                    name="ariel_search",
+                    module_path="osprey.services.ariel_search.service",
+                    class_name="ARIELSearchService",
+                    description="Electronic logbook search and retrieval service",
+                    provides=["LOGBOOK_SEARCH_RESULTS"],
+                    requires=[],
+                ),
             ],
             # Framework prompt providers (defaults - typically overridden by applications)
             framework_prompt_providers=[
@@ -477,6 +500,7 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                         "channel_finder_in_context": "DefaultInContextPromptBuilder",
                         "channel_finder_hierarchical": "DefaultHierarchicalPromptBuilder",
                         "channel_finder_middle_layer": "DefaultMiddleLayerPromptBuilder",
+                        "logbook_search": "DefaultLogbookSearchPromptBuilder",
                     },
                 )
             ],
