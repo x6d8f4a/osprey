@@ -31,6 +31,8 @@ def extend_framework_registry(
     providers: list[ProviderRegistration] | None = None,
     connectors: list[ConnectorRegistration] | None = None,
     core_nodes: list[NodeRegistration] | None = None,
+    include_capabilities: list[str] | None = None,
+    include_context_classes: list[str] | None = None,
     exclude_capabilities: list[str] | None = None,
     exclude_nodes: list[str] | None = None,
     exclude_context_classes: list[str] | None = None,
@@ -63,6 +65,12 @@ def extend_framework_registry(
         framework_prompt_providers: Application prompt providers to add
         providers: Application AI model providers to add to framework defaults
         connectors: Application control system/archiver connectors to add
+        include_capabilities: Whitelist of framework capability names to include.
+            Only these framework capabilities will be active. Cannot be used
+            together with exclude_capabilities.
+        include_context_classes: Whitelist of framework context class types to
+            include. Only these framework context classes will be active. Cannot
+            be used together with exclude_context_classes.
         exclude_capabilities: Names of framework capabilities to exclude
         exclude_nodes: Names of framework nodes to exclude
         exclude_context_classes: Context types to exclude from framework
@@ -99,6 +107,16 @@ def extend_framework_registry(
                             class_name="WeatherContext"
                         ),
                     ]
+                )
+
+        Include only specific framework capabilities (whitelist)::
+
+            def get_registry_config(self) -> ExtendedRegistryConfig:
+                return extend_framework_registry(
+                    include_capabilities=["respond", "clarify", "memory",
+                                          "time_range_parsing", "python",
+                                          "state_manager"],
+                    capabilities=[...],  # Your app-specific capabilities
                 )
 
         Exclude framework component::
@@ -154,6 +172,21 @@ def extend_framework_registry(
        :func:`get_framework_defaults` : Inspect framework components
        :class:`RegistryConfig` : The returned configuration structure
     """
+    # Convert include lists to exclude lists by diffing against framework defaults
+    if include_capabilities is not None:
+        if exclude_capabilities is not None:
+            raise ValueError("Cannot use both include_capabilities and exclude_capabilities")
+        framework = get_framework_defaults()
+        all_fw_cap_names = [c.name for c in framework.capabilities]
+        exclude_capabilities = [n for n in all_fw_cap_names if n not in include_capabilities]
+
+    if include_context_classes is not None:
+        if exclude_context_classes is not None:
+            raise ValueError("Cannot use both include_context_classes and exclude_context_classes")
+        framework = get_framework_defaults()
+        all_fw_ctx_types = [c.context_type for c in framework.context_classes]
+        exclude_context_classes = [t for t in all_fw_ctx_types if t not in include_context_classes]
+
     # Build framework exclusions dict for the merge process
     framework_exclusions = {}
 
@@ -178,6 +211,8 @@ def extend_framework_registry(
     # Combine override and regular components
     all_capabilities = list(capabilities or [])
     if override_capabilities:
+        for cap in override_capabilities:
+            cap._is_explicit_override = True
         all_capabilities.extend(override_capabilities)
 
     all_nodes = list(core_nodes or [])
