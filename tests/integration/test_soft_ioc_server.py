@@ -856,9 +856,17 @@ class TestSoftIOCVerification:
         assert port > 0
         assert ioc_server.process.poll() is None
 
-        # 2. Verify initialize was called
-        calls = ioc_server.get_backend_calls()
-        assert any(c["method"] == "initialize" for c in calls)
+        # 2. Verify initialize was called (retry for slow CI)
+        max_wait = 3.0
+        start = time.time()
+        initialized = False
+        while time.time() - start < max_wait:
+            calls = ioc_server.get_backend_calls()
+            if any(c["method"] == "initialize" for c in calls):
+                initialized = True
+                break
+            time.sleep(0.2)
+        assert initialized, f"Expected 'initialize' call, got: {calls}"
 
         # 3. Read initial value
         sp_pv = ioc_server.get_pv("WORKFLOW:VALUE:SP")
@@ -867,29 +875,44 @@ class TestSoftIOCVerification:
 
         # 4. Write new value
         sp_pv.write(99.0, wait=True)
-        time.sleep(0.3)
 
-        # 5. Verify on_write was called for our write
-        calls = ioc_server.get_backend_calls()
-        on_write_calls = [c for c in calls if c["method"] == "on_write"]
-
-        # Find the write for our setpoint with value 99.0
-        sp_write_calls = [
-            c
-            for c in on_write_calls
-            if c["pv_name"] == "WORKFLOW:VALUE:SP" and c["value"] == pytest.approx(99.0)
-        ]
+        # 5. Verify on_write was called for our write (retry for slow CI)
+        sp_write_calls = []
+        max_wait = 3.0
+        start = time.time()
+        while time.time() - start < max_wait:
+            time.sleep(0.2)
+            calls = ioc_server.get_backend_calls()
+            on_write_calls = [c for c in calls if c["method"] == "on_write"]
+            sp_write_calls = [
+                c
+                for c in on_write_calls
+                if c["pv_name"] == "WORKFLOW:VALUE:SP" and c["value"] == pytest.approx(99.0)
+            ]
+            if len(sp_write_calls) >= 1:
+                break
         assert len(sp_write_calls) >= 1, f"Expected SP write with value 99.0, got: {on_write_calls}"
 
-        # 6. Verify readback updated
+        # 6. Verify readback updated (retry for slow CI)
         rb_pv = ioc_server.get_pv("WORKFLOW:VALUE:RB")
-        rb_value = rb_pv.read().data[0]
+        rb_value = None
+        start = time.time()
+        while time.time() - start < max_wait:
+            time.sleep(0.2)
+            rb_value = rb_pv.read().data[0]
+            if rb_value == pytest.approx(99.0, rel=0.01):
+                break
         assert rb_value == pytest.approx(99.0, rel=0.01)
 
-        # 7. Verify step is being called
-        time.sleep(0.3)
-        calls = ioc_server.get_backend_calls()
-        step_calls = [c for c in calls if c["method"] == "step"]
+        # 7. Verify step is being called (retry for slow CI)
+        step_calls = []
+        start = time.time()
+        while time.time() - start < max_wait:
+            time.sleep(0.2)
+            calls = ioc_server.get_backend_calls()
+            step_calls = [c for c in calls if c["method"] == "step"]
+            if len(step_calls) >= 1:
+                break
         assert len(step_calls) >= 1
 
         # 8. Clean shutdown
