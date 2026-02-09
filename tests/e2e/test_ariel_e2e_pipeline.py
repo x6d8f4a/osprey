@@ -16,7 +16,7 @@ With verbose output:
 
 Requirements:
     - Docker (for PostgreSQL) - needed for all tests
-    - CBORG_API_KEY env var  - needed for Phase 2 agent tests only
+    - CBORG_API_KEY env var  - needed for Phase 1.5 (ReAct agent) and Phase 2 (full pipeline)
 """
 
 from __future__ import annotations
@@ -396,6 +396,133 @@ class TestKeywordSearchDemoData:
         )
 
         assert len(results) == 0, f"Expected no results, got: {len(results)}"
+
+
+# =============================================================================
+# Phase 1.5: ARIEL ReAct Agent E2E Tests (requires CBORG API key)
+# =============================================================================
+
+
+@pytest.fixture
+def e2e_agent_config_env():
+    """Set CONFIG_FILE for agent executor LLM access (CBORG).
+
+    The AgentExecutor's _get_llm() calls get_provider_config("cborg") which
+    reads from Osprey's config system. This fixture points CONFIG_FILE at the
+    test config that has CBORG credentials.
+
+    Runs after the autouse reset_registry_between_tests fixture (which clears
+    CONFIG_FILE), so the env var is set fresh for each test.
+    """
+    config_path = Path(__file__).parent.parent / "fixtures" / "ariel" / "test_config.yml"
+    if not config_path.exists():
+        pytest.skip(f"Config file not found: {config_path}")
+
+    os.environ["CONFIG_FILE"] = str(config_path)
+    from osprey.utils import config as config_module
+
+    config_module._default_config = None
+    config_module._default_configurable = None
+    config_module._config_cache.clear()
+
+    # Reset and initialize the registry so get_chat_completion works (LLM judge)
+    from osprey.registry import initialize_registry, reset_registry
+
+    reset_registry()
+    initialize_registry()
+
+    yield
+
+    if "CONFIG_FILE" in os.environ:
+        del os.environ["CONFIG_FILE"]
+    config_module._default_config = None
+    config_module._default_configurable = None
+    config_module._config_cache.clear()
+
+
+@pytest.mark.requires_cborg
+class TestAgentExecutorE2E:
+    """ARIEL ReAct agent e2e tests against demo logbook data.
+
+    Tests the AgentExecutor (LangGraph ReAct agent) directly via
+    ARIELSearchService.search(mode=AGENT). Only keyword_search tool
+    is available (semantic disabled to avoid Ollama dependency).
+
+    Requires CBORG_API_KEY for LLM calls.
+    """
+
+    async def test_agent_finds_safety_procedures(
+        self, e2e_ariel_seeded_db, e2e_agent_config_env, llm_judge
+    ):
+        """Agent searches for safety procedures and synthesizes answer.
+
+        Query: "What safety procedures were followed for the power supply work in Sector 8?"
+        Expected: Agent finds DEMO-020 (LOTO applied) and DEMO-022 (PS replacement),
+        synthesizes answer about LOTO procedures and safety checks.
+        """
+        from osprey.services.ariel_search.models import SearchMode
+        from osprey.services.ariel_search.service import ARIELSearchService
+
+        db = e2e_ariel_seeded_db
+        service = ARIELSearchService(
+            config=db["config"],
+            pool=db["pool"],
+            repository=db["repository"],
+        )
+
+        query = "What safety procedures were followed for the power supply work in Sector 8?"
+        result = await service.search(query, mode=SearchMode.AGENT)
+
+        # --- Deterministic assertions ---
+
+        # Agent should have produced an answer
+        assert result.answer is not None, "Agent did not produce an answer"
+        assert len(result.answer) > 50, f"Answer too short: {result.answer}"
+
+        # Agent should have used keyword_search tool
+        assert SearchMode.KEYWORD in result.search_modes_used, (
+            f"Expected KEYWORD in search modes, got: {result.search_modes_used}"
+        )
+
+        # --- LLM judge evaluation ---
+        expectations = """
+        The answer should:
+        1. Mention LOTO (Lock-Out/Tag-Out) procedures — specifically LOTO-2024-0318
+        2. Reference safety checks like zero energy verification or circuit breaker lockout
+        3. Be grounded in actual logbook entries (not hallucinated)
+        4. Mention the power supply replacement work on quadrupole magnet QF-08C
+        """
+        evaluation = await llm_judge.evaluate_text(
+            result_text=result.answer,
+            expectations=expectations,
+            query=query,
+        )
+        assert evaluation.passed, (
+            f"LLM judge failed (confidence={evaluation.confidence}):\n"
+            f"{evaluation.reasoning}"
+        )
+
+    async def test_agent_handles_irrelevant_query(
+        self, e2e_ariel_seeded_db, e2e_agent_config_env
+    ):
+        """Agent handles queries with no relevant logbook entries gracefully."""
+        from osprey.services.ariel_search.models import SearchMode
+        from osprey.services.ariel_search.service import ARIELSearchService
+
+        db = e2e_ariel_seeded_db
+        service = ARIELSearchService(
+            config=db["config"],
+            pool=db["pool"],
+            repository=db["repository"],
+        )
+
+        result = await service.search(
+            "What is the recipe for chocolate cake?",
+            mode=SearchMode.AGENT,
+        )
+
+        # Agent should still produce an answer (not crash)
+        assert result.answer is not None, "Agent should produce an answer even for irrelevant queries"
 
 
 # =============================================================================

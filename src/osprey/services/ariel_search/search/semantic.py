@@ -58,6 +58,9 @@ async def semantic_search(
     if not query.strip():
         return []
 
+    logger.info("semantic_search: query=%r, max_results=%d, threshold=%s, start_date=%s, end_date=%s",
+                query, max_results, similarity_threshold, start_date, end_date)
+
     # Resolve similarity threshold using 3-tier resolution
     # 1. Per-query parameter (highest priority)
     # 2. Config value
@@ -142,4 +145,5 @@ async def semantic_search(
         end_date=end_date,
     )
 
+    logger.info("semantic_search: returning %d results", len(results))
     return results

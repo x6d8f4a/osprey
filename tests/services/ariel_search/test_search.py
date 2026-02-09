@@ -1123,7 +1123,7 @@ class TestPromptExtraction:
 
         assert AGENT_SYSTEM_PROMPT
         assert "ARIEL" in AGENT_SYSTEM_PROMPT
-        assert "keyword_search" in AGENT_SYSTEM_PROMPT
+        assert "logbook" in AGENT_SYSTEM_PROMPT.lower()
 
     def test_rag_prompt_in_separate_file(self):
         """RAG prompt template is in dedicated file."""

@@ -182,6 +182,9 @@ async def keyword_search(
     if not query.strip():
         return []
 
+    logger.info("keyword_search: query=%r, max_results=%d, start_date=%s, end_date=%s",
+                query, max_results, start_date, end_date)
+
     # Truncate query if too long (GAP-C002)
     if len(query) > MAX_QUERY_LENGTH:
         original_length = len(query)
@@ -259,4 +262,5 @@ async def keyword_search(
             end_date=end_date,
         )
 
+    logger.info("keyword_search: returning %d results", len(results))
     return results

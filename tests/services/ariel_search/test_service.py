@@ -30,11 +30,14 @@ class TestAgentSystemPrompt:
         assert AGENT_SYSTEM_PROMPT
         assert len(AGENT_SYSTEM_PROMPT) > 100
 
-    def test_agent_prompt_mentions_tools(self):
-        """Agent prompt mentions available tools."""
-        assert "keyword_search" in AGENT_SYSTEM_PROMPT
-        assert "semantic_search" in AGENT_SYSTEM_PROMPT
+    def test_agent_prompt_describes_role(self):
+        """Agent prompt describes role and guidelines without hardcoding tool names."""
+        assert "ARIEL" in AGENT_SYSTEM_PROMPT
         assert "logbook" in AGENT_SYSTEM_PROMPT.lower()
+        assert "search tools" in AGENT_SYSTEM_PROMPT.lower()
+        # Tool names should NOT be hardcoded in the system prompt
+        assert "keyword_search" not in AGENT_SYSTEM_PROMPT
+        assert "semantic_search" not in AGENT_SYSTEM_PROMPT
 
 
 class TestToolInputSchemas:
