@@ -5,20 +5,20 @@ Wraps embedding-based similarity search functionality.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 from osprey.services.ariel_search.pipeline.types import (
     RetrievalConfig,
     RetrievedItem,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.models.embeddings.base import BaseEmbeddingProvider
     from osprey.services.ariel_search.config import ARIELConfig
     from osprey.services.ariel_search.database.repository import ARIELRepository
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 class SemanticRetriever:

@@ -6,7 +6,6 @@ See 01_DATA_LAYER.md Section 5.7 for specification.
 """
 
 import json
-import logging
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,11 +14,12 @@ from typing import TYPE_CHECKING, Any
 from osprey.services.ariel_search.exceptions import IngestionError
 from osprey.services.ariel_search.ingestion.base import BaseAdapter
 from osprey.services.ariel_search.models import AttachmentInfo, EnhancedLogbookEntry
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.config import ARIELConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 class JLabLogbookAdapter(BaseAdapter):

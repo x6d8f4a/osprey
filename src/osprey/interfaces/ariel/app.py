@@ -7,7 +7,6 @@ for scientific logbook data.
 
 from __future__ import annotations
 
-import logging
 import os
 import re
 from contextlib import asynccontextmanager
@@ -20,10 +19,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from osprey.utils.logger import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 # Static files directory (relative to this module)
 STATIC_DIR = Path(__file__).parent / "static"

@@ -10,7 +10,6 @@ See 03_AGENTIC_REASONING.md for specification.
 from __future__ import annotations
 
 import asyncio
-import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,6 +22,7 @@ from osprey.services.ariel_search.exceptions import (
     SearchTimeoutError,
 )
 from osprey.services.ariel_search.models import SearchMode
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from osprey.services.ariel_search.database.repository import ARIELRepository
     from osprey.services.ariel_search.models import EnhancedLogbookEntry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 # === System Prompt ===

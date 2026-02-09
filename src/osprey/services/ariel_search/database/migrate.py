@@ -7,18 +7,18 @@ See 04_OSPREY_INTEGRATION.md Sections 11.1-11.8 for specification.
 """
 
 import importlib
-import logging
 from typing import TYPE_CHECKING
 
 from osprey.services.ariel_search.database.migration import BaseMigration
 from osprey.services.ariel_search.exceptions import ConfigurationError
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from psycopg_pool import AsyncConnectionPool
 
     from osprey.services.ariel_search.config import ARIELConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 # Known migrations registry (MVP approach - hardcoded list)

@@ -8,17 +8,18 @@ See 02_SEARCH_MODULES.md Section 3 for specification.
 
 from __future__ import annotations
 
-import logging
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.config import ARIELConfig
     from osprey.services.ariel_search.database.repository import ARIELRepository
     from osprey.services.ariel_search.models import EnhancedLogbookEntry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 # Allowed operators for query parsing
 ALLOWED_OPERATORS = {"AND", "OR", "NOT"}

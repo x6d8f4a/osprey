@@ -8,7 +8,6 @@ See 01_DATA_LAYER.md Sections 5.3, 5.5 for specification.
 
 import asyncio
 import json
-import logging
 import os
 import ssl
 from collections.abc import AsyncIterator
@@ -21,11 +20,12 @@ import aiohttp
 from osprey.services.ariel_search.exceptions import IngestionError
 from osprey.services.ariel_search.ingestion.base import BaseAdapter
 from osprey.services.ariel_search.models import AttachmentInfo, EnhancedLogbookEntry
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.config import ARIELConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 # Default start date for full ALS logbook history
 ALS_LOGBOOK_START_DATE = datetime(2003, 1, 1, tzinfo=UTC)

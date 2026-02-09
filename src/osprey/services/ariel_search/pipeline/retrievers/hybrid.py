@@ -6,13 +6,13 @@ Combines multiple retrievers with configurable fusion strategies.
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import TYPE_CHECKING
 
 from osprey.services.ariel_search.pipeline.types import (
     RetrievalConfig,
     RetrievedItem,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.pipeline.protocols import (
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
         Retriever,
     )
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 class RRFFusion:

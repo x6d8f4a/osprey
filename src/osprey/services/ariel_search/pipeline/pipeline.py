@@ -8,7 +8,6 @@ See 05_RAP_ABSTRACTION.md Section 5.4 for specification.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -21,6 +20,7 @@ from osprey.services.ariel_search.pipeline.types import (
     ProcessorConfig,
     RetrievalConfig,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.pipeline.protocols import (
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
         Retriever,
     )
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 @dataclass

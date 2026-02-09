@@ -7,7 +7,6 @@ See 01_DATA_LAYER.md Section 6.5-6.6 for specification.
 """
 
 import json
-import logging
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -16,6 +15,7 @@ from osprey.services.ariel_search.enhancement.base import BaseEnhancementModule
 from osprey.services.ariel_search.enhancement.semantic_processor.migration import (
     SemanticProcessorMigration,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from psycopg import AsyncConnection
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from osprey.services.ariel_search.database.migration import BaseMigration
     from osprey.services.ariel_search.models import EnhancedLogbookEntry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 # Pydantic model for structured output

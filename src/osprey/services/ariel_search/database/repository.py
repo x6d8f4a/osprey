@@ -9,7 +9,6 @@ for specification.
 
 import functools
 import json
-import logging
 from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -23,13 +22,14 @@ from osprey.services.ariel_search.models import (
     EnhancedLogbookEntry,
     enhanced_entry_from_row,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from psycopg_pool import AsyncConnectionPool
 
     from osprey.services.ariel_search.config import ARIELConfig
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 F = TypeVar("F", bound=Callable[..., Any])
 

@@ -10,7 +10,6 @@ See 04_OSPREY_INTEGRATION.md Section 5 for specification.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from osprey.services.ariel_search.exceptions import (
@@ -26,6 +25,7 @@ from osprey.services.ariel_search.models import (
     EmbeddingTableInfo,
     SearchMode,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from psycopg_pool import AsyncConnectionPool
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from osprey.services.ariel_search.database.repository import ARIELRepository
     from osprey.services.ariel_search.pipeline import Pipeline
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 class ARIELSearchService:

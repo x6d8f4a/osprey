@@ -7,7 +7,6 @@ See 01_DATA_LAYER.md Section 6.3 for specification.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from osprey.services.ariel_search.database.migration import model_to_table_name
@@ -15,6 +14,7 @@ from osprey.services.ariel_search.enhancement.base import BaseEnhancementModule
 from osprey.services.ariel_search.enhancement.text_embedding.migration import (
     TextEmbeddingMigration,
 )
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from psycopg import AsyncConnection
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from osprey.services.ariel_search.database.migration import BaseMigration
     from osprey.services.ariel_search.models import EnhancedLogbookEntry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 # Default characters per token estimate (conservative)
 CHARS_PER_TOKEN = 4

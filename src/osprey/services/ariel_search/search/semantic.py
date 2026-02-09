@@ -7,9 +7,10 @@ See 02_SEARCH_MODULES.md Section 4 for specification.
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+
+from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.models.embeddings.base import BaseEmbeddingProvider
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from osprey.services.ariel_search.database.repository import ARIELRepository
     from osprey.services.ariel_search.models import EnhancedLogbookEntry
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 # Default similarity threshold
 DEFAULT_SIMILARITY_THRESHOLD = 0.7

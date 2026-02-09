@@ -6,7 +6,6 @@ Extracted from search/rag.py LLM call logic.
 
 from __future__ import annotations
 
-import logging
 import re
 
 from osprey.services.ariel_search.pipeline.types import (
@@ -15,8 +14,9 @@ from osprey.services.ariel_search.pipeline.types import (
     ProcessorConfig,
 )
 from osprey.services.ariel_search.prompts import RAG_PROMPT_TEMPLATE
+from osprey.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("ariel")
 
 
 class SingleLLMProcessor:
