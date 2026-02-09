@@ -182,7 +182,7 @@ class LogbookSearchCapability(BaseCapability):
         request = ARIELSearchRequest(
             query=query,
             time_range=time_range_tuple,
-            modes=[SearchMode.MULTI],  # Agent decides which tools to use
+            modes=[SearchMode.RAG],
         )
 
         # Get service and execute
@@ -191,7 +191,7 @@ class LogbookSearchCapability(BaseCapability):
             result = await service.search(
                 query=request.query,
                 max_results=request.max_results,
-                mode=SearchMode.MULTI,
+                mode=SearchMode.RAG,
                 time_range=request.time_range,
             )
 

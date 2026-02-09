@@ -2,9 +2,10 @@
 
 This module provides the public API for the ARIEL search service.
 
-Two clean interfaces for search:
-- **Pipelines** (deterministic): For KEYWORD, SEMANTIC, RAG, MULTI modes
-- **Agent** (agentic): For AGENT mode - uses AgentExecutor with search tools
+Four execution modes:
+- **KEYWORD / SEMANTIC**: Direct calls to search functions
+- **RAG** (deterministic): Hybrid retrieval + RRF fusion + LLM generation
+- **AGENT** (agentic): ReAct agent with auto-discovered search tools
 
 See 04_OSPREY_INTEGRATION.md Section 9.1 for the public API specification.
 """
@@ -56,6 +57,10 @@ from osprey.services.ariel_search.models import (
     enhanced_entry_from_row,
     resolve_time_range,
 )
+from osprey.services.ariel_search.rag import (
+    RAGPipeline,
+    RAGResult,
+)
 from osprey.services.ariel_search.service import (
     ARIELSearchService,
     create_ariel_service,
@@ -92,6 +97,9 @@ __all__ = [
     "ModuleNotEnabledError",
     "SearchExecutionError",
     "SearchTimeoutError",
+    # RAG
+    "RAGPipeline",
+    "RAGResult",
     # Models
     "ARIELSearchRequest",
     "ARIELSearchResult",

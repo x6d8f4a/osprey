@@ -277,33 +277,71 @@ class TestServiceRouting:
         )
 
     @pytest.mark.asyncio
-    async def test_search_routes_to_pipeline_for_keyword_mode(self):
-        """Search routes to pipeline for KEYWORD mode."""
+    async def test_search_routes_to_keyword(self):
+        """Search routes to _run_keyword for KEYWORD mode."""
         service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
 
-        # Mock the _run_pipeline method
         mock_result = ARIELSearchResult(
             entries=(),
             answer=None,
             sources=(),
             search_modes_used=(SearchMode.KEYWORD,),
-            reasoning="Pipeline execution",
+            reasoning="Keyword search: 0 results",
         )
-        service._run_pipeline = AsyncMock(return_value=mock_result)
+        service._run_keyword = AsyncMock(return_value=mock_result)
 
         result = await service.search("test query", mode=SearchMode.KEYWORD)
 
-        service._run_pipeline.assert_called_once()
+        service._run_keyword.assert_called_once()
         assert result.search_modes_used == (SearchMode.KEYWORD,)
 
     @pytest.mark.asyncio
-    async def test_search_routes_to_agent_for_agent_mode(self):
-        """Search routes to AgentExecutor for AGENT mode."""
+    async def test_search_routes_to_semantic(self):
+        """Search routes to _run_semantic for SEMANTIC mode."""
+        service = self._create_mock_service(
+            search_modules={"semantic": {"enabled": True, "model": "test"}}
+        )
+
+        mock_result = ARIELSearchResult(
+            entries=(),
+            answer=None,
+            sources=(),
+            search_modes_used=(SearchMode.SEMANTIC,),
+            reasoning="Semantic search: 0 results",
+        )
+        service._run_semantic = AsyncMock(return_value=mock_result)
+
+        result = await service.search("test query", mode=SearchMode.SEMANTIC)
+
+        service._run_semantic.assert_called_once()
+        assert result.search_modes_used == (SearchMode.SEMANTIC,)
+
+    @pytest.mark.asyncio
+    async def test_search_routes_to_rag(self):
+        """Search routes to _run_rag for RAG mode."""
+        service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
+
+        mock_result = ARIELSearchResult(
+            entries=(),
+            answer="RAG answer",
+            sources=(),
+            search_modes_used=(SearchMode.RAG,),
+            reasoning="RAG pipeline",
+        )
+        service._run_rag = AsyncMock(return_value=mock_result)
+
+        result = await service.search("test query", mode=SearchMode.RAG)
+
+        service._run_rag.assert_called_once()
+        assert result.answer == "RAG answer"
+
+    @pytest.mark.asyncio
+    async def test_search_routes_to_agent(self):
+        """Search routes to _run_agent for AGENT mode."""
         service = self._create_mock_service(
             search_modules={"keyword": {"enabled": True}, "semantic": {"enabled": True}}
         )
 
-        # Mock the _run_agent_executor method
         mock_result = ARIELSearchResult(
             entries=(),
             answer="Agent answer",
@@ -311,108 +349,50 @@ class TestServiceRouting:
             search_modes_used=(SearchMode.KEYWORD, SearchMode.SEMANTIC),
             reasoning="Agent execution",
         )
-        service._run_agent_executor = AsyncMock(return_value=mock_result)
+        service._run_agent = AsyncMock(return_value=mock_result)
 
         result = await service.search("test query", mode=SearchMode.AGENT)
 
-        service._run_agent_executor.assert_called_once()
+        service._run_agent.assert_called_once()
         assert result.answer == "Agent answer"
 
     @pytest.mark.asyncio
-    async def test_search_defaults_to_multi_mode(self):
-        """Search defaults to MULTI mode when no mode specified."""
+    async def test_search_defaults_to_rag_mode(self):
+        """Search defaults to RAG mode when no mode specified."""
         service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
 
         mock_result = ARIELSearchResult(
             entries=(),
-            answer=None,
+            answer="RAG answer",
             sources=(),
-            search_modes_used=(SearchMode.MULTI,),
-            reasoning="Pipeline execution",
+            search_modes_used=(SearchMode.RAG,),
+            reasoning="RAG pipeline",
         )
-        service._run_pipeline = AsyncMock(return_value=mock_result)
+        service._run_rag = AsyncMock(return_value=mock_result)
 
         await service.search("test query")
 
-        # Should route to pipeline with MULTI mode
-        service._run_pipeline.assert_called_once()
+        service._run_rag.assert_called_once()
 
-
-class TestPipelineFactory:
-    """Tests for _build_pipeline method."""
-
-    def _create_mock_service(self, search_modules: dict | None = None) -> ARIELSearchService:
-        """Create a mock service for testing."""
-        config_dict = {
-            "database": {"uri": "postgresql://localhost:5432/test"},
-        }
-        if search_modules:
-            config_dict["search_modules"] = search_modules
-
-        config = ARIELConfig.from_dict(config_dict)
-        mock_pool = MagicMock()
-        mock_repository = MagicMock()
-
-        return ARIELSearchService(
-            config=config,
-            pool=mock_pool,
-            repository=mock_repository,
-        )
-
-    def test_build_pipeline_keyword_mode(self):
-        """_build_pipeline creates KeywordRetriever for KEYWORD mode."""
-        service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
-
-        pipeline = service._build_pipeline(SearchMode.KEYWORD)
-
-        assert pipeline is not None
-        assert pipeline.retriever_name == "keyword"
-
-    def test_build_pipeline_semantic_mode(self):
-        """_build_pipeline creates SemanticRetriever for SEMANTIC mode."""
-        service = self._create_mock_service(
-            search_modules={"semantic": {"enabled": True, "model": "test-model"}}
-        )
-        # Mock the embedder
-        service._get_embedder = MagicMock()
-
-        pipeline = service._build_pipeline(SearchMode.SEMANTIC)
-
-        assert pipeline is not None
-        assert pipeline.retriever_name == "semantic"
-
-    def test_build_pipeline_multi_mode_hybrid(self):
-        """_build_pipeline creates HybridRetriever for MULTI mode."""
-        service = self._create_mock_service(
-            search_modules={
-                "keyword": {"enabled": True},
-                "semantic": {"enabled": True, "model": "test-model"},
-            }
-        )
-        service._get_embedder = MagicMock()
-
-        pipeline = service._build_pipeline(SearchMode.MULTI)
-
-        assert pipeline is not None
-        assert pipeline.retriever_name == "hybrid"
-
-    def test_build_pipeline_raises_for_disabled_module(self):
-        """_build_pipeline raises ConfigurationError when module disabled."""
+    @pytest.mark.asyncio
+    async def test_keyword_mode_raises_when_disabled(self):
+        """KEYWORD mode raises ConfigurationError when module disabled."""
         from osprey.services.ariel_search.exceptions import ConfigurationError
 
         service = self._create_mock_service(search_modules={"keyword": {"enabled": False}})
 
         with pytest.raises(ConfigurationError):
-            service._build_pipeline(SearchMode.KEYWORD)
+            await service.search("test query", mode=SearchMode.KEYWORD)
 
-    def test_build_pipeline_raises_for_agent_mode(self):
-        """_build_pipeline raises ConfigurationError for AGENT mode."""
+    @pytest.mark.asyncio
+    async def test_semantic_mode_raises_when_disabled(self):
+        """SEMANTIC mode raises ConfigurationError when module disabled."""
         from osprey.services.ariel_search.exceptions import ConfigurationError
 
-        service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
+        service = self._create_mock_service(search_modules={"semantic": {"enabled": False}})
 
         with pytest.raises(ConfigurationError):
-            service._build_pipeline(SearchMode.AGENT)
+            await service.search("test query", mode=SearchMode.SEMANTIC)
 
 
 class TestAgentExecutor:
@@ -725,27 +705,6 @@ class TestServiceGetStatus:
         assert result.enabled_search_modules == ["keyword", "semantic"]
         assert result.enabled_enhancement_modules == ["text_embedding"]
         assert isinstance(result.errors, list)
-
-
-class TestSearchMode:
-    """Tests for SearchMode enum."""
-
-    def test_agent_mode_exists(self):
-        """AGENT mode exists in SearchMode enum."""
-        assert hasattr(SearchMode, "AGENT")
-        assert SearchMode.AGENT.value == "agent"
-
-    def test_all_pipeline_modes(self):
-        """All pipeline modes exist."""
-        assert SearchMode.KEYWORD.value == "keyword"
-        assert SearchMode.SEMANTIC.value == "semantic"
-        assert SearchMode.RAG.value == "rag"
-        assert SearchMode.MULTI.value == "multi"
-
-    def test_search_modes_count(self):
-        """SearchMode has expected number of modes."""
-        # KEYWORD, SEMANTIC, RAG, VISION, MULTI, AGENT
-        assert len(SearchMode) == 6
 
 
 class TestAgentResult:

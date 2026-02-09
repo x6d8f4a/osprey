@@ -4,8 +4,8 @@ This module provides the AgentExecutor for ReAct-style agent execution
 with search tools. Use AGENT mode for agentic orchestration where the
 agent decides what to search and synthesizes answers.
 
-The Agent is a parallel interface to the Pipeline - they are not nested.
-Use Pipeline for deterministic search modes (KEYWORD, SEMANTIC, RAG, MULTI)
+The Agent is a peer to the RAGPipeline - they are not nested.
+Use direct search calls for KEYWORD/SEMANTIC, RAGPipeline for RAG,
 and Agent for agentic orchestration (AGENT mode).
 
 See 03_AGENTIC_REASONING.md for specification.

@@ -99,7 +99,7 @@ class TestEnhancementModuleConfig:
         """Test EnhancementModuleConfig with models."""
         models = [
             ModelConfig(name="nomic-embed-text", dimension=768),
-            ModelConfig(name="mxbai-embed-large", dimension=1024),
+            ModelConfig(name="all-minilm", dimension=384),
         ]
         config = EnhancementModuleConfig(enabled=True, models=models)
         assert config.models == models
@@ -111,7 +111,7 @@ class TestEnhancementModuleConfig:
             "enabled": True,
             "models": [
                 {"name": "nomic-embed-text", "dimension": 768},
-                {"name": "mxbai-embed-large", "dimension": 1024},
+                {"name": "all-minilm", "dimension": 384},
             ],
             "settings": {"batch_size": 100},
         }

@@ -220,7 +220,7 @@ class TestMultipleEmbeddingModels:
         if not is_ollama_available():
             pytest.skip("Ollama not available")
 
-        # Check if mxbai-embed-large is available
+        # Check if all-minilm is available
         try:
             import requests
 
@@ -228,9 +228,9 @@ class TestMultipleEmbeddingModels:
             if response.status_code == 200:
                 models = response.json().get("models", [])
                 model_names = [m.get("name", "").split(":")[0] for m in models]
-                if "mxbai-embed-large" not in model_names:
+                if "all-minilm" not in model_names:
                     pytest.skip(
-                        "mxbai-embed-large not available - run 'ollama pull mxbai-embed-large'"
+                        "all-minilm not available - run 'ollama pull all-minilm'"
                     )
         except Exception:
             pytest.skip("Cannot check Ollama models")
@@ -238,6 +238,14 @@ class TestMultipleEmbeddingModels:
         from osprey.services.ariel_search.enhancement.text_embedding import (
             TextEmbeddingModule,
         )
+        from osprey.services.ariel_search.enhancement.text_embedding.migration import (
+            TextEmbeddingMigration,
+        )
+
+        # Ensure the all-minilm table exists (nomic-embed-text created by default migration)
+        migration = TextEmbeddingMigration(models=[("all-minilm", 384)])
+        async with migrated_pool.connection() as conn:
+            await migration.up(conn)
 
         entry = seed_entry_factory(
             entry_id="enhance-multi-001",
@@ -250,7 +258,7 @@ class TestMultipleEmbeddingModels:
             {
                 "models": [
                     {"name": "nomic-embed-text", "dimension": 768},
-                    {"name": "mxbai-embed-large", "dimension": 1024},
+                    {"name": "all-minilm", "dimension": 384},
                 ],
                 "provider": {"base_url": "http://localhost:11434"},
             }
@@ -268,22 +276,22 @@ class TestMultipleEmbeddingModels:
             """)
             row1 = await result1.fetchone()
 
-            # mxbai-embed-large (1024 dims)
+            # all-minilm (384 dims)
             result2 = await conn.execute("""
-                SELECT embedding FROM text_embeddings_mxbai_embed_large
+                SELECT embedding FROM text_embeddings_all_minilm
                 WHERE entry_id = 'enhance-multi-001'
             """)
             row2 = await result2.fetchone()
 
         assert row1 is not None, "nomic-embed-text embedding not stored"
-        assert row2 is not None, "mxbai-embed-large embedding not stored"
+        assert row2 is not None, "all-minilm embedding not stored"
 
     async def test_cleanup(self, migrated_pool):
         """Clean up multi-model test data."""
         async with migrated_pool.connection() as conn:
             for table in [
                 "text_embeddings_nomic_embed_text",
-                "text_embeddings_mxbai_embed_large",
+                "text_embeddings_all_minilm",
             ]:
                 try:
                     await conn.execute(f"""

@@ -28,7 +28,7 @@ class TestSearchMode:
         assert SearchMode.SEMANTIC.value == "semantic"
         assert SearchMode.RAG.value == "rag"
         assert SearchMode.VISION.value == "vision"
-        assert SearchMode.MULTI.value == "multi"
+        assert SearchMode.AGENT.value == "agent"
 
 
 class TestARIELSearchRequest:
@@ -38,7 +38,7 @@ class TestARIELSearchRequest:
         """Test basic request creation."""
         request = ARIELSearchRequest(query="test query")
         assert request.query == "test query"
-        assert request.modes == [SearchMode.MULTI]
+        assert request.modes == [SearchMode.RAG]
         assert request.time_range is None
         assert request.facility is None
         assert request.max_results == 10

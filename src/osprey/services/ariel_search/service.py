@@ -1,9 +1,10 @@
 """ARIEL Search Service.
 
 This module provides the main ARIELSearchService class that orchestrates
-the search pipelines and agent executor. The service routes queries to
-either a deterministic Pipeline (for KEYWORD, SEMANTIC, RAG, MULTI modes)
-or an AgentExecutor (for AGENT mode).
+search execution. The service routes queries to one of four execution modes:
+- KEYWORD / SEMANTIC: Direct calls to search functions
+- RAG: Deterministic pipeline (retrieve → fuse → assemble → generate)
+- AGENT: Non-deterministic ReAct agent
 
 See 04_OSPREY_INTEGRATION.md Section 5 for specification.
 """
@@ -33,7 +34,6 @@ if TYPE_CHECKING:
     from osprey.models.embeddings.base import BaseEmbeddingProvider
     from osprey.services.ariel_search.config import ARIELConfig
     from osprey.services.ariel_search.database.repository import ARIELRepository
-    from osprey.services.ariel_search.pipeline import Pipeline
 
 logger = get_logger("ariel")
 
@@ -41,15 +41,10 @@ logger = get_logger("ariel")
 class ARIELSearchService:
     """Main service class for ARIEL search functionality.
 
-    This service provides two clean interfaces for search:
-    - **Pipelines** (deterministic): For KEYWORD, SEMANTIC, RAG, MULTI modes
-    - **Agent** (agentic): For AGENT mode
-
-    The service routes queries based on SearchMode:
-    - KEYWORD: KeywordRetriever → TopK → Identity → JSON
-    - SEMANTIC: SemanticRetriever → TopK → Identity → JSON
-    - RAG: SemanticRetriever → ContextWindow → SingleLLM → Citation
-    - MULTI: HybridRetriever(K+S, RRF) → TopK → Identity → JSON
+    Routes queries based on SearchMode:
+    - KEYWORD: Direct keyword_search() call
+    - SEMANTIC: Direct semantic_search() call
+    - RAG: RAGPipeline (hybrid retrieval + RRF + LLM generation)
     - AGENT: AgentExecutor (ReAct with search tools)
 
     Usage:
@@ -123,110 +118,6 @@ class ARIELSearchService:
 
         self._validated_search_model = True
 
-    # === Pipeline Factory ===
-
-    def _build_pipeline(self, mode: SearchMode) -> Pipeline:
-        """Build a pipeline for the given search mode.
-
-        Args:
-            mode: Search mode to build pipeline for
-
-        Returns:
-            Configured Pipeline instance
-
-        Raises:
-            ConfigurationError: If required modules are not enabled
-        """
-        from osprey.services.ariel_search.pipeline import Pipeline
-        from osprey.services.ariel_search.pipeline.assemblers import (
-            ContextWindowAssembler,
-            TopKAssembler,
-        )
-        from osprey.services.ariel_search.pipeline.formatters import (
-            CitationFormatter,
-            JSONFormatter,
-        )
-        from osprey.services.ariel_search.pipeline.processors import (
-            IdentityProcessor,
-            SingleLLMProcessor,
-        )
-        from osprey.services.ariel_search.pipeline.retrievers import (
-            HybridRetriever,
-            KeywordRetriever,
-            RRFFusion,
-            SemanticRetriever,
-        )
-
-        match mode:
-            case SearchMode.KEYWORD:
-                if not self.config.is_search_module_enabled("keyword"):
-                    raise ConfigurationError(
-                        "Keyword search module not enabled",
-                        config_key="search_modules.keyword.enabled",
-                    )
-                return Pipeline(
-                    retriever=KeywordRetriever(self.repository, self.config),
-                    assembler=TopKAssembler(),
-                    processor=IdentityProcessor(),
-                    formatter=JSONFormatter(),
-                )
-
-            case SearchMode.SEMANTIC:
-                if not self.config.is_search_module_enabled("semantic"):
-                    raise ConfigurationError(
-                        "Semantic search module not enabled",
-                        config_key="search_modules.semantic.enabled",
-                    )
-                return Pipeline(
-                    retriever=SemanticRetriever(self.repository, self.config, self._get_embedder()),
-                    assembler=TopKAssembler(),
-                    processor=IdentityProcessor(),
-                    formatter=JSONFormatter(),
-                )
-
-            case SearchMode.RAG:
-                if not self.config.is_search_module_enabled("semantic"):
-                    raise ConfigurationError(
-                        "Semantic search module required for RAG mode",
-                        config_key="search_modules.semantic.enabled",
-                    )
-                return Pipeline(
-                    retriever=SemanticRetriever(self.repository, self.config, self._get_embedder()),
-                    assembler=ContextWindowAssembler(),
-                    processor=SingleLLMProcessor(),
-                    formatter=CitationFormatter(),
-                )
-
-            case SearchMode.MULTI:
-                # Build hybrid retriever with available retrievers
-                retrievers = []
-                if self.config.is_search_module_enabled("keyword"):
-                    retrievers.append(KeywordRetriever(self.repository, self.config))
-                if self.config.is_search_module_enabled("semantic"):
-                    retrievers.append(
-                        SemanticRetriever(self.repository, self.config, self._get_embedder())
-                    )
-
-                if not retrievers:
-                    raise ConfigurationError(
-                        "No search modules enabled for MULTI mode",
-                        config_key="search_modules",
-                    )
-
-                return Pipeline(
-                    retriever=HybridRetriever(retrievers, RRFFusion()),
-                    assembler=TopKAssembler(),
-                    processor=IdentityProcessor(),
-                    formatter=JSONFormatter(),
-                )
-
-            case _:
-                # AGENT and VISION modes are not handled by pipeline
-                raise ConfigurationError(
-                    f"Mode {mode.value} is not supported by pipeline",
-                    config_key="modes",
-                )
-
     # === Main Search Interface ===
 
     async def search(
@@ -237,17 +128,16 @@ class ARIELSearchService:
         time_range: tuple[Any, Any] | None = None,
         mode: SearchMode | None = None,
     ) -> ARIELSearchResult:
-        """Execute a search using ARIEL pipelines or agent.
+        """Execute a search.
 
         This is the main entry point for searching the logbook.
-        Routes to Pipeline (deterministic) or AgentExecutor (agentic)
-        based on the search mode.
+        Routes to the appropriate execution mode.
 
         Args:
             query: Natural language query
             max_results: Maximum results (default from config)
             time_range: Optional (start, end) datetime tuple
-            mode: Optional search mode (default: MULTI)
+            mode: Optional search mode (default: RAG)
 
         Returns:
             ARIELSearchResult with entries, answer, and sources
@@ -257,7 +147,7 @@ class ARIELSearchService:
             query=query,
             max_results=max_results or self.config.default_max_results,
             time_range=time_range,
-            modes=[mode] if mode else [SearchMode.MULTI],
+            modes=[mode] if mode else [SearchMode.RAG],
         )
 
         return await self.ainvoke(request)
@@ -268,9 +158,7 @@ class ARIELSearchService:
     ) -> ARIELSearchResult:
         """Invoke ARIEL with a search request.
 
-        Routes to either Pipeline or AgentExecutor based on mode:
-        - KEYWORD, SEMANTIC, RAG, MULTI: Pipeline (deterministic)
-        - AGENT: AgentExecutor (agentic orchestration)
+        Routes to the appropriate execution strategy based on mode.
 
         Args:
             request: Search request with query and parameters
@@ -283,15 +171,22 @@ class ARIELSearchService:
             if self.config.is_search_module_enabled("semantic"):
                 await self._validate_search_model()
 
-            # Get the mode (first mode in list, default to MULTI)
-            mode = request.modes[0] if request.modes else SearchMode.MULTI
+            mode = request.modes[0] if request.modes else SearchMode.RAG
 
-            if mode == SearchMode.AGENT:
-                # Route to AgentExecutor for agentic orchestration
-                return await self._run_agent_executor(request)
-            else:
-                # Route to Pipeline for deterministic search
-                return await self._run_pipeline(request, mode)
+            match mode:
+                case SearchMode.AGENT:
+                    return await self._run_agent(request)
+                case SearchMode.RAG:
+                    return await self._run_rag(request)
+                case SearchMode.KEYWORD:
+                    return await self._run_keyword(request)
+                case SearchMode.SEMANTIC:
+                    return await self._run_semantic(request)
+                case _:
+                    raise ConfigurationError(
+                        f"Unsupported mode: {mode.value}",
+                        config_key="modes",
+                    )
 
         except SearchTimeoutError as e:
             # Return graceful timeout result instead of propagating exception
@@ -309,111 +204,133 @@ class ARIELSearchService:
             raise
         except Exception as e:
             logger.exception(f"Search failed: {e}")
-            mode = request.modes[0] if request.modes else SearchMode.MULTI
+            mode = request.modes[0] if request.modes else SearchMode.RAG
             raise SearchExecutionError(
                 f"Search execution failed: {e}",
                 search_mode=mode.value,
                 query=request.query,
             ) from e
 
-    async def _run_pipeline(
-        self,
-        request: ARIELSearchRequest,
-        mode: SearchMode,
-    ) -> ARIELSearchResult:
-        """Run a search pipeline for the given mode.
+    # === Mode-specific execution ===
+
+    async def _run_keyword(self, request: ARIELSearchRequest) -> ARIELSearchResult:
+        """Run keyword search directly.
 
         Args:
             request: Search request
-            mode: Search mode (KEYWORD, SEMANTIC, RAG, or MULTI)
 
         Returns:
-            ARIELSearchResult
+            ARIELSearchResult with matching entries
         """
-        from osprey.services.ariel_search.pipeline import PipelineConfig
-        from osprey.services.ariel_search.pipeline.types import (
-            ProcessorConfig,
-            RetrievalConfig,
-        )
+        if not self.config.is_search_module_enabled("keyword"):
+            raise ConfigurationError(
+                "Keyword search module not enabled",
+                config_key="search_modules.keyword.enabled",
+            )
 
-        # Build the pipeline for this mode
-        pipeline = self._build_pipeline(mode)
+        from osprey.services.ariel_search.search.keyword import keyword_search
 
-        # Build pipeline config from request
-        retrieval_config = RetrievalConfig(
+        start_date = request.time_range[0] if request.time_range else None
+        end_date = request.time_range[1] if request.time_range else None
+
+        results = await keyword_search(
+            request.query,
+            self.repository,
+            self.config,
             max_results=request.max_results,
-            start_date=request.time_range[0] if request.time_range else None,
-            end_date=request.time_range[1] if request.time_range else None,
+            start_date=start_date,
+            end_date=end_date,
         )
 
-        # Build processor config for RAG mode
-        processor_config = ProcessorConfig(
-            provider=self.config.reasoning.provider,
-            model_id=self.config.reasoning.model_id,
-            temperature=self.config.reasoning.temperature,
-        )
-
-        pipeline_config = PipelineConfig(
-            retrieval=retrieval_config,
-            processor=processor_config,
-        )
-
-        # Execute pipeline
-        result = await pipeline.execute(request.query, pipeline_config)
-
-        # Convert pipeline result to ARIELSearchResult
-        return self._convert_pipeline_result(result, mode)
-
-    def _convert_pipeline_result(
-        self,
-        result: Any,  # PipelineResult
-        mode: SearchMode,
-    ) -> ARIELSearchResult:
-        """Convert pipeline result to ARIELSearchResult.
-
-        Args:
-            result: PipelineResult from pipeline execution
-            mode: Search mode used
-
-        Returns:
-            ARIELSearchResult
-        """
-        response = result.response
-
-        # Extract entries from response content
-        entries = []
-        sources = []
-        answer = None
-
-        if response.format_type == "json" and isinstance(response.content, dict):
-            # JSON format from IdentityProcessor
-            items = response.content.get("items", [])
-            for item in items:
-                entry = item.get("entry", {})
-                entries.append(entry)
-                if entry_id := entry.get("entry_id"):
-                    sources.append(entry_id)
-        elif response.format_type == "citation" and isinstance(response.content, str):
-            # Citation format from SingleLLMProcessor (RAG)
-            answer = response.content
-            # Extract sources from metadata
-            sources = response.metadata.get("citations", [])
-            # Get entries from metadata if available
-            items = response.metadata.get("items", [])
-            entries = [item.get("entry", {}) for item in items if item.get("entry")]
+        entries = tuple(dict(entry) for entry, _score, _highlights in results)
+        sources = tuple(entry["entry_id"] for entry, _score, _highlights in results)
 
         return ARIELSearchResult(
-            entries=tuple(entries),
-            answer=answer,
-            sources=tuple(sources),
-            search_modes_used=(mode,),
-            reasoning=f"Pipeline execution: {result.processor_type}",
+            entries=entries,
+            answer=None,
+            sources=sources,
+            search_modes_used=(SearchMode.KEYWORD,),
+            reasoning=f"Keyword search: {len(results)} results",
         )
 
-    async def _run_agent_executor(
-        self,
-        request: ARIELSearchRequest,
-    ) -> ARIELSearchResult:
+    async def _run_semantic(self, request: ARIELSearchRequest) -> ARIELSearchResult:
+        """Run semantic search directly.
+
+        Args:
+            request: Search request
+
+        Returns:
+            ARIELSearchResult with matching entries
+        """
+        if not self.config.is_search_module_enabled("semantic"):
+            raise ConfigurationError(
+                "Semantic search module not enabled",
+                config_key="search_modules.semantic.enabled",
+            )
+
+        from osprey.services.ariel_search.search.semantic import semantic_search
+
+        start_date = request.time_range[0] if request.time_range else None
+        end_date = request.time_range[1] if request.time_range else None
+
+        results = await semantic_search(
+            request.query,
+            self.repository,
+            self.config,
+            self._get_embedder(),
+            max_results=request.max_results,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        entries = tuple(dict(entry) for entry, _similarity in results)
+        sources = tuple(entry["entry_id"] for entry, _similarity in results)
+
+        return ARIELSearchResult(
+            entries=entries,
+            answer=None,
+            sources=sources,
+            search_modes_used=(SearchMode.SEMANTIC,),
+            reasoning=f"Semantic search: {len(results)} results",
+        )
+
+    async def _run_rag(self, request: ARIELSearchRequest) -> ARIELSearchResult:
+        """Run the RAG pipeline.
+
+        Args:
+            request: Search request
+
+        Returns:
+            ARIELSearchResult with entries and LLM-generated answer
+        """
+        from osprey.services.ariel_search.rag import RAGPipeline
+
+        pipeline = RAGPipeline(
+            repository=self.repository,
+            config=self.config,
+            embedder_loader=self._get_embedder,
+        )
+
+        start_date = request.time_range[0] if request.time_range else None
+        end_date = request.time_range[1] if request.time_range else None
+
+        rag_result = await pipeline.execute(
+            request.query,
+            max_results=request.max_results,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        return ARIELSearchResult(
+            entries=rag_result.entries,
+            answer=rag_result.answer,
+            sources=rag_result.citations,
+            search_modes_used=(SearchMode.RAG,),
+            reasoning=f"RAG pipeline: {rag_result.retrieval_count} retrieved, "
+            f"{len(rag_result.entries)} in context",
+        )
+
+    async def _run_agent(self, request: ARIELSearchRequest) -> ARIELSearchResult:
         """Run the AgentExecutor for agentic search.
 
         Args:

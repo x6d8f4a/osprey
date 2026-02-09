@@ -107,31 +107,6 @@ def test_search_endpoint_with_time_range(client, mock_ariel_service):
     assert call_kwargs["time_range"] is not None
 
 
-def test_search_endpoint_advanced_options(client, mock_ariel_service):
-    """Test search with advanced options."""
-    response = client.post(
-        "/api/search",
-        json={
-            "query": "test",
-            "mode": "semantic",
-            "max_results": 10,
-            "similarity_threshold": 0.7,
-            "include_highlights": True,
-            "assembly_max_items": 20,
-            "temperature": 0.5,
-        },
-    )
-
-    assert response.status_code == 200
-
-    # Check that advanced params were passed
-    call_kwargs = mock_ariel_service.search.call_args.kwargs
-    assert call_kwargs["similarity_threshold"] == 0.7
-    assert call_kwargs["include_highlights"] is True
-    assert call_kwargs["assembly_max_items"] == 20
-    assert call_kwargs["temperature"] == 0.5
-
-
 def test_list_entries_endpoint(client, mock_ariel_service):
     """Test list entries endpoint."""
     # Mock repository methods
@@ -253,12 +228,10 @@ def test_search_mode_mapping(client, mock_ariel_service):
     """Test that search modes are correctly mapped."""
     from osprey.services.ariel_search.models import SearchMode as ServiceSearchMode
 
-    # Test each mode
     modes = {
         "keyword": ServiceSearchMode.KEYWORD,
         "semantic": ServiceSearchMode.SEMANTIC,
         "rag": ServiceSearchMode.RAG,
-        "multi": ServiceSearchMode.MULTI,
         "agent": ServiceSearchMode.AGENT,
     }
 

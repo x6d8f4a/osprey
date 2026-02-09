@@ -112,7 +112,7 @@ class TestTextEmbeddingModule:
             {
                 "models": [
                     {"name": "nomic-embed-text", "dimension": 768},
-                    {"name": "mxbai-embed-large", "dimension": 1024},
+                    {"name": "all-minilm", "dimension": 384},
                 ],
             }
         )

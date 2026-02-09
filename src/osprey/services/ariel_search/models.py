@@ -99,19 +99,17 @@ class SearchMode(Enum):
     """Search mode enumeration.
 
     Attributes:
-        KEYWORD: PostgreSQL full-text search (Pipeline: KeywordRetriever)
-        SEMANTIC: Embedding similarity search (Pipeline: SemanticRetriever)
-        RAG: Question-answering with LLM (Pipeline: SemanticRetriever + SingleLLMProcessor)
+        KEYWORD: PostgreSQL full-text search (direct function call)
+        SEMANTIC: Embedding similarity search (direct function call)
+        RAG: Deterministic RAG pipeline with hybrid retrieval, RRF fusion, and LLM generation
         VISION: Figure similarity (Future)
-        MULTI: Hybrid search with RRF fusion (Pipeline: HybridRetriever)
-        AGENT: Agentic orchestration with ReAct agent (AgentExecutor, not Pipeline)
+        AGENT: Agentic orchestration with ReAct agent (AgentExecutor)
     """
 
     KEYWORD = "keyword"
     SEMANTIC = "semantic"
     RAG = "rag"
     VISION = "vision"  # Future
-    MULTI = "multi"
     AGENT = "agent"
 
 
@@ -123,7 +121,7 @@ class ARIELSearchRequest:
 
     Attributes:
         query: The search query text
-        modes: Search modes to use (default: [MULTI])
+        modes: Search modes to use (default: [RAG])
         time_range: Default time range filter (see Time Range Semantics)
         facility: Facility filter
         max_results: Maximum results to return (default: 10, range: 1-100)
@@ -132,7 +130,7 @@ class ARIELSearchRequest:
     """
 
     query: str
-    modes: list[SearchMode] = field(default_factory=lambda: [SearchMode.MULTI])
+    modes: list[SearchMode] = field(default_factory=lambda: [SearchMode.RAG])
     time_range: tuple[datetime, datetime] | None = None
     facility: str | None = None
     max_results: int = 10

@@ -3,8 +3,8 @@
 This module provides keyword and semantic search implementations
 for the ARIEL search service.
 
-RAG is now implemented via the Pipeline abstraction:
-    SemanticRetriever → ContextWindowAssembler → SingleLLMProcessor → CitationFormatter
+RAG is implemented via the RAGPipeline in osprey.services.ariel_search.rag:
+    hybrid retrieval → RRF fusion → context assembly → LLM generation
 """
 
 from osprey.services.ariel_search.search.base import SearchToolDescriptor
