@@ -163,12 +163,15 @@ def _try_load_prompts_directly(
         return None
 
 
-def _try_load_facility_prompts(facility_path: str, pipeline_mode: str = "in_context") -> Any | None:
+def _try_load_facility_prompts(
+    facility_path: str, pipeline_mode: str = "in_context", require_query_splitter: bool = True
+) -> Any | None:
     """Try to load facility-specific prompts module.
 
     Args:
         facility_path: Path to facility directory
         pipeline_mode: Pipeline mode ('in_context' or 'hierarchical')
+        require_query_splitter: Whether query_splitter is required
 
     Returns:
         Prompts module if found, None otherwise
@@ -190,8 +193,9 @@ def _try_load_facility_prompts(facility_path: str, pipeline_mode: str = "in_cont
             return None
 
         # Determine required files based on pipeline mode
-        # All pipelines need: __init__.py, system.py (facility description), query_splitter.py
-        base_files = ["__init__.py", "system.py", "query_splitter.py"]
+        base_files = ["__init__.py", "system.py"]
+        if require_query_splitter:
+            base_files.append("query_splitter.py")
 
         if pipeline_mode == "hierarchical":
             # Hierarchical pipeline uses base files + hierarchical_context.py (loaded separately by pipeline)
@@ -221,9 +225,11 @@ def _try_load_facility_prompts(facility_path: str, pipeline_mode: str = "in_cont
 
             # Verify it has the required attributes based on pipeline mode
             if pipeline_mode in ["hierarchical", "middle_layer"]:
-                required_attrs = ["query_splitter"]
+                required_attrs = ["query_splitter"] if require_query_splitter else []
             else:
-                required_attrs = ["query_splitter", "channel_matcher", "correction"]
+                required_attrs = ["channel_matcher", "correction"]
+                if require_query_splitter:
+                    required_attrs.insert(0, "query_splitter")
 
             missing_attrs = [attr for attr in required_attrs if not hasattr(prompts_module, attr)]
             if missing_attrs:
