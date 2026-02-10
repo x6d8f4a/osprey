@@ -658,7 +658,7 @@ ariel:
   # For production: change adapter and source_url to your logbook system
   ingestion:
     adapter: generic_json
-    source_url: ./data/logbook_seed/demo_logbook.json
+    source_url: src/{{ package_name }}/data/logbook_seed/demo_logbook.json
 
   # Search modules
   # provider: references api.providers for credentials (api_key, base_url)
