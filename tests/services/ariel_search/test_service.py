@@ -375,6 +375,50 @@ class TestServiceRouting:
         service._run_rag.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_keyword_preserves_highlights(self):
+        """Keyword search preserves highlights in returned entries."""
+        from osprey.services.ariel_search.search.keyword import keyword_search
+
+        service = self._create_mock_service(search_modules={"keyword": {"enabled": True}})
+
+        mock_entry = {
+            "entry_id": "entry-hl-001",
+            "source_system": "ALS eLog",
+            "timestamp": datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC),
+            "author": "jsmith",
+            "raw_text": "Beam alignment completed successfully.",
+            "attachments": [],
+            "metadata": {},
+            "created_at": datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC),
+            "updated_at": datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC),
+        }
+        mock_highlights = ["<b>beam</b> alignment"]
+
+        service.repository.keyword_search = AsyncMock(
+            return_value=[(mock_entry, 0.8, mock_highlights)]
+        )
+
+        # Patch keyword_search to call repository directly
+        async def fake_keyword_search(query, repo, config, **kwargs):
+            return await repo.keyword_search(query)
+
+        import osprey.services.ariel_search.service as svc_module
+
+        original = svc_module.__dict__.get("_run_keyword")
+
+        # Use the real _run_keyword but with mocked keyword_search
+        from unittest.mock import patch
+
+        with patch(
+            "osprey.services.ariel_search.search.keyword.keyword_search",
+            side_effect=fake_keyword_search,
+        ):
+            result = await service.search("beam", mode=SearchMode.KEYWORD)
+
+        assert len(result.entries) == 1
+        assert result.entries[0]["_highlights"] == ["<b>beam</b> alignment"]
+
+    @pytest.mark.asyncio
     async def test_keyword_mode_raises_when_disabled(self):
         """KEYWORD mode raises ConfigurationError when module disabled."""
         from osprey.services.ariel_search.exceptions import ConfigurationError

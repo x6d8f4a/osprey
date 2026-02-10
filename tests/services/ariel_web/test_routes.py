@@ -701,6 +701,42 @@ class TestEntryResponseFormat:
             assert "highlights" in entry
             assert isinstance(entry["highlights"], list)
 
+    @pytest.mark.asyncio
+    async def test_search_forwards_keyword_highlights(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+        sample_entry: dict,
+    ) -> None:
+        """Keyword highlights from _highlights flow through to API response."""
+        from osprey.services.ariel_search.models import ARIELSearchResult, SearchMode
+
+        # Create an entry with _highlights (as the service layer now produces)
+        entry_with_highlights = {
+            **sample_entry,
+            "_highlights": ["<b>beam</b> alignment completed"],
+        }
+
+        mock_ariel_service.search = AsyncMock(
+            return_value=ARIELSearchResult(
+                entries=(entry_with_highlights,),
+                answer=None,
+                sources=("test-001",),
+                search_modes_used=(SearchMode.KEYWORD,),
+                reasoning="Keyword search: 1 result",
+            )
+        )
+
+        response = await client.post(
+            "/api/search",
+            json={"query": "beam", "mode": "keyword"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["entries"]) == 1
+        assert data["entries"][0]["highlights"] == ["<b>beam</b> alignment completed"]
+
 
 # =============================================================================
 # Error Handling Tests

@@ -260,6 +260,14 @@ textarea.input {
   overflow: hidden;
 }
 
+.entry-card-content b {
+  color: var(--color-amber-light);
+  background: var(--color-amber-glow);
+  font-weight: 700;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
 .entry-card-footer {
   display: flex;
   align-items: center;

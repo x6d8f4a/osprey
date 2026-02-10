@@ -94,6 +94,27 @@ export function renderTags(tags, type = '') {
 }
 
 /**
+ * Sanitize a highlight snippet from ts_headline, allowing only <b> and </b> tags.
+ * All other HTML is escaped for defense-in-depth.
+ * @param {string} html - Raw highlight string from PostgreSQL ts_headline
+ * @returns {string} Sanitized HTML safe for innerHTML
+ */
+export function sanitizeHighlight(html) {
+  if (!html) return '';
+  // Replace <b> and </b> with placeholders, escape everything else, restore placeholders
+  return html
+    .replace(/<b>/gi, '\x00B_OPEN\x00')
+    .replace(/<\/b>/gi, '\x00B_CLOSE\x00')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/\x00B_OPEN\x00/g, '<b>')
+    .replace(/\x00B_CLOSE\x00/g, '</b>');
+}
+
+/**
  * Render an entry card.
  * @param {Object} entry - Entry data
  * @returns {string} HTML string
@@ -109,6 +130,15 @@ export function renderEntryCard(entry) {
   const subject = lines[0]?.slice(0, 100) || 'Untitled';
   const preview = lines.slice(1).join('\n').trim() || rawText;
 
+  // Use highlighted snippet if available, otherwise fall back to plain-text preview
+  const highlights = entry.highlights || [];
+  let contentHtml;
+  if (highlights.length > 0) {
+    contentHtml = highlights.map(h => sanitizeHighlight(h)).join(' &hellip; ');
+  } else {
+    contentHtml = `${escapeHtml(preview).slice(0, 300)}${preview.length > 300 ? '...' : ''}`;
+  }
+
   return `
     <article class="entry-card" data-entry-id="${escapeHtml(entry.entry_id)}" onclick="window.app.showEntry('${escapeHtml(entry.entry_id)}')">
       <div class="entry-card-header">
@@ -121,7 +151,7 @@ export function renderEntryCard(entry) {
         ${score}
       </div>
       <div class="entry-card-content">
-        ${escapeHtml(preview).slice(0, 300)}${preview.length > 300 ? '...' : ''}
+        ${contentHtml}
       </div>
       <div class="entry-card-footer">
         ${attachmentCount > 0 ? `<span class="text-muted">📎 ${attachmentCount}</span>` : ''}
@@ -249,6 +279,7 @@ export default {
   renderScoreBadge,
   renderStatusIndicator,
   renderTags,
+  sanitizeHighlight,
   renderEntryCard,
   renderAnswerBox,
   renderLoading,
