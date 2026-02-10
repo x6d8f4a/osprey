@@ -104,6 +104,7 @@ AGENT_PIPELINE = PipelineDescriptor(
 )
 
 _ALL_PIPELINES = [RAG_PIPELINE, AGENT_PIPELINE]
+_PIPELINES_BY_NAME = {p.name: p for p in _ALL_PIPELINES}
 
 
 def get_pipeline_descriptors() -> list[PipelineDescriptor]:
@@ -111,9 +112,27 @@ def get_pipeline_descriptors() -> list[PipelineDescriptor]:
     return list(_ALL_PIPELINES)
 
 
+def get_pipeline_descriptor(name: str) -> PipelineDescriptor:
+    """Return a single pipeline descriptor by name.
+
+    Used by the central Osprey registry to look up specific pipelines.
+
+    Args:
+        name: Pipeline name (e.g. "rag", "agent")
+
+    Returns:
+        The matching PipelineDescriptor
+
+    Raises:
+        KeyError: If no pipeline with the given name exists
+    """
+    return _PIPELINES_BY_NAME[name]
+
+
 __all__ = [
     "AGENT_PIPELINE",
     "PipelineDescriptor",
     "RAG_PIPELINE",
+    "get_pipeline_descriptor",
     "get_pipeline_descriptors",
 ]

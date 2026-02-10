@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from osprey.services.ariel_search.pipelines import get_pipeline_descriptors
 from osprey.services.ariel_search.search.base import ParameterDescriptor
 
 if TYPE_CHECKING:
@@ -87,55 +86,47 @@ def _add_search_modules(
     config: ARIELConfig,
     categories: dict[str, dict[str, Any]],
 ) -> None:
-    """Add enabled search modules to the capabilities."""
-    search_modules = {
-        "keyword": {
-            "label": "Keyword",
-            "description": "Fast text-based lookup using full-text search",
-            "import": "osprey.services.ariel_search.search.keyword",
-        },
-        "semantic": {
-            "label": "Semantic",
-            "description": "Find conceptually related entries using AI embeddings",
-            "import": "osprey.services.ariel_search.search.semantic",
-        },
-    }
+    """Add enabled search modules to the capabilities via the registry."""
+    from osprey.registry import get_registry
 
-    for name, info in search_modules.items():
+    registry = get_registry()
+    for name in registry.list_ariel_search_modules():
         if not config.is_search_module_enabled(name):
             continue
-
-        # Dynamically import to get parameter descriptors
+        module = registry.get_ariel_search_module(name)
+        if module is None:
+            continue
+        descriptor = module.get_tool_descriptor()
         parameters: list[dict[str, Any]] = []
-        try:
-            import importlib
-
-            module = importlib.import_module(info["import"])
-            get_params = getattr(module, "get_parameter_descriptors", None)
-            if get_params:
-                parameters = [p.to_dict() for p in get_params()]
-        except (ImportError, AttributeError):
-            pass
-
+        get_params = getattr(module, "get_parameter_descriptors", None)
+        if get_params:
+            parameters = [p.to_dict() for p in get_params()]
         categories["direct"]["modes"].append(
             {
                 "name": name,
-                "label": info["label"],
-                "description": info["description"],
+                "label": name.replace("_", " ").title(),
+                "description": descriptor.description,
                 "parameters": parameters,
             }
         )
 
 
 def _add_pipelines(categories: dict[str, dict[str, Any]]) -> None:
-    """Add pipeline descriptors to the capabilities."""
-    for pipeline in get_pipeline_descriptors():
-        categories[pipeline.category]["modes"].append(
+    """Add pipeline descriptors to the capabilities via the registry."""
+    from osprey.registry import get_registry
+
+    registry = get_registry()
+    for name in registry.list_ariel_pipelines():
+        module = registry.get_ariel_pipeline(name)
+        if module is None:
+            continue
+        descriptor = module.get_pipeline_descriptor(name)
+        categories[descriptor.category]["modes"].append(
             {
-                "name": pipeline.name,
-                "label": pipeline.label,
-                "description": pipeline.description,
-                "parameters": [p.to_dict() for p in pipeline.parameters],
+                "name": descriptor.name,
+                "label": descriptor.label,
+                "description": descriptor.description,
+                "parameters": [p.to_dict() for p in descriptor.parameters],
             }
         )
 

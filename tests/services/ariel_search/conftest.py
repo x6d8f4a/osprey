@@ -11,17 +11,97 @@ from __future__ import annotations
 
 import logging
 import os
+import types
 from datetime import UTC
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from osprey.services.ariel_search.enhancement.semantic_processor.processor import (
+    SemanticProcessorModule,
+)
+from osprey.services.ariel_search.enhancement.text_embedding.embedder import (
+    TextEmbeddingModule,
+)
+from osprey.services.ariel_search.models import SearchMode
+from osprey.services.ariel_search.search.base import SearchToolDescriptor
 
 if TYPE_CHECKING:
     from osprey.services.ariel_search.config import ARIELConfig
     from osprey.services.ariel_search.database.repository import ARIELRepository
 
 logger = logging.getLogger(__name__)
+
+
+def _build_ariel_mock_registry():
+    """Build a mock Osprey registry with ARIEL search/enhancement/pipeline modules."""
+    from osprey.registry.base import ArielEnhancementModuleRegistration
+
+    registry = MagicMock()
+
+    # --- Search modules ---
+    from osprey.services.ariel_search.search import keyword as kw_real, semantic as sem_real
+
+    kw_mod = types.ModuleType("keyword")
+    kw_mod.get_tool_descriptor = kw_real.get_tool_descriptor  # type: ignore[attr-defined]
+    kw_mod.get_parameter_descriptors = getattr(kw_real, "get_parameter_descriptors", None)  # type: ignore[attr-defined]
+
+    sem_mod = types.ModuleType("semantic")
+    sem_mod.get_tool_descriptor = sem_real.get_tool_descriptor  # type: ignore[attr-defined]
+    sem_mod.get_parameter_descriptors = getattr(sem_real, "get_parameter_descriptors", None)  # type: ignore[attr-defined]
+
+    _search_modules = {"keyword": kw_mod, "semantic": sem_mod}
+    registry.list_ariel_search_modules.return_value = list(_search_modules)
+    registry.get_ariel_search_module.side_effect = _search_modules.get
+
+    # --- Enhancement modules ---
+    sp_reg = ArielEnhancementModuleRegistration(
+        name="semantic_processor",
+        module_path="osprey.services.ariel_search.enhancement.semantic_processor.processor",
+        class_name="SemanticProcessorModule",
+        description="Semantic processor",
+        execution_order=10,
+    )
+    te_reg = ArielEnhancementModuleRegistration(
+        name="text_embedding",
+        module_path="osprey.services.ariel_search.enhancement.text_embedding.embedder",
+        class_name="TextEmbeddingModule",
+        description="Text embedding",
+        execution_order=20,
+    )
+    _enhancement_modules = {
+        "semantic_processor": (SemanticProcessorModule, sp_reg),
+        "text_embedding": (TextEmbeddingModule, te_reg),
+    }
+    registry.list_ariel_enhancement_modules.return_value = [
+        "semantic_processor",
+        "text_embedding",
+    ]
+    registry.get_ariel_enhancement_module.side_effect = _enhancement_modules.get
+
+    # --- Pipelines ---
+    from osprey.services.ariel_search.pipelines import get_pipeline_descriptor
+
+    rag_mod = types.ModuleType("rag")
+    rag_mod.get_pipeline_descriptor = get_pipeline_descriptor  # type: ignore[attr-defined]
+
+    agent_mod = types.ModuleType("agent")
+    agent_mod.get_pipeline_descriptor = get_pipeline_descriptor  # type: ignore[attr-defined]
+
+    _pipelines = {"rag": rag_mod, "agent": agent_mod}
+    registry.list_ariel_pipelines.return_value = list(_pipelines)
+    registry.get_ariel_pipeline.side_effect = _pipelines.get
+
+    return registry
+
+
+@pytest.fixture(autouse=True)
+def _mock_ariel_registry():
+    """Provide a mock Osprey registry with ARIEL modules for all ARIEL tests."""
+    registry = _build_ariel_mock_registry()
+    with patch("osprey.registry.get_registry", return_value=registry):
+        yield
 
 # Dev database URL (from docker/ariel-dev.yml)
 DEV_DATABASE_URL = "postgresql://ariel:ariel@localhost:5433/ariel_test"

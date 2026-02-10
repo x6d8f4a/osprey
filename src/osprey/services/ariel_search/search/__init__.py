@@ -23,19 +23,11 @@ from osprey.services.ariel_search.search.semantic import (
     semantic_search,
 )
 
-# Maps config module name → module path for lazy import by the agent executor.
-# To add a new search module, add one line here.
-SEARCH_MODULE_REGISTRY: dict[str, str] = {
-    "keyword": "osprey.services.ariel_search.search.keyword",
-    "semantic": "osprey.services.ariel_search.search.semantic",
-}
-
 __all__ = [
     "ALLOWED_FIELD_PREFIXES",
     "ALLOWED_OPERATORS",
     "KeywordSearchInput",
     "MAX_QUERY_LENGTH",
-    "SEARCH_MODULE_REGISTRY",
     "SearchToolDescriptor",
     "SemanticSearchInput",
     "format_keyword_result",

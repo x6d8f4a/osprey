@@ -9,6 +9,9 @@ intuitive API for application developers to define their registries.
 """
 
 from .base import (
+    ArielEnhancementModuleRegistration,
+    ArielPipelineRegistration,
+    ArielSearchModuleRegistration,
     CapabilityRegistration,
     ConnectorRegistration,
     ContextClassRegistration,
@@ -39,6 +42,12 @@ def extend_framework_registry(
     exclude_data_sources: list[str] | None = None,
     exclude_providers: list[str] | None = None,
     exclude_connectors: list[str] | None = None,
+    ariel_search_modules: list[ArielSearchModuleRegistration] | None = None,
+    ariel_enhancement_modules: list[ArielEnhancementModuleRegistration] | None = None,
+    ariel_pipelines: list[ArielPipelineRegistration] | None = None,
+    exclude_ariel_search_modules: list[str] | None = None,
+    exclude_ariel_enhancement_modules: list[str] | None = None,
+    exclude_ariel_pipelines: list[str] | None = None,
     override_capabilities: list[CapabilityRegistration] | None = None,
     override_nodes: list[NodeRegistration] | None = None,
     override_providers: list[ProviderRegistration] | None = None,
@@ -208,6 +217,15 @@ def extend_framework_registry(
     if exclude_connectors:
         framework_exclusions["connectors"] = exclude_connectors
 
+    if exclude_ariel_search_modules:
+        framework_exclusions["ariel_search_modules"] = exclude_ariel_search_modules
+
+    if exclude_ariel_enhancement_modules:
+        framework_exclusions["ariel_enhancement_modules"] = exclude_ariel_enhancement_modules
+
+    if exclude_ariel_pipelines:
+        framework_exclusions["ariel_pipelines"] = exclude_ariel_pipelines
+
     # Combine override and regular components
     all_capabilities = list(capabilities or [])
     if override_capabilities:
@@ -237,6 +255,9 @@ def extend_framework_registry(
         framework_prompt_providers=list(framework_prompt_providers or []),
         providers=all_providers,
         connectors=all_connectors,
+        ariel_search_modules=list(ariel_search_modules or []),
+        ariel_enhancement_modules=list(ariel_enhancement_modules or []),
+        ariel_pipelines=list(ariel_pipelines or []),
         framework_exclusions=framework_exclusions if framework_exclusions else None,
     )
 

@@ -1,8 +1,7 @@
 """Tests for search module auto-discovery system.
 
 Tests the SearchToolDescriptor, get_tool_descriptor() contracts,
-SEARCH_MODULE_REGISTRY, format functions, and the executor's
-generic tool-building loop.
+format functions, and the executor's generic tool-building loop.
 """
 
 from __future__ import annotations
@@ -10,17 +9,14 @@ from __future__ import annotations
 import asyncio
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
-from importlib import import_module
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pydantic import BaseModel, Field
 
 from osprey.services.ariel_search.agent.executor import AgentExecutor
 from osprey.services.ariel_search.config import ARIELConfig
 from osprey.services.ariel_search.models import SearchMode
-from osprey.services.ariel_search.search import SEARCH_MODULE_REGISTRY
 from osprey.services.ariel_search.search.base import SearchToolDescriptor
 from osprey.services.ariel_search.search.keyword import (
     KeywordSearchInput,
@@ -242,41 +238,6 @@ class TestFormatSemanticResult:
 
 
 # ======================================================================
-# SEARCH_MODULE_REGISTRY tests
-# ======================================================================
-
-
-class TestSearchModuleRegistry:
-    """Tests for the SEARCH_MODULE_REGISTRY dict."""
-
-    def test_registry_contains_keyword(self):
-        """'keyword' maps to correct module path."""
-        assert "keyword" in SEARCH_MODULE_REGISTRY
-        assert SEARCH_MODULE_REGISTRY["keyword"] == "osprey.services.ariel_search.search.keyword"
-
-    def test_registry_contains_semantic(self):
-        """'semantic' maps to correct module path."""
-        assert "semantic" in SEARCH_MODULE_REGISTRY
-        assert SEARCH_MODULE_REGISTRY["semantic"] == "osprey.services.ariel_search.search.semantic"
-
-    def test_registry_modules_importable(self):
-        """All registered module paths can be imported."""
-        for module_name, module_path in SEARCH_MODULE_REGISTRY.items():
-            mod = import_module(module_path)
-            assert mod is not None, f"Failed to import {module_path} for '{module_name}'"
-
-    def test_registry_modules_have_descriptor(self):
-        """All importable modules expose get_tool_descriptor()."""
-        for module_name, module_path in SEARCH_MODULE_REGISTRY.items():
-            mod = import_module(module_path)
-            assert hasattr(mod, "get_tool_descriptor"), (
-                f"Module '{module_name}' ({module_path}) missing get_tool_descriptor()"
-            )
-            desc = mod.get_tool_descriptor()
-            assert isinstance(desc, SearchToolDescriptor)
-
-
-# ======================================================================
 # Auto-discovery in executor tests
 # ======================================================================
 
@@ -494,79 +455,6 @@ class TestParseAgentResultDynamic:
         )
         assert "001" in result.sources
         assert "002" in result.sources
-
-
-# ======================================================================
-# Integration: fake module auto-discovery
-# ======================================================================
-
-
-class TestFakeModuleAutoDiscovery:
-    """Proof test: a mock module is auto-discovered without executor changes."""
-
-    def test_fake_module_auto_discovered(self, monkeypatch):
-        """Register a mock module, verify executor picks it up."""
-        # Create a fake descriptor
-        fake_execute = AsyncMock(return_value=[])
-        fake_format = MagicMock(return_value={})
-
-        class FakeInput(BaseModel):
-            query: str = Field(description="test")
-
-        fake_descriptor = SearchToolDescriptor(
-            name="fake_search",
-            description="Fake search for testing",
-            search_mode=SearchMode.KEYWORD,
-            args_schema=FakeInput,
-            execute=fake_execute,
-            format_result=fake_format,
-        )
-
-        # Create a fake module object with get_tool_descriptor
-        import types
-
-        fake_module = types.ModuleType("fake_search_module")
-        fake_module.get_tool_descriptor = lambda: fake_descriptor  # type: ignore[attr-defined]
-
-        # Patch the registry and importlib
-        import osprey.services.ariel_search.search as search_pkg
-
-        patched_registry = {
-            **SEARCH_MODULE_REGISTRY,
-            "fake": "fake_search_module",
-        }
-        monkeypatch.setattr(search_pkg, "SEARCH_MODULE_REGISTRY", patched_registry)
-
-        # Patch import_module to return our fake module for "fake_search_module"
-        original_import = import_module
-
-        def patched_import(name: str) -> Any:
-            if name == "fake_search_module":
-                return fake_module
-            return original_import(name)
-
-        monkeypatch.setattr(
-            "osprey.services.ariel_search.agent.executor.import_module",
-            patched_import,
-        )
-
-        # Create executor with "fake" enabled
-        executor = _make_executor(
-            search_modules={
-                "keyword": {"enabled": True},
-                "fake": {"enabled": True},
-            }
-        )
-        tools, descriptors = executor._create_tools()
-
-        tool_names = {t.name for t in tools}
-        assert "keyword_search" in tool_names
-        assert "fake_search" in tool_names
-        assert len(tools) == 2
-
-        # Verify the fake descriptor was loaded
-        desc_names = {d.name for d in descriptors}
-        assert "fake_search" in desc_names
 
 
 # ======================================================================

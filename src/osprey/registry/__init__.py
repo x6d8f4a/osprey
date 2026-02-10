@@ -95,6 +95,9 @@ Examples:
 # Core registry system
 # Framework components for application use - all shared definitions in base
 from .base import (
+    ArielEnhancementModuleRegistration,
+    ArielPipelineRegistration,
+    ArielSearchModuleRegistration,
     CapabilityRegistration,
     ConnectorRegistration,
     ContextClassRegistration,
@@ -137,6 +140,10 @@ __all__ = [
     "ConnectorRegistration",
     "RegistryConfig",
     "ExtendedRegistryConfig",
+    # ARIEL module registration types
+    "ArielSearchModuleRegistration",
+    "ArielEnhancementModuleRegistration",
+    "ArielPipelineRegistration",
     # Helper functions (NEW - Phase 4.6)
     "extend_framework_registry",
     "get_framework_defaults",

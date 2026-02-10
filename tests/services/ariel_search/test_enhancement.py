@@ -10,8 +10,6 @@ import pytest
 from osprey.services.ariel_search.config import ARIELConfig, DatabaseConfig
 from osprey.services.ariel_search.enhancement.base import BaseEnhancementModule
 from osprey.services.ariel_search.enhancement.factory import (
-    EXECUTION_ORDER,
-    KNOWN_ENHANCERS,
     create_enhancers_from_config,
     get_enhancer_names,
 )
@@ -26,15 +24,6 @@ from osprey.services.ariel_search.enhancement.text_embedding import (
 
 class TestEnhancementFactory:
     """Tests for enhancement module factory."""
-
-    def test_known_enhancers_has_expected_modules(self):
-        """KNOWN_ENHANCERS contains expected modules."""
-        assert "semantic_processor" in KNOWN_ENHANCERS
-        assert "text_embedding" in KNOWN_ENHANCERS
-
-    def test_execution_order_has_expected_modules(self):
-        """EXECUTION_ORDER contains expected modules in correct order."""
-        assert EXECUTION_ORDER == ["semantic_processor", "text_embedding"]
 
     def test_get_enhancer_names(self):
         """get_enhancer_names returns correct list."""

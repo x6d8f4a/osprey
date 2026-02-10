@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import types
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -11,6 +12,71 @@ from fastapi.testclient import TestClient
 
 from osprey.interfaces.ariel.api import routes
 from osprey.services.ariel_search.config import ARIELConfig
+from osprey.services.ariel_search.models import SearchMode
+from osprey.services.ariel_search.search.base import SearchToolDescriptor
+
+
+def _build_mock_registry():
+    """Build a mock registry that provides ARIEL search modules and pipelines."""
+    registry = MagicMock()
+
+    # Build mock search modules
+    keyword_mod = types.ModuleType("keyword")
+    keyword_mod.get_tool_descriptor = lambda: SearchToolDescriptor(  # type: ignore[attr-defined]
+        name="keyword_search",
+        description="Full-text keyword search",
+        search_mode=SearchMode.KEYWORD,
+        args_schema=MagicMock(),
+        execute=AsyncMock(),
+        format_result=MagicMock(),
+    )
+    keyword_mod.get_parameter_descriptors = None  # type: ignore[attr-defined]
+
+    semantic_mod = types.ModuleType("semantic")
+    semantic_mod.get_tool_descriptor = lambda: SearchToolDescriptor(  # type: ignore[attr-defined]
+        name="semantic_search",
+        description="Semantic similarity search",
+        search_mode=SearchMode.SEMANTIC,
+        args_schema=MagicMock(),
+        execute=AsyncMock(),
+        format_result=MagicMock(),
+        needs_embedder=True,
+    )
+    semantic_mod.get_parameter_descriptors = None  # type: ignore[attr-defined]
+
+    registry.list_ariel_search_modules.return_value = ["keyword", "semantic"]
+    registry.get_ariel_search_module.side_effect = lambda n: {
+        "keyword": keyword_mod,
+        "semantic": semantic_mod,
+    }.get(n)
+
+    # Build mock pipelines using the real pipeline descriptors
+    from osprey.services.ariel_search.pipelines import get_pipeline_descriptor
+
+    rag_mod = types.ModuleType("rag")
+    rag_mod.get_pipeline_descriptor = get_pipeline_descriptor  # type: ignore[attr-defined]
+
+    agent_mod = types.ModuleType("agent")
+    agent_mod.get_pipeline_descriptor = get_pipeline_descriptor  # type: ignore[attr-defined]
+
+    registry.list_ariel_pipelines.return_value = ["rag", "agent"]
+    registry.get_ariel_pipeline.side_effect = lambda n: {
+        "rag": rag_mod,
+        "agent": agent_mod,
+    }.get(n)
+
+    return registry
+
+
+@pytest.fixture(autouse=True)
+def _mock_registry():
+    """Provide a mock registry for all ARIEL route tests."""
+    registry = _build_mock_registry()
+    with patch(
+        "osprey.registry.get_registry",
+        return_value=registry,
+    ):
+        yield
 
 
 @pytest.fixture

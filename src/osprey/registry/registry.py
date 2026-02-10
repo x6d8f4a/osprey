@@ -78,6 +78,9 @@ Examples:
 """
 
 from .base import (
+    ArielEnhancementModuleRegistration,
+    ArielPipelineRegistration,
+    ArielSearchModuleRegistration,
     CapabilityRegistration,
     CodeGeneratorRegistration,
     ConnectorRegistration,
@@ -594,6 +597,49 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     optional_dependencies=["claude-agent-sdk"],
                 ),
             ],
+            # ARIEL search modules
+            ariel_search_modules=[
+                ArielSearchModuleRegistration(
+                    name="keyword",
+                    module_path="osprey.services.ariel_search.search.keyword",
+                    description="Full-text search with PostgreSQL FTS and fuzzy fallback",
+                ),
+                ArielSearchModuleRegistration(
+                    name="semantic",
+                    module_path="osprey.services.ariel_search.search.semantic",
+                    description="Embedding similarity search using vector cosine distance",
+                ),
+            ],
+            # ARIEL enhancement modules
+            ariel_enhancement_modules=[
+                ArielEnhancementModuleRegistration(
+                    name="semantic_processor",
+                    module_path="osprey.services.ariel_search.enhancement.semantic_processor.processor",
+                    class_name="SemanticProcessorModule",
+                    description="Extract keywords and summaries from logbook entries",
+                    execution_order=10,
+                ),
+                ArielEnhancementModuleRegistration(
+                    name="text_embedding",
+                    module_path="osprey.services.ariel_search.enhancement.text_embedding.embedder",
+                    class_name="TextEmbeddingModule",
+                    description="Generate vector embeddings for logbook entries",
+                    execution_order=20,
+                ),
+            ],
+            # ARIEL pipelines
+            ariel_pipelines=[
+                ArielPipelineRegistration(
+                    name="rag",
+                    module_path="osprey.services.ariel_search.pipelines",
+                    description="Deterministic RAG pipeline with hybrid retrieval and RRF fusion",
+                ),
+                ArielPipelineRegistration(
+                    name="agent",
+                    module_path="osprey.services.ariel_search.pipelines",
+                    description="Autonomous ReAct agent with multi-step reasoning",
+                ),
+            ],
             # Simplified initialization order - decorators and subgraphs are imported directly when needed
             initialization_order=[
                 "context_classes",  # First - needed by capabilities
@@ -601,9 +647,12 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                 "providers",  # Third - AI model providers early for use by capabilities
                 "connectors",  # Fourth - control system/archiver connectors
                 "code_generators",  # Fifth - code generators for Python executor
-                "core_nodes",  # Sixth - infrastructure nodes
-                "services",  # Seventh - internal service graphs
-                "capabilities",  # Eighth - depends on everything else including services
+                "ariel_search_modules",  # Sixth - ARIEL search modules
+                "ariel_enhancement_modules",  # Seventh - ARIEL enhancement modules
+                "ariel_pipelines",  # Eighth - ARIEL pipelines
+                "core_nodes",  # Ninth - infrastructure nodes
+                "services",  # Tenth - internal service graphs
+                "capabilities",  # Eleventh - depends on everything else including services
                 "framework_prompt_providers",  # Last - imports applications that may need capabilities/context
             ],
         )

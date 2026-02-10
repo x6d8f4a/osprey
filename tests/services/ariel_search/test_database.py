@@ -566,15 +566,10 @@ class TestEnhancementModulesInit:
     def test_factory_import(self) -> None:
         """Enhancement factory can be imported."""
         from osprey.services.ariel_search.enhancement.factory import (
-            EXECUTION_ORDER,
-            KNOWN_ENHANCERS,
             create_enhancers_from_config,
         )
 
         assert callable(create_enhancers_from_config)
-        # KNOWN_ENHANCERS is a dict
-        assert isinstance(KNOWN_ENHANCERS, dict)
-        assert isinstance(EXECUTION_ORDER, list)
 
     def test_text_embedding_import(self) -> None:
         """TextEmbeddingModule can be imported."""

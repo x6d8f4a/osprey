@@ -4,7 +4,7 @@ This module provides the AgentExecutor class that encapsulates ReAct agent
 logic with search tools. The agent decides what to search and synthesizes
 answers from multiple tool invocations.
 
-Search tools are auto-discovered from the SEARCH_MODULE_REGISTRY via
+Search tools are auto-discovered from the Osprey registry via
 SearchToolDescriptor — adding a new search module requires zero changes here.
 
 See 03_AGENTIC_REASONING.md for specification.
@@ -16,7 +16,6 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 from osprey.services.ariel_search.exceptions import (
@@ -91,7 +90,7 @@ class AgentResult:
 class AgentExecutor:
     """Executor for ReAct-style agent with search tools.
 
-    The AgentExecutor auto-discovers search tools from the SEARCH_MODULE_REGISTRY.
+    The AgentExecutor auto-discovers search tools from the Osprey registry.
     Each search module provides a `get_tool_descriptor()` that describes its tool —
     the executor wraps descriptors into LangChain StructuredTools generically.
 
@@ -162,21 +161,19 @@ class AgentExecutor:
         return self._llm
 
     def _load_descriptors(self) -> list[SearchToolDescriptor]:
-        """Load tool descriptors from enabled search modules.
+        """Load tool descriptors from enabled search modules via the registry.
 
         Returns:
             List of SearchToolDescriptor for each enabled and registered module
         """
-        from osprey.services.ariel_search.search import SEARCH_MODULE_REGISTRY
+        from osprey.registry import get_registry
 
+        registry = get_registry()
         descriptors: list[SearchToolDescriptor] = []
         for module_name in self.config.get_enabled_search_modules():
-            module_path = SEARCH_MODULE_REGISTRY.get(module_name)
-            if module_path is None:
-                continue
-            module = import_module(module_path)
-            descriptor = module.get_tool_descriptor()
-            descriptors.append(descriptor)
+            module = registry.get_ariel_search_module(module_name)
+            if module is not None:
+                descriptors.append(module.get_tool_descriptor())
         return descriptors
 
     def _build_tool(
