@@ -38,6 +38,7 @@ from osprey.events.parser import parse_event
 from osprey.events.types import (
     CapabilityCompleteEvent,
     CapabilityStartEvent,
+    CodeGenerationStartEvent,
     OspreyEvent,
     PhaseCompleteEvent,
     PhaseStartEvent,
@@ -1039,6 +1040,8 @@ class Pipeline:
         # State tracking for streaming behavior
         accumulated_response = [""]  # Use list for closure access
         code_streaming_active = [False]  # Track if code fence is open
+        code_start_buffer = [""]  # Buffer initial tokens for fence detection
+        previous_code_attempt = [0]  # Track which attempt is being streamed
         current_generation_attempt = [1]  # Track retry attempts
         response_was_streamed = [False]  # Track if any response tokens arrived
 
@@ -1078,18 +1081,22 @@ class Pipeline:
                                 logger.info("[streaming] Cancel detected, breaking astream loop")
                                 break
 
-                            # Track state updates for retry distinction
+                            # Skip state updates (retry tracking via CodeGenerationStartEvent)
                             if mode == "updates":
-                                if isinstance(chunk, dict) and "generation_attempt" in chunk:
-                                    new_attempt = chunk["generation_attempt"]
-                                    # Track retry attempts (no fence management needed)
-                                    current_generation_attempt[0] = new_attempt
-                                continue  # Don't send state updates to client
+                                continue
 
                             # Handle custom events (status events)
                             elif mode == "custom":
                                 # Parse typed event from stream chunk
                                 event = parse_event(chunk)
+
+                                # Detect code generation start/retry — close any open fence
+                                if isinstance(event, CodeGenerationStartEvent):
+                                    if code_streaming_active[0]:
+                                        code_streaming_active[0] = False
+                                        code_start_buffer[0] = ""
+                                        stream_queue.put(("response_token", "\n```\n\n"))
+                                    current_generation_attempt[0] = event.attempt
 
                                 # Filter for displayable events
                                 should_display = False
@@ -1137,23 +1144,48 @@ class Pipeline:
 
                                     # Code generation tokens
                                     if node_name == "python_code_generator":
-                                        # Clean fence markers from streamed code tokens
-                                        # LLMs often add ```python fences despite "no markdown" instruction
                                         content = message_chunk.content
 
-                                        # Remove code fence markers that LLMs add
+                                        # Buffer initial tokens to detect and strip LLM-added fence prefix
+                                        # Fence markers may split across tokens (``` + python\n)
+                                        if not code_streaming_active[0]:
+                                            code_start_buffer[0] += content
+                                            buf = code_start_buffer[0]
+
+                                            # Check if buffer starts with fence markers
+                                            has_fence_start = buf.lstrip().startswith("```")
+                                            # Need at least 13 chars to detect full ```python\n
+                                            if has_fence_start and len(buf.lstrip()) < 13:
+                                                continue  # Buffer more tokens
+
+                                            # Strip any fence prefix from buffered content
+                                            stripped = buf.lstrip()
+                                            if stripped.startswith("```python\n"):
+                                                stripped = stripped[10:]
+                                            elif stripped.startswith("```python"):
+                                                stripped = stripped[9:]
+                                            elif stripped.startswith("```\n"):
+                                                stripped = stripped[4:]
+                                            elif stripped.startswith("```"):
+                                                stripped = stripped[3:]
+
+                                            # Open fence with buffered content
+                                            code_streaming_active[0] = True
+                                            previous_code_attempt[0] = current_generation_attempt[0]
+                                            code_start_buffer[0] = ""
+                                            content = f"```python\n{stripped}"
+
+                                            response_was_streamed[0] = True
+                                            stream_queue.put(("response_token", content))
+                                            continue
+
+                                        # After buffer phase: strip mid-stream fence artifacts
                                         content = content.replace("```python\n", "").replace("```python", "")
                                         content = content.replace("\n```\n", "").replace("\n```", "").replace("```", "")
 
-                                        # Open code fence on first code token
-                                        if not code_streaming_active[0]:
-                                            code_streaming_active[0] = True
-                                            stream_queue.put(("response_token", "```python\n"))
-
-                                        response_was_streamed[0] = True
-                                        stream_queue.put(
-                                            ("response_token", content)
-                                        )
+                                        if content:
+                                            response_was_streamed[0] = True
+                                            stream_queue.put(("response_token", content))
 
                                     # Response tokens from respond node
                                     elif node_name == "respond":
