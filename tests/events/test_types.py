@@ -466,20 +466,23 @@ class TestCodeGeneratedEvent:
     def test_creation_with_all_fields(self):
         """Test CodeGeneratedEvent with all fields."""
         event = CodeGeneratedEvent(
+            code="def hello(): print('hi')",
+            attempt=2,
+            success=True,
             language="python",
-            code_preview="def hello(): ...",
-            code_length=50,
         )
+        assert event.code == "def hello(): print('hi')"
+        assert event.attempt == 2
+        assert event.success is True
         assert event.language == "python"
-        assert event.code_preview == "def hello(): ..."
-        assert event.code_length == 50
 
     def test_default_values(self):
         """Test CodeGeneratedEvent default values."""
         event = CodeGeneratedEvent()
+        assert event.code == ""
+        assert event.attempt == 1
+        assert event.success is True
         assert event.language == "python"
-        assert event.code_preview == ""
-        assert event.code_length == 0
 
 
 class TestCodeExecutedEvent:

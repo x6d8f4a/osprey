@@ -221,7 +221,7 @@ class TestFormatTaskContext:
 
             _format_task_context(messages, None, logger)
 
-        logger.status.assert_called_with(
+        logger.info.assert_called_with(
             "Bypass mode: skipping LLM, using formatted context as task"
         )
 

@@ -38,7 +38,7 @@ Key Features
 * **Facility Data Integration**: :doc:`Automatic retrieval from archiver appliances, channel databases, and knowledge bases <developer-guides/05_production-systems/02_data-source-integration>` with intelligent downsampling for large time-series datasets
 * **LangGraph Foundation**: Native StateGraph workflows with :doc:`checkpoints, interrupts <developer-guides/01_understanding-the-framework/03_langgraph-integration>`, and :doc:`persistent state management <developer-guides/03_core-framework-systems/01_state-management-architecture>`
 * **Safety-First Design**: :ref:`Transparent execution plans <planning-mode-example>` with :doc:`human approval workflows <developer-guides/05_production-systems/01_human-approval-workflows>` and network-level isolation for control room deployment
-* **Proven in Production**: Deployed at :doc:`Lawrence Berkeley National Laboratory's Advanced Light Source <example-applications/als-assistant>` managing hundreds of thousands of control channels across accelerator operations
+* **Proven in Production**: Deployed at :doc:`Lawrence Berkeley National Laboratory's Advanced Light Source <example-applications/als-assistant>` managing tens of thousands of control channels across accelerator operations
 
 
 Documentation Structure
@@ -88,18 +88,21 @@ Documentation Structure
    :color: primary
    :icon: quote
 
-   If you use the Osprey Framework in your research or projects, please cite our `paper <https://arxiv.org/abs/2508.15066>`_:
+   If you use the Osprey Framework in your research or projects, please cite our `paper <https://doi.org/10.1063/5.0306302>`_:
 
    .. code-block:: bibtex
 
-      @misc{hellert2025osprey,
-            title={Osprey: A Scalable Framework for the Orchestration of Agentic Systems},
-            author={Thorsten Hellert and João Montenegro and Antonin Sulc},
-            year={2025},
-            eprint={2508.15066},
-            archivePrefix={arXiv},
-            primaryClass={cs.MA},
-            url={https://arxiv.org/abs/2508.15066},
+      @article{10.1063/5.0306302,
+            author = {Hellert, Thorsten and Montenegro, João and Sulc, Antonin},
+            title = {Osprey: Production-ready agentic AI for safety-critical control systems},
+            journal = {APL Machine Learning},
+            volume = {4},
+            number = {1},
+            pages = {016103},
+            year = {2026},
+            month = {02},
+            doi = {10.1063/5.0306302},
+            url = {https://doi.org/10.1063/5.0306302},
       }
 
 .. toctree::

@@ -5,6 +5,245 @@ All notable changes to the Osprey Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.10.9] - 2026-02-08
+
+### Fixed
+- **Registry**: Config-driven provider loading skips unused provider imports (#138)
+  - Eliminates ~30s startup delay on air-gapped machines caused by timeout on provider network calls
+  - Removes module-level `get_available_models(force_refresh=True)` from `argo.py` and `asksage.py`
+- **Argo**: Add structured output handler for Argo provider
+  - Argo API does not support the `response_format` parameter; structured output now uses direct httpx calls with JSON schema prompting
+  - Includes `_clean_json_response()` to strip markdown fences and fix Python-style booleans
+- **Tests**: Fix e2e LLM provider tests broken by config-driven provider filtering
+  - Test config's `models` section only listed `openai`, causing all other providers to be skipped
+  - Test fixtures now add `models` entries for all available providers
+- **Tests**: Remove flaky `gpt-4o` from e2e test matrix (80% pass rate on react_agent due to extra fields in structured output)
+
+### Changed
+- **Docs**: Update citation to published APL Machine Learning paper (doi:10.1063/5.0306302)
+
+### Added
+- **CLI**: Add `--channel-finder-mode` and `--code-generator` options to `osprey init`
+  - Options are included in manifest's `reproducible_command` for full project recreation
+- **Capabilities**: Add capability-specific slash commands
+  - Unregistered slash commands (e.g., `/beam:diagnostic`, `/verbose`) are forwarded to capabilities
+  - `slash_command()` helper and `BaseCapability.slash_command()` method for reading commands
+  - Commands are execution-scoped (reset each conversation turn)
+
+## [0.10.8] - 2026-02-02
+
+### Added
+- **Skills**: Improve release workflow skill with full step-by-step guidance and CHANGELOG sanitization
+- **Generators**: Add pluggable simulation backends for soft IOCs
+  - Runtime backend loading from `config.yml` - change behavior without regenerating IOC code
+  - Built-in backends: `passthrough` (no-op) and `mock_style` (archiver-like behavior)
+  - `ChainedBackend` for composing multiple backends (base + overrides)
+  - `SimulationBackend` protocol for custom physics implementations
+  - Documentation guide for custom backend development
+
+### Fixed
+- **Templates**: Fix `pyproject.toml` template using wrong package search path
+  - Template creates `src/<package_name>/` layout but configured `where = ["."]`
+  - Changed to `where = ["src"]` so editable installs can find the package
+- **Generators**: Fix `config_updater` functions returning wrong type
+  - `set_control_system_type()`, `set_epics_gateway_config()`, `update_all_models()`, and `add_capability_react_to_config()` now return `(updated_content, preview)` tuple as expected by CLI callers
+- **Channel Finder**: Fix string ChannelNames causing character-by-character iteration
+  - MATLAB Middle Layer exports may produce bare strings (e.g., `"SR:DCCT"`) instead of single-element arrays
+  - Without the fix, iterating over string produces `['S', 'R', ':', 'D', 'C', 'C', 'T']` instead of `['SR:DCCT']`
+  - Normalizes strings to lists in `_extract_channels_from_field()` and `list_channel_names()`
+- **Skills**: Fix release workflow skill name to follow `osprey-` naming convention
+
+## [0.10.7] - 2026-01-31
+
+### Added
+- **CLI**: Add `osprey migrate` command for project version migration
+  - `migrate init` creates manifest for existing projects (retroactive)
+  - `migrate check` compares project version against installed OSPREY
+  - `migrate run` performs three-way diff analysis and generates merge guidance
+  - Classifies files as AUTO_COPY, PRESERVE, MERGE, NEW, or DATA
+  - Generates `_migration/` directory with detailed merge prompts for AI-assisted merging
+  - Supports exact version recreation via temporary virtualenv
+- **Templates**: Add manifest generation during `osprey init`
+  - `.osprey-manifest.json` records OSPREY version, template, registry style, and all init options
+  - Includes SHA256 checksums for all trackable project files
+  - Stores reproducible command string for exact project recreation
+- **Assist**: Add `migrate-project` task for AI-assisted migrations
+  - Instructions for Claude Code integration with merge workflow
+  - Step-by-step guide for handling three-way conflicts
+- **Dependencies**: Add `caproto` to core dependencies for soft IOC generation
+- **CLI**: Add `osprey generate soft-ioc` command for generating Python soft IOCs
+  - Generates caproto-based EPICS soft IOCs from channel databases
+  - Supports all 4 channel database types (flat, template, hierarchical, middle_layer)
+  - Auto-detects database type, infers PV types and access modes from naming conventions
+  - Two simulation backends: `passthrough` (no-op) and `mock_style` (archiver-like behavior)
+  - Optional SP/RB pairings file for setpoint-readback tracking with noise
+  - Dry-run mode for previewing generation without writing files
+  - `--init` flag for interactive simulation config setup (uses channel database from `channel_finder` config)
+  - Auto-offers interactive setup when `simulation:` section is missing from config.yml
+- **Models**: Add AskSage provider for LLM access (#122)
+  - OpenAI-compatible adapter with custom request parameters
+  - Supports dynamic model discovery via API
+- **Connectors**: Add unit tests for `EPICSArchiverConnector`
+  - 26 tests covering connect/disconnect, get_data, error handling, metadata, and factory integration
+  - Mock fixtures matching real `archivertools` library format (secs/nanos columns)
+- **Config**: Add "Local Simulation" preset to EPICS gateway configuration
+  - Select from interactive menu to connect to local soft IOC on localhost:5064
+  - Warns if no IOC is detected on the port with instructions to generate/run one
+  - Use with `osprey generate soft-ioc` for offline development and testing
+- **Tests**: Add unit tests for interactive menu simulation port check
+  - 5 tests covering port open/closed detection, timeout handling, and error cases
+
+### Fixed
+- **Dependencies**: Pin `claude-agent-sdk>=0.1.26` to fix CBORG proxy beta header incompatibility
+- **Security**: Bind docker/podman services to localhost by default (#126)
+  - Prevents unintended network exposure when generating server configurations with `osprey deploy up`
+  - Use `--expose` option to bind to public interfaces, if firewalling/authentification is set up properly
+- **CLI**: Auto-prompt to switch control system mode when configuring EPICS gateway
+  - After setting a production gateway (ALS, APS, custom), prompts user to switch from 'mock' to 'epics' mode
+  - Handles edge cases: missing config key, other control system types (tango, labview)
+- **Connectors**: Fix `EPICSArchiverConnector` timestamp handling for real `archivertools` library
+  - Real library returns DataFrame with `secs`/`nanos` columns and RangeIndex
+  - Connector now properly converts secs/nanos to DatetimeIndex and removes those columns
+  - Fallback preserves backward compatibility for other DataFrame formats
+- **Deployment**: Fix `--dev` mode error message showing broken install instructions (#119)
+  - Rich markup was stripping `[dev]` from the message due to bracket interpretation
+  - Error now correctly shows: `pip install build or pip install -e ".[dev]"`
+- **Deployment**: Fix `osprey deploy build` exposing API keys in build config files (#118)
+  - `osprey deploy build` was expanding `${VAR}` placeholders to actual values in `build/services/pipelines/config.yml`
+  - Now preserves `${VAR}` placeholders; secrets are resolved at container runtime from environment variables
+- **Execution**: Fix channel limits database path resolution in subprocess execution
+  - Relative paths in `control_system.limits_checking.database_path` now resolve against `project_root`
+  - Fixes "Channel limits database not found" error when running Python code locally
+- **Connectors**: Fix EPICS connector PV cache to prevent soft IOC crashes
+  - Reuse PV objects instead of creating new ones per read
+  - Prevents subscription flood that causes caproto race condition (`deque mutated during iteration`)
+  - Adds thread-safe locking for PV cache access
+- **Config**: Fix control system type update regex to handle comment lines
+  - Config files with comments between `control_system:` and `type:` now update correctly
+
+## [0.10.6] - 2026-01-18
+
+### Added
+- **CLI**: Add Claude Code skill for release workflow (`osprey claude install release-workflow`)
+  - Custom SKILL.md wrapper with quick reference for version files and commands
+  - Version consistency check command, pre-release testing steps, tag creation
+- **Orchestration**: Context key validation in execution plans
+  - Validates that all input key references match actual context keys (existing or from earlier steps)
+  - Detects ordering errors where a step references a key created by a later step
+  - Triggers replanning (not reclassification) with helpful error context listing available keys
+  - New `InvalidContextKeyError` exception for distinguishing from capability hallucination
+- **Context**: Store task_objective metadata alongside capability context data (#108)
+  - ContextManager now accepts optional `task_objective` parameter in `set_context()`
+  - Metadata stored in `_meta` field, stripped before Pydantic validation
+  - New helper methods: `get_context_metadata()`, `get_all_context_metadata()`
+  - Orchestrator prompt displays task_objective for each available context
+  - Enables intelligent context reuse by showing what each context was created for
+
+### Fixed
+- **Graph**: Propagate chat history to orchestrator and respond nodes (#111)
+  - Orchestrator now receives full conversation context when `task_depends_on_chat_history=True`
+  - Enables follow-up queries like "use the same time range" to resolve correctly
+  - Chat history formatted with visual separators for clear delineation in prompts
+- **Deployment**: Fix Claude Code config path resolution in pipelines container
+  - Pipelines container has working directory `/app/` but files are mounted at `/pipelines/`
+  - Config file was copied but relative path `claude_generator_config.yml` couldn't be found
+  - Now reads `claude_config_path` from config, copies the file, and updates path to absolute `/pipelines/` for pipelines service
+
+## [0.10.5] - 2026-01-16
+
+### Added
+- **Testing**: E2E test for LLM channel naming workflow (#103)
+
+### Changed
+- **Docs**: Update ALS Assistant reference to published paper (Phys. Rev. Res. **8**, L012017)
+- **Models**: Decouple LiteLLM adapter from hardcoded provider checks
+  - Providers now declare LiteLLM routing via class attributes (`litellm_prefix`, `is_openai_compatible`)
+  - Structured output detection now uses LiteLLM's `supports_response_schema()` function
+  - Custom providers can integrate without modifying the adapter layer
+  - Maintains backward compatibility with fallback for existing code
+
+### Fixed
+- **CI**: Fix deploy-e2e test to actually test PR code by using `--dev` mode
+  - Container was installing osprey from PyPI instead of the PR branch
+  - Now builds and installs local wheel so the test validates actual changes
+- **Channel Finder**: Fix `load_config` not defined error in LLM channel namer (#103)
+  - Added `get_config_builder()` and `load_config()` as public API in `osprey.utils.config`
+  - Exposed `load_config` in channel finder config utilities
+  - Updated channel finder components to use public API instead of internal `_get_config`
+- **Deployment**: Fix `--dev` mode failing when osprey is installed from PyPI (#86)
+  - Detect site-packages installation and show clear warning about editable mode requirement
+  - Add helpful error message when `build` package is missing
+  - Add `build` to dev dependencies for wheel building support
+- **Models**: Handle Python-style booleans in LLM JSON responses (#102)
+  - Some LLM providers (including Argo) return `True`/`False` instead of `true`/`false`
+  - `_clean_json_response()` now converts Python-style booleans to JSON-style
+- **CLI**: Display full absolute paths for plot files in artifact output (#96)
+  - Figure and notebook paths now resolved to absolute before artifact registration
+  - Ensures users can directly access generated files from CLI output
+- **Packaging**: Include TUI styles.tcss in package data (#97)
+  - Textual CSS file was missing from PyPI releases since TUI was introduced in 0.10.0
+  - Issue went unnoticed because editable installs (`pip install -e .`) symlink to source
+
+## [0.10.4] - 2026-01-15
+
+### Fixed
+- **Dependencies**: Pin aiohttp>=3.10 for litellm compatibility (#87)
+  - Fixes `AttributeError: module aiohttp has no attribute ConnectionTimeoutError`
+  - `aiohttp.ConnectionTimeoutError` was added in aiohttp 3.10; litellm requires it but doesn't pin the version
+
+## [0.10.3] - 2026-01-14
+
+### Changed
+- **CI**: Add E2E tests to GitHub Actions workflow
+  - Runs on PRs only (not pushes) to control API costs
+  - Skips fork PRs where secrets are unavailable
+- **Dependencies**: Move TUI (textual) from optional to base dependencies
+  - Removes `[tui]` extras group since textual is now always installed
+
+## [0.10.2] - 2026-01-14
+
+### Added
+- **State**: Unified artifact system with `ArtifactType` enum and `register_artifact()` API
+  - Single source of truth (`ui_artifacts`) for all artifact types: IMAGE, NOTEBOOK, COMMAND, HTML, FILE
+  - Legacy methods (`register_figure`, `register_notebook`, `register_command`) delegate to new API
+  - `populate_legacy_fields_from_artifacts()` helper for backward compatibility at finalization
+- **TUI**: Artifact gallery and viewer widgets for interactive artifact browsing
+  - ArtifactGallery with keyboard navigation (Ctrl+a focus, j/k navigate, Enter view, o open external)
+  - ArtifactViewer modal with type-specific details and actions (copy path, open in system app)
+  - Native image rendering via textual-image (Sixel for iTerm2/WezTerm, Kitty Graphics Protocol)
+  - New/seen tracking with [NEW] badges for artifacts from current turn
+
+### Changed
+- **Tooling**: Consolidated formatting/linting to Ruff, removed Black and Isort (#80)
+  - Ruff now handles both linting and formatting as a single tool
+  - Updated scripts, docs, and templates to reference only Ruff
+- **Capabilities**: Python capability uses unified `register_artifact()` API directly
+  - Clean single-accumulation pattern for figures and notebooks
+  - Legacy fields populated at finalization rather than registration
+- **CLI**: Modernized artifact display to use unified `ui_artifacts` registry
+  - Single `_extract_artifacts_for_cli()` replaces three legacy extraction methods
+  - Supports all artifact types: IMAGE, NOTEBOOK, COMMAND, HTML, FILE
+  - Grouped display with type-specific formatting and icons
+
+### Fixed
+- **Gateway**: `/chat` without arguments no longer triggers graph execution
+  - Displays available capabilities table correctly, then returns immediately
+  - New check for locally-handled commands with no remaining message
+  - CLI handles state-only updates with no agent_state gracefully
+- **Orchestrator**: Use descriptive context keys to prevent incorrect time range reuse (#90)
+  - Similar time ranges (e.g., 12/5-12/10 vs 12/5-12/8) no longer incorrectly reuse old context
+  - Context keys now encode actual dates (tr_MMDD_MMDD format) for proper comparison
+- **Approval**: Fix KeyError when optional approval config keys are omitted (#79)
+  - Logger now uses initialized config object instead of raw dict keys
+- **Templates**: Include deployment infrastructure config for all templates (#85)
+  - Fixes `osprey deploy up` failures for hello_world_weather template
+  - Jupyter kernel templates now render correctly with execution.modes section
+- **CLI**: Restrict `load_dotenv()` search to current directory only (#95)
+  - Prevents python-dotenv from parsing shell config files in parent directories
+  - Fixes warnings when users have `~/.env` as a Korn shell configuration file
+
 ## [0.10.1] - 2026-01-09
 
 ### Added
@@ -2313,4 +2552,3 @@ This release represents the framework's first complete domain-specific applicati
 ---
 
 *This is an early access release. We welcome feedback and contributions!*
-

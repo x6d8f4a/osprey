@@ -12,7 +12,8 @@ CLI Reference
 
    - Using ``osprey`` CLI for all framework operations
    - Creating projects with ``osprey init``
-   - Generating capabilities from MCP servers with ``osprey generate`` (prototype)
+   - Generating capabilities from MCP servers with ``osprey generate``
+   - Generating soft IOCs for testing with ``osprey generate soft-ioc``
    - Managing deployments with ``osprey deploy``
    - Running interactive sessions with ``osprey chat``
    - Managing configuration with ``osprey config``
@@ -324,21 +325,22 @@ The ``osprey init`` command creates a complete, self-contained project:
 osprey generate
 ===============
 
-.. admonition:: Prototype Feature
-   :class: warning
+Generate Osprey components from various sources.
 
-   This is a **prototype feature** under active development. The API and generated code structure may change in future releases.
-
-Generate Osprey components from various sources, including MCP (Model Context Protocol) servers.
+.. note::
+   All ``osprey generate`` subcommands are **prototype features** under active development.
 
 Subcommands
 -----------
 
 ``osprey generate capability``
-   Generate Osprey capability from MCP server
+   Generate Osprey capability from MCP server or natural language prompt
 
 ``osprey generate mcp-server``
    Generate demo MCP server for testing
+
+``osprey generate soft-ioc``
+   Generate Python soft IOC for EPICS testing (caproto-based)
 
 osprey generate capability
 --------------------------
@@ -475,6 +477,215 @@ Custom output location:
 
 See :doc:`04_mcp-capability-generation` for complete workflow.
 
+.. _cli-generate-soft-ioc:
+
+osprey generate soft-ioc
+------------------------
+
+Generate a pure Python EPICS soft IOC for testing control system integrations without requiring real hardware or an EPICS base installation.
+
+**Syntax:**
+
+.. code-block:: bash
+
+   osprey generate soft-ioc [OPTIONS]
+
+**Optional Arguments:**
+
+``--config, -c <path>``
+   Config file path (default: ``config.yml``)
+
+``--output, -o <path>``
+   Override output file path
+
+``--dry-run``
+   Preview generation without writing files
+
+``--init``
+   Force interactive setup (creates/overwrites simulation config)
+
+**Configuration:**
+
+The command reads from the ``simulation`` section in ``config.yml``:
+
+.. code-block:: yaml
+
+   simulation:
+     channel_database: "data/channel_databases/hierarchical.json"
+     pairings_file: "data/pairings.json"  # Optional SP/RB mappings
+     ioc:
+       name: "accelerator_sim"
+       port: 5064
+       output_dir: "generated_iocs/"
+     base:                     # Single dict (no dash) - the foundation
+       type: "mock_style"      # Built-in backend
+       noise_level: 0.01       # 1% noise for SP→RB tracking
+       update_rate: 10.0       # Simulation update rate in Hz
+     overlays: []              # List (optional) - override behaviors
+
+**Simulation Backends:**
+
+Two built-in backends are available:
+
+- ``mock_style`` (recommended): Archiver-style simulation with SP→RB tracking and
+  PV-type-specific behaviors based on naming conventions:
+
+  - **BPM/position PVs**: Random equilibrium offset with slow drift and noise
+  - **Beam current PVs**: 500 mA base with decay over time
+  - **Voltage PVs**: 5000 V base, stable with small oscillation
+  - **Pressure PVs**: 1e-9 Torr base with gradual increase
+  - **Temperature PVs**: 25°C base with gradual increase
+
+- ``passthrough``: No simulation - PVs retain written values without automatic updates.
+  Useful for manual testing or when you want full control over PV values.
+
+Multiple backends can be chained using ``base`` + ``overlays``:
+
+.. code-block:: yaml
+
+   simulation:
+     base:
+       type: "mock_style"                        # Base backend (defaults)
+     overlays:
+       - module_path: "my_tests.fault_backends"  # Override backend
+         class_name: "BrokenFeedbackBackend"
+         params:
+           target_pv: "QUAD:Q1:CURRENT"
+
+**Key Features:**
+
+- Supports all 4 Osprey channel database types (flat, template, hierarchical, middle_layer)
+- Auto-detects database type from file structure
+- Infers PV types and access modes from naming conventions (SP/RB, STATUS, IMAGE, etc.)
+- Generates ``SIM:HEARTBEAT`` PV for monitoring IOC health
+- Interactive setup wizard if no simulation config exists
+- Offers to update ``config.yml`` to connect to the generated IOC
+
+**Examples:**
+
+Interactive setup (recommended for first use):
+
+.. code-block:: bash
+
+   osprey generate soft-ioc --init
+
+Preview what would be generated:
+
+.. code-block:: bash
+
+   osprey generate soft-ioc --dry-run
+
+Generate using existing config:
+
+.. code-block:: bash
+
+   osprey generate soft-ioc
+
+**Workflow:**
+
+.. code-block:: bash
+
+   # 1. Generate the IOC (interactive setup if needed)
+   osprey generate soft-ioc --init
+
+   # 2. Install numpy (caproto is included with osprey-framework)
+   pip install numpy
+
+   # 3. Run the IOC
+   python generated_iocs/accelerator_sim_ioc.py
+
+   # 4. Verify it's running (heartbeat increments every 100ms)
+   caget SIM:HEARTBEAT
+
+   # 5. Test with Osprey chat
+   osprey chat
+   You: "Show me all quadrupole currents"
+
+**Connecting to Generated IOC:**
+
+After generation, the command offers to update ``config.yml`` to connect to the soft IOC.
+You can also configure manually:
+
+.. code-block:: yaml
+
+   control_system:
+     type: epics
+     connector:
+       epics:
+         gateways:
+           read_only:
+             address: localhost
+             port: 5064
+
+Or use the "Local Simulation" facility preset via the interactive menu or:
+
+.. code-block:: bash
+
+   osprey config set-epics-gateway --facility simulation
+
+**SP/RB Pairings:**
+
+For setpoint-readback tracking, create a JSON file mapping setpoint PV names to their
+corresponding readback PVs:
+
+.. code-block:: json
+
+   {
+     "QUAD:CURRENT:SP": "QUAD:CURRENT:RB",
+     "DIPOLE:FIELD:SP": "DIPOLE:FIELD:RB"
+   }
+
+When a setpoint is written, the ``mock_style`` backend automatically updates the
+paired readback with configurable noise (default 1%).
+
+**Custom Backends:**
+
+Create custom backends for physics simulation or fault injection by implementing
+the ``SimulationBackend`` protocol:
+
+.. code-block:: python
+
+   class BrokenFeedbackBackend:
+       """Simulates broken feedback: SP writes don't affect RB."""
+
+       def __init__(self, target_pv: str, drift_rate: float = 0.5):
+           self.sp = f"{target_pv}:SP"
+           self.rb = f"{target_pv}:RB"
+           self.drift_rate = drift_rate
+           self._rb_value = 100.0
+
+       def initialize(self, pv_definitions):
+           return {self.rb: self._rb_value}
+
+       def on_write(self, pv_name, value):
+           if pv_name == self.sp:
+               return {}  # Block normal SP->RB update
+           return None  # Delegate to next backend
+
+       def step(self, dt):
+           self._rb_value += self.drift_rate * dt
+           return {self.rb: self._rb_value}
+
+Configure in ``config.yml``:
+
+.. code-block:: yaml
+
+   simulation:
+     base:
+       type: "mock_style"                        # Base
+     overlays:
+       - module_path: "my_tests.fault_backends"  # Override
+         class_name: "BrokenFeedbackBackend"
+         params:
+           target_pv: "QUAD:Q1:CURRENT"
+           drift_rate: 0.5
+
+.. seealso::
+
+   :doc:`05_soft-ioc-backends`
+       Complete guide to implementing custom physics simulation backends (pyAT, OCELOT),
+       the SimulationBackend Protocol, and chained backend composition.
+
 osprey deploy
 ================
 
@@ -505,20 +716,23 @@ Commands
 --------
 
 ``up``
-   Start services defined in ``config.yml``.
+   Start services defined in ``config.yml``. Services bind to ``127.0.0.1`` (localhost only) by default.
 
    Options:
       ``--detached`` - Run services in background
 
       ``--dev`` - Development mode: use local framework instead of PyPI
 
+      ``--expose`` - Bind services to all network interfaces (``0.0.0.0``). **Use with caution** — only when proper authentication and firewall rules are in place. See :ref:`network-binding-security` for details.
+
    Examples:
       .. code-block:: bash
 
-         osprey deploy up                    # Start in foreground
+         osprey deploy up                    # Start in foreground (localhost only)
          osprey deploy up --detached         # Start in background
          osprey deploy up --dev              # Start with local framework
          osprey deploy up --detached --dev   # Background with local framework
+         osprey deploy up --expose           # Expose to network (use with caution!)
 
 ``down``
    Stop all running services.
@@ -560,12 +774,15 @@ Commands
 
       ``--dev`` - Development mode: use local framework instead of PyPI
 
+      ``--expose`` - Bind services to all network interfaces (``0.0.0.0``)
+
    Examples:
       .. code-block:: bash
 
          osprey deploy rebuild                    # Rebuild and start
          osprey deploy rebuild --detached         # Rebuild in background
          osprey deploy rebuild --detached --dev   # Rebuild with local framework
+         osprey deploy rebuild --expose           # Rebuild with network exposure
 
 Configuration
 -------------
@@ -804,6 +1021,64 @@ The CLI supports slash commands for agent control and interface operations:
    /help <command>      # Show help for specific command
    /exit                # Exit direct chat mode (or exit CLI if not in direct chat)
    /clear               # Clear the screen
+
+.. _capability-slash-commands:
+
+Capability-Specific Commands
+----------------------------
+
+Beyond the built-in commands above, you can pass custom commands that capabilities can read during execution. Any command not recognized by the framework is forwarded to capabilities as a "capability command."
+
+**Syntax:**
+
+.. code-block:: bash
+
+   /flag                    # Flag command (capability sees True)
+   /command:value           # Value command (capability sees "value")
+
+**Examples:**
+
+.. code-block:: text
+
+   👤 You: /beam:diagnostic /verbose Show me the beam status
+   🤖 [Capability receives beam="diagnostic", verbose=True]
+
+   👤 You: /format:json Get the sensor readings
+   🤖 [Capability receives format="json"]
+
+**How Capabilities Access Commands:**
+
+Capabilities can read these commands using the ``slash_command()`` helper:
+
+.. code-block:: python
+
+   from osprey.base.capability import slash_command
+
+   async def execute(state: AgentState, **kwargs) -> dict[str, Any]:
+       # Check for /beam:mode command
+       if mode := slash_command("beam", state):
+           # mode is "diagnostic" if user typed /beam:diagnostic
+           pass
+
+       # Check for /verbose flag
+       if slash_command("verbose", state):
+           # User typed /verbose
+           pass
+
+Or using the instance method in instance-based capabilities:
+
+.. code-block:: python
+
+   async def execute(self) -> dict[str, Any]:
+       if mode := self.slash_command("beam"):
+           # Handle beam mode
+           pass
+
+**Key Behaviors:**
+
+- Commands are **execution-scoped** - they reset each conversation turn
+- Registered commands (``/help``, ``/planning:on``, etc.) are handled by the framework and not passed to capabilities
+- Multiple commands can be combined in a single message
 
 .. _direct-chat-mode:
 

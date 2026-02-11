@@ -1,56 +1,31 @@
-# Osprey Framework - Latest Release (v0.10.1)
+# Osprey Framework - Latest Release (v0.10.9)
 
-🎉 **Direct Chat Mode & LiteLLM Migration** - Conversational capability interaction and unified LLM provider interface
+**Config-Driven Provider Loading & Capability Slash Commands**
 
-## What's New in v0.10.1
+## What's New in v0.10.9
 
-### 💬 Direct Chat Mode
+### Highlights
 
-A new way to interact with capabilities in a conversational flow!
+- **Config-driven provider loading** - Registry skips unused provider imports, eliminating ~30s startup delay on air-gapped machines
+- **Argo structured output** - Structured output support for Argo provider via direct httpx calls with JSON schema prompting
+- **Capability slash commands** - Forward unregistered slash commands to capabilities for domain-specific actions
 
-- **Enter Direct Chat**: `/chat:<capability>` - Start chatting with a specific capability
-- **List Available**: `/chat` - See all direct-chat enabled capabilities
-- **Exit**: `/exit` - Return to normal orchestrated mode
-- **Dynamic Prompt**: See which mode you're in (normal vs capability name)
-- **Context Tools**: Save, read, and manage context during conversations
+### Added
+- **CLI**: Add `--channel-finder-mode` and `--code-generator` options to `osprey init`
+  - Options are included in manifest's `reproducible_command` for full project recreation
+- **Capabilities**: Add capability-specific slash commands
+  - Unregistered slash commands (e.g., `/beam:diagnostic`, `/verbose`) are forwarded to capabilities
+  - `slash_command()` helper and `BaseCapability.slash_command()` method for reading commands
+  - Commands are execution-scoped (reset each conversation turn)
 
-**Built-in Direct Chat Capabilities:**
-- `state_manager` - Inspect and manage agent state
-- MCP-generated capabilities are direct-chat enabled by default
+### Fixed
+- **Registry**: Config-driven provider loading skips unused provider imports (#138)
+  - Eliminates ~30s startup delay on air-gapped machines
+- **Argo**: Structured output handler for Argo provider (JSON schema prompting via httpx)
+- **Tests**: Fix e2e LLM provider tests broken by config-driven provider filtering
 
-### ⚡ LiteLLM Migration (#23)
-
-Major backend simplification - all LLM providers now use a unified interface:
-
-- **~2,200 lines → ~700 lines** - Massive code reduction
-- **8 Providers**: anthropic, openai, google, ollama, cborg, stanford, argo, vllm
-- **100+ Models**: Access to all LiteLLM-supported providers
-- **Preserved Features**: Extended thinking, structured outputs, health checks
-
-### 🆕 New Provider: vLLM
-
-High-throughput local inference support:
-
-- OpenAI-compatible interface via LiteLLM
-- Auto-detects served models
-- Supports structured outputs
-
-### 🔧 LangChain Model Factory
-
-Native integration with LangGraph ReAct agents:
-
-```python
-from osprey.models import get_langchain_model
-
-model = get_langchain_model(provider="anthropic", model_id="claude-sonnet-4")
-# Use with create_react_agent, etc.
-```
-
-### 📚 Documentation Updates
-
-- CLI Reference: Direct chat mode commands and examples
-- Gateway Architecture: Message history preservation
-- Building First Capability: `direct_chat_enabled` attribute guide
+### Changed
+- **Docs**: Update citation to published APL Machine Learning paper (doi:10.1063/5.0306302)
 
 ---
 
@@ -66,31 +41,12 @@ Or install with all optional dependencies:
 pip install --upgrade "osprey-framework[all]"
 ```
 
-## Upgrading from v0.10.0
-
-### Direct Chat Mode
-
-No migration needed! Direct chat mode is opt-in:
-
-```python
-# Add to your capability to enable direct chat
-@capability_node
-class MyCapability(BaseCapability):
-    direct_chat_enabled = True  # New in 0.10.1
-```
-
-### LiteLLM Migration
-
-The API remains the same - `get_chat_completion()` works exactly as before.
-Backend providers now use LiteLLM internally.
-
 ---
 
 ## What's Next?
 
 Check out our [documentation](https://als-apg.github.io/osprey) for:
-- Direct chat mode tutorial
-- LangChain integration guide
+- Capability slash commands guide
 - Complete tutorial series
 
 ## Contributors

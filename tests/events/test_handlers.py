@@ -67,11 +67,16 @@ class TestCLIEventHandlerInitialization:
 
 
 class TestCLIHandlerCapabilityEvents:
-    """Test CLIEventHandler handling of capability events."""
+    """Test CLIEventHandler handling of capability events.
+
+    In the unified TypedEvent system, CapabilityStart/Complete are structural
+    events used by TUI for progress tracking. The CLI handler intentionally
+    ignores them - status updates flow through StatusEvent instead.
+    """
 
     @pytest.mark.asyncio
-    async def test_handle_capability_start_prints(self):
-        """Test that capability start prints step info."""
+    async def test_handle_capability_start_silently_ignored(self):
+        """Test that capability start is silently ignored (structural event)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
@@ -85,13 +90,12 @@ class TestCLIHandlerCapabilityEvents:
 
         await handler.handle(event)
 
-        printed = strip_ansi(output.getvalue())
-        assert "Step 2/5" in printed
-        assert "python_executor" in printed
+        printed = output.getvalue()
+        assert printed == ""
 
     @pytest.mark.asyncio
-    async def test_handle_capability_complete_success(self):
-        """Test that capability complete success prints OK."""
+    async def test_handle_capability_complete_silently_ignored(self):
+        """Test that capability complete is silently ignored (structural event)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
@@ -105,12 +109,11 @@ class TestCLIHandlerCapabilityEvents:
         await handler.handle(event)
 
         printed = output.getvalue()
-        assert "OK" in printed
-        assert "500ms" in printed
+        assert printed == ""
 
     @pytest.mark.asyncio
-    async def test_handle_capability_complete_failure(self):
-        """Test that capability complete failure prints FAILED."""
+    async def test_handle_capability_failure_silently_ignored(self):
+        """Test that capability failure is silently ignored (errors come via ErrorEvent)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
@@ -125,8 +128,7 @@ class TestCLIHandlerCapabilityEvents:
         await handler.handle(event)
 
         printed = output.getvalue()
-        assert "FAILED" in printed
-        assert "syntax error" in printed
+        assert printed == ""
 
 
 # =============================================================================
@@ -187,35 +189,34 @@ class TestCLIHandlerStatusEvents:
 
 
 class TestCLIHandlerPhaseEvents:
-    """Test CLIEventHandler handling of phase events."""
+    """Test CLIEventHandler handling of phase events.
+
+    In the unified TypedEvent system, PhaseStart/Complete are structural
+    events used by TUI for progress tracking. The CLI handler intentionally
+    ignores them - phase updates flow through StatusEvent instead.
+    """
 
     @pytest.mark.asyncio
-    async def test_handle_phase_start_only_in_verbose(self):
-        """Test that phase start is only shown in verbose mode."""
-        # Non-verbose - should not show
+    async def test_handle_phase_start_silently_ignored(self):
+        """Test that phase start is silently ignored (structural event)."""
         output1 = StringIO()
         console1 = Console(file=output1, force_terminal=True)
         handler1 = CLIEventHandler(console=console1, verbose=False)
 
         event = PhaseStartEvent(phase="classification", description="Classifying")
         await handler1.handle(event)
+        assert output1.getvalue() == ""
 
-        printed1 = output1.getvalue()
-        assert "Classification" not in printed1
-
-        # Verbose - should show
+        # Also ignored in verbose mode
         output2 = StringIO()
         console2 = Console(file=output2, force_terminal=True)
         handler2 = CLIEventHandler(console=console2, verbose=True)
-
         await handler2.handle(event)
-
-        printed2 = output2.getvalue()
-        assert "Classification" in printed2
+        assert output2.getvalue() == ""
 
     @pytest.mark.asyncio
-    async def test_handle_phase_complete_only_in_verbose(self):
-        """Test that phase complete is only shown in verbose mode."""
+    async def test_handle_phase_complete_silently_ignored(self):
+        """Test that phase complete is silently ignored (structural event)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console, verbose=True)
@@ -225,9 +226,7 @@ class TestCLIHandlerPhaseEvents:
         )
 
         await handler.handle(event)
-
-        printed = output.getvalue()
-        assert "150ms" in printed
+        assert output.getvalue() == ""
 
 
 # =============================================================================
@@ -236,11 +235,16 @@ class TestCLIHandlerPhaseEvents:
 
 
 class TestCLIHandlerResultEvents:
-    """Test CLIEventHandler handling of result events."""
+    """Test CLIEventHandler handling of result events.
+
+    In the unified TypedEvent system, ResultEvent is a structural event
+    for bookkeeping. The CLI handler ignores it - final responses are
+    delivered via LLM token streaming, not ResultEvent.
+    """
 
     @pytest.mark.asyncio
-    async def test_handle_result_success(self):
-        """Test that result success is printed with response."""
+    async def test_handle_result_silently_ignored(self):
+        """Test that result success is silently ignored (response comes via streaming)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
@@ -251,13 +255,11 @@ class TestCLIHandlerResultEvents:
         )
 
         await handler.handle(event)
-
-        printed = output.getvalue()
-        assert "Task completed successfully" in printed
+        assert output.getvalue() == ""
 
     @pytest.mark.asyncio
-    async def test_handle_result_failure(self):
-        """Test that result failure is printed."""
+    async def test_handle_result_failure_silently_ignored(self):
+        """Test that result failure is silently ignored (errors come via ErrorEvent)."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
@@ -268,9 +270,7 @@ class TestCLIHandlerResultEvents:
         )
 
         await handler.handle(event)
-
-        printed = output.getvalue()
-        assert "failed" in printed.lower()
+        assert output.getvalue() == ""
 
 
 # =============================================================================
@@ -299,7 +299,6 @@ class TestCLIHandlerErrorEvents:
         printed = output.getvalue()
         assert "ValidationError" in printed
         assert "Invalid input format" in printed
-        assert "recoverable" in printed.lower()
 
 
 # =============================================================================
@@ -311,22 +310,22 @@ class TestCLIHandlerSyncMethod:
     """Test CLIEventHandler synchronous handling."""
 
     def test_handle_sync_method(self):
-        """Test that handle_sync works."""
+        """Test that handle_sync works with StatusEvent."""
         output = StringIO()
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
 
-        event = CapabilityStartEvent(
-            capability_name="test",
-            step_number=1,
-            total_steps=1,
+        event = StatusEvent(
+            message="Processing step 1",
+            level="info",
+            component="test",
         )
 
         # Should not raise
         handler.handle_sync(event)
 
         printed = strip_ansi(output.getvalue())
-        assert "Step 1/1" in printed
+        assert "Processing step 1" in printed
 
 
 # =============================================================================
@@ -344,13 +343,12 @@ class TestCLIHandlerUnknownEvents:
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console)
 
-        # Create a custom event type that isn't explicitly handled
-        from osprey.events import LLMRequestEvent
+        # Use a structural event type that the CLI handler doesn't display
+        from osprey.events import ApprovalRequiredEvent
 
-        event = LLMRequestEvent(
-            prompt_preview="Test prompt",
-            prompt_length=100,
-            model="gpt-4",
+        event = ApprovalRequiredEvent(
+            action_description="Test approval",
+            approval_type="execution",
         )
 
         # Should not raise

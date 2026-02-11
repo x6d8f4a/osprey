@@ -40,7 +40,7 @@ if sys.platform == "win32":
 try:
     from osprey import __version__
 except ImportError:
-    __version__ = "0.10.1"
+    __version__ = "0.10.9"
 
 
 # PERFORMANCE OPTIMIZATION: Lazy command loading
@@ -63,6 +63,7 @@ class LazyGroup(click.Group):
             "health": "osprey.cli.health_cmd",
             "generate": "osprey.cli.generate_cmd",
             "remove": "osprey.cli.remove_cmd",
+            "migrate": "osprey.cli.migrate_cmd",
             "workflows": "osprey.cli.workflows_cmd",  # DEPRECATED: use 'tasks' instead
             "tasks": "osprey.cli.tasks_cmd",
             "claude": "osprey.cli.claude_cmd",
@@ -98,6 +99,7 @@ class LazyGroup(click.Group):
             "chat",
             "generate",
             "remove",
+            "migrate",
             "health",
             "tasks",
             "claude",

@@ -337,7 +337,7 @@ def get_approval_manager() -> ApprovalManager:
             emitter.emit(
                 StatusEvent(
                     component="approval_manager",
-                    message=f"Approval manager initialized - Global mode: {approval_config['global_mode']}, Capabilities: {len(capabilities)}",
+                    message=f"Approval manager initialized - Global mode: {_approval_manager.config.global_mode}, Capabilities: {len(capabilities)}",
                     level="info",
                 )
             )
