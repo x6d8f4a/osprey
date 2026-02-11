@@ -855,6 +855,130 @@ class ARIELRepository:
                 query=f"SEMANTIC SEARCH model={model_name}",
             ) from e
 
+    # === Ingestion Run Tracking ===
+
+    async def start_ingestion_run(self, source_system: str) -> int:
+        """Record the start of an ingestion run.
+
+        Args:
+            source_system: Source system identifier
+
+        Returns:
+            The ingestion run ID
+        """
+        try:
+            async with self.pool.connection() as conn:
+                result = await conn.execute(
+                    """
+                    INSERT INTO ingestion_runs (started_at, source_system, status)
+                    VALUES (NOW(), %s, 'running')
+                    RETURNING id
+                    """,
+                    [source_system],
+                )
+                row = await result.fetchone()
+                if not row:
+                    raise DatabaseQueryError(
+                        "Failed to start ingestion run: no ID returned",
+                        query="INSERT ingestion_runs",
+                    )
+                return int(row[0])
+        except DatabaseQueryError:
+            raise
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to start ingestion run: {e}",
+                query="INSERT ingestion_runs",
+            ) from e
+
+    async def complete_ingestion_run(
+        self,
+        run_id: int,
+        entries_added: int,
+        entries_updated: int,
+        entries_failed: int,
+    ) -> None:
+        """Mark an ingestion run as successfully completed.
+
+        Args:
+            run_id: The ingestion run ID
+            entries_added: Number of new entries added
+            entries_updated: Number of existing entries updated
+            entries_failed: Number of entries that failed
+        """
+        try:
+            async with self.pool.connection() as conn:
+                await conn.execute(
+                    """
+                    UPDATE ingestion_runs
+                    SET completed_at = NOW(),
+                        status = 'success',
+                        entries_added = %s,
+                        entries_updated = %s,
+                        entries_failed = %s
+                    WHERE id = %s
+                    """,
+                    [entries_added, entries_updated, entries_failed, run_id],
+                )
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to complete ingestion run {run_id}: {e}",
+                query=f"UPDATE ingestion_runs id={run_id}",
+            ) from e
+
+    async def fail_ingestion_run(self, run_id: int, error_message: str) -> None:
+        """Mark an ingestion run as failed.
+
+        Args:
+            run_id: The ingestion run ID
+            error_message: Error description
+        """
+        try:
+            async with self.pool.connection() as conn:
+                await conn.execute(
+                    """
+                    UPDATE ingestion_runs
+                    SET completed_at = NOW(),
+                        status = 'failed',
+                        error_message = %s
+                    WHERE id = %s
+                    """,
+                    [error_message[:500], run_id],
+                )
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to mark ingestion run {run_id} as failed: {e}",
+                query=f"UPDATE ingestion_runs id={run_id}",
+            ) from e
+
+    async def get_last_successful_run(self, source_system: str) -> datetime | None:
+        """Get the completion time of the last successful ingestion run.
+
+        Args:
+            source_system: Source system identifier
+
+        Returns:
+            Completion timestamp of last successful run, or None if no runs found
+        """
+        try:
+            async with self.pool.connection() as conn:
+                result = await conn.execute(
+                    """
+                    SELECT MAX(completed_at) FROM ingestion_runs
+                    WHERE source_system = %s AND status = 'success'
+                    """,
+                    [source_system],
+                )
+                row = await result.fetchone()
+                if row and row[0]:
+                    return row[0]
+                return None
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to get last successful run: {e}",
+                query=f"SELECT MAX(completed_at) source_system={source_system}",
+            ) from e
+
     # === Health Check ===
 
     async def health_check(self) -> tuple[bool, str]:

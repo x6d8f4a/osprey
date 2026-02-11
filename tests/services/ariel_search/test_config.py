@@ -12,6 +12,7 @@ from osprey.services.ariel_search.config import (
     PipelineModuleConfig,
     ReasoningConfig,
     SearchModuleConfig,
+    WatchConfig,
 )
 
 
@@ -145,6 +146,64 @@ class TestIngestionConfig:
         assert config.adapter == "als_logbook"
         assert config.source_url == "https://als.example.com/api"
         assert config.poll_interval_seconds == 1800
+
+    def test_watch_defaults(self) -> None:
+        """IngestionConfig has default WatchConfig."""
+        config = IngestionConfig(adapter="generic_json")
+        assert isinstance(config.watch, WatchConfig)
+        assert config.watch.require_initial_ingest is True
+        assert config.watch.max_consecutive_failures == 10
+
+    def test_from_dict_with_watch(self) -> None:
+        """IngestionConfig.from_dict() parses nested watch section."""
+        data = {
+            "adapter": "als_logbook",
+            "watch": {
+                "require_initial_ingest": False,
+                "max_consecutive_failures": 5,
+                "backoff_multiplier": 3.0,
+                "max_interval_seconds": 7200,
+            },
+        }
+        config = IngestionConfig.from_dict(data)
+        assert config.watch.require_initial_ingest is False
+        assert config.watch.max_consecutive_failures == 5
+        assert config.watch.backoff_multiplier == 3.0
+        assert config.watch.max_interval_seconds == 7200
+
+
+class TestWatchConfig:
+    """Tests for WatchConfig."""
+
+    def test_defaults(self) -> None:
+        """WatchConfig has sensible defaults."""
+        config = WatchConfig()
+        assert config.require_initial_ingest is True
+        assert config.max_consecutive_failures == 10
+        assert config.backoff_multiplier == 2.0
+        assert config.max_interval_seconds == 3600
+
+    def test_from_dict(self) -> None:
+        """WatchConfig.from_dict() parses all fields."""
+        data = {
+            "require_initial_ingest": False,
+            "max_consecutive_failures": 20,
+            "backoff_multiplier": 1.5,
+            "max_interval_seconds": 1800,
+        }
+        config = WatchConfig.from_dict(data)
+        assert config.require_initial_ingest is False
+        assert config.max_consecutive_failures == 20
+        assert config.backoff_multiplier == 1.5
+        assert config.max_interval_seconds == 1800
+
+    def test_from_dict_defaults(self) -> None:
+        """WatchConfig.from_dict() with empty dict gives defaults."""
+        config = WatchConfig.from_dict({})
+        assert config.require_initial_ingest is True
+        assert config.max_consecutive_failures == 10
+        assert config.backoff_multiplier == 2.0
+        assert config.max_interval_seconds == 3600
 
 
 class TestDatabaseConfig:

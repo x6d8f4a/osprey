@@ -130,6 +130,33 @@ class EnhancementModuleConfig:
 
 
 @dataclass
+class WatchConfig:
+    """Configuration for the watch (live polling) mode.
+
+    Attributes:
+        require_initial_ingest: Require at least one successful ingest before watching
+        max_consecutive_failures: Stop after this many consecutive poll failures
+        backoff_multiplier: Multiply interval by this on consecutive failures
+        max_interval_seconds: Maximum poll interval after backoff
+    """
+
+    require_initial_ingest: bool = True
+    max_consecutive_failures: int = 10
+    backoff_multiplier: float = 2.0
+    max_interval_seconds: int = 3600
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WatchConfig":
+        """Create WatchConfig from dictionary."""
+        return cls(
+            require_initial_ingest=data.get("require_initial_ingest", True),
+            max_consecutive_failures=data.get("max_consecutive_failures", 10),
+            backoff_multiplier=data.get("backoff_multiplier", 2.0),
+            max_interval_seconds=data.get("max_interval_seconds", 3600),
+        )
+
+
+@dataclass
 class IngestionConfig:
     """Configuration for logbook ingestion.
 
@@ -143,6 +170,7 @@ class IngestionConfig:
         request_timeout_seconds: Timeout for HTTP requests (default: 60)
         max_retries: Maximum retry attempts for failed requests (default: 3)
         retry_delay_seconds: Base delay between retries (default: 5)
+        watch: Watch mode configuration
     """
 
     adapter: str
@@ -154,12 +182,18 @@ class IngestionConfig:
     request_timeout_seconds: int = 60
     max_retries: int = 3
     retry_delay_seconds: int = 5
+    watch: WatchConfig = field(default_factory=WatchConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "IngestionConfig":
         """Create IngestionConfig from dictionary."""
         # proxy_url: config value OR env var fallback
         proxy_url = data.get("proxy_url") or os.environ.get("ARIEL_SOCKS_PROXY")
+
+        # Parse watch config
+        watch = WatchConfig()
+        if "watch" in data:
+            watch = WatchConfig.from_dict(data["watch"])
 
         return cls(
             adapter=data.get("adapter", "generic"),
@@ -171,6 +205,7 @@ class IngestionConfig:
             request_timeout_seconds=data.get("request_timeout_seconds", 60),
             max_retries=data.get("max_retries", 3),
             retry_delay_seconds=data.get("retry_delay_seconds", 5),
+            watch=watch,
         )
 
 

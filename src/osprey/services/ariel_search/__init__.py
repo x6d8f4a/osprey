@@ -29,6 +29,7 @@ from osprey.services.ariel_search.config import (
     PipelineModuleConfig,
     ReasoningConfig,
     SearchModuleConfig,
+    WatchConfig,
 )
 from osprey.services.ariel_search.exceptions import (
     AdapterNotFoundError,
@@ -42,6 +43,10 @@ from osprey.services.ariel_search.exceptions import (
     ModuleNotEnabledError,
     SearchExecutionError,
     SearchTimeoutError,
+)
+from osprey.services.ariel_search.ingestion.scheduler import (
+    IngestionPollResult,
+    IngestionScheduler,
 )
 from osprey.services.ariel_search.models import (
     ARIELSearchRequest,
@@ -87,6 +92,10 @@ __all__ = [
     "PipelineModuleConfig",
     "ReasoningConfig",
     "SearchModuleConfig",
+    "WatchConfig",
+    # Ingestion scheduler
+    "IngestionPollResult",
+    "IngestionScheduler",
     # Exceptions
     "AdapterNotFoundError",
     "ARIELException",

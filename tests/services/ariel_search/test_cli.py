@@ -70,6 +70,11 @@ class TestARIELCLIGroup:
         assert result.exit_code != 0
         assert "Missing option" in result.output or "required" in result.output.lower()
 
+    def test_ingest_help_shows_url_support(self, runner):
+        """ingest --help mentions file path or URL."""
+        result = runner.invoke(ariel_group, ["ingest", "--help"])
+        assert "file path or URL" in result.output
+
     def test_ingest_adapter_choices(self, runner):
         """ingest command validates adapter choices."""
         result = runner.invoke(ariel_group, ["ingest", "--help"])
@@ -125,6 +130,76 @@ class TestARIELCLIGroup:
         result = runner.invoke(ariel_group, ["reembed", "--help"])
         assert "--batch-size" in result.output
 
+    def test_ingest_tracks_runs(self, runner, tmp_path, monkeypatch):
+        """ingest command calls start_ingestion_run and complete_ingestion_run."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        source_file = tmp_path / "entries.jsonl"
+        source_file.write_text('{"entry_id": "1", "raw_text": "hello"}\n')
+
+        mock_config = {
+            "database": {"uri": "postgresql://localhost/test"},
+            "ingestion": {},
+        }
+        monkeypatch.setattr(
+            "osprey.cli.ariel.get_config_value",
+            lambda key, default=None: mock_config if key == "ariel" else default,
+        )
+
+        mock_repo = MagicMock()
+        mock_repo.start_ingestion_run = AsyncMock(return_value=42)
+        mock_repo.complete_ingestion_run = AsyncMock()
+        mock_repo.fail_ingestion_run = AsyncMock()
+        mock_repo.upsert_entry = AsyncMock()
+        mock_repo.mark_enhancement_complete = AsyncMock()
+        mock_repo.mark_enhancement_failed = AsyncMock()
+
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        conn_cm = AsyncMock()
+        conn_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+        conn_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_pool.connection = MagicMock(return_value=conn_cm)
+
+        mock_service = MagicMock()
+        mock_service.__aenter__ = AsyncMock(return_value=mock_service)
+        mock_service.__aexit__ = AsyncMock(return_value=None)
+        mock_service.repository = mock_repo
+        mock_service.pool = mock_pool
+
+        async def _fetch(*args, **kwargs):
+            yield {"entry_id": "1", "raw_text": "hello"}
+
+        mock_adapter = MagicMock()
+        mock_adapter.source_system_name = "test"
+        mock_adapter.fetch_entries = _fetch
+
+        with (
+            patch(
+                "osprey.services.ariel_search.create_ariel_service",
+                new_callable=AsyncMock,
+                return_value=mock_service,
+            ),
+            patch(
+                "osprey.services.ariel_search.ingestion.get_adapter",
+                return_value=mock_adapter,
+            ),
+            patch(
+                "osprey.services.ariel_search.enhancement.create_enhancers_from_config",
+                return_value=[],
+            ),
+        ):
+            result = runner.invoke(
+                ariel_group,
+                ["ingest", "-s", str(source_file), "-a", "generic_json"],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_repo.start_ingestion_run.assert_called_once_with("test")
+        mock_repo.complete_ingestion_run.assert_called_once_with(
+            42, entries_added=1, entries_updated=0, entries_failed=0
+        )
+
     def test_ingest_missing_tables_shows_user_friendly_error(self, runner, tmp_path, monkeypatch):
         """ingest shows helpful error when database tables don't exist."""
         from unittest.mock import AsyncMock, MagicMock, patch
@@ -155,6 +230,8 @@ class TestARIELCLIGroup:
             mock_service.__aenter__ = AsyncMock(return_value=mock_service)
             mock_service.__aexit__ = AsyncMock(return_value=None)
             mock_service.repository = MagicMock()
+            mock_service.repository.start_ingestion_run = AsyncMock(return_value=1)
+            mock_service.repository.fail_ingestion_run = AsyncMock()
             mock_service.repository.upsert_entry = AsyncMock(side_effect=error)
             mock_service.pool = MagicMock()
             mock_service.pool.connection = MagicMock(return_value=AsyncMock())
@@ -182,6 +259,150 @@ class TestARIELCLIGroup:
         assert result.exit_code == 1
         assert "ARIEL database is not initialized" in result.output
         assert "osprey ariel migrate" in result.output
+
+
+class TestWatchCommand:
+    """Tests for the ariel watch command."""
+
+    @pytest.fixture
+    def runner(self):
+        """Create a CLI runner."""
+        return CliRunner()
+
+    def test_watch_command_exists(self, runner):
+        """watch subcommand is registered."""
+        result = runner.invoke(ariel_group, ["watch", "--help"])
+        assert result.exit_code == 0
+        assert "Watch a source" in result.output
+
+    def test_watch_help_shows_options(self, runner):
+        """watch --help lists all options."""
+        result = runner.invoke(ariel_group, ["watch", "--help"])
+        assert "--once" in result.output
+        assert "--interval" in result.output
+        assert "--dry-run" in result.output
+        assert "--source" in result.output
+        assert "--adapter" in result.output
+
+    def test_watch_once_runs_poll(self, runner, monkeypatch):
+        """watch --once invokes poll_once and shows result."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_config = {
+            "database": {"uri": "postgresql://localhost/test"},
+            "ingestion": {"adapter": "generic_json", "source_url": "https://api.example.com/log"},
+        }
+        monkeypatch.setattr(
+            "osprey.cli.ariel.get_config_value",
+            lambda key, default=None: mock_config if key == "ariel" else default,
+        )
+
+        mock_service = MagicMock()
+        mock_service.__aenter__ = AsyncMock(return_value=mock_service)
+        mock_service.__aexit__ = AsyncMock(return_value=None)
+        mock_service.repository = MagicMock()
+
+        from osprey.services.ariel_search.ingestion.scheduler import IngestionPollResult
+
+        poll_result = IngestionPollResult(
+            entries_added=3, entries_updated=0, entries_failed=0,
+            duration_seconds=1.2, since=None,
+        )
+
+        with (
+            patch(
+                "osprey.services.ariel_search.create_ariel_service",
+                new_callable=AsyncMock,
+                return_value=mock_service,
+            ),
+            patch(
+                "osprey.services.ariel_search.ingestion.scheduler.IngestionScheduler.poll_once",
+                new_callable=AsyncMock,
+                return_value=poll_result,
+            ) as mock_poll,
+        ):
+            result = runner.invoke(ariel_group, ["watch", "--once"])
+
+        assert result.exit_code == 0
+        mock_poll.assert_called_once_with(dry_run=False)
+        assert "Poll complete" in result.output
+        assert "3 added" in result.output
+
+    def test_watch_once_dry_run(self, runner, monkeypatch):
+        """watch --once --dry-run shows dry-run prefix in output."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_config = {
+            "database": {"uri": "postgresql://localhost/test"},
+            "ingestion": {"adapter": "generic_json", "source_url": "https://api.example.com/log"},
+        }
+        monkeypatch.setattr(
+            "osprey.cli.ariel.get_config_value",
+            lambda key, default=None: mock_config if key == "ariel" else default,
+        )
+
+        mock_service = MagicMock()
+        mock_service.__aenter__ = AsyncMock(return_value=mock_service)
+        mock_service.__aexit__ = AsyncMock(return_value=None)
+        mock_service.repository = MagicMock()
+
+        from osprey.services.ariel_search.ingestion.scheduler import IngestionPollResult
+
+        poll_result = IngestionPollResult(
+            entries_added=5, entries_updated=0, entries_failed=0,
+            duration_seconds=0.8, since=None,
+        )
+
+        with (
+            patch(
+                "osprey.services.ariel_search.create_ariel_service",
+                new_callable=AsyncMock,
+                return_value=mock_service,
+            ),
+            patch(
+                "osprey.services.ariel_search.ingestion.scheduler.IngestionScheduler.poll_once",
+                new_callable=AsyncMock,
+                return_value=poll_result,
+            ) as mock_poll,
+        ):
+            result = runner.invoke(ariel_group, ["watch", "--once", "--dry-run"])
+
+        assert result.exit_code == 0
+        mock_poll.assert_called_once_with(dry_run=True)
+        assert "[dry-run]" in result.output
+        assert "Poll complete" in result.output
+
+    def test_watch_no_source_shows_error(self, runner, monkeypatch):
+        """watch shows error when ingestion has no source_url."""
+        mock_config = {
+            "database": {"uri": "postgresql://localhost/test"},
+            "ingestion": {"adapter": "generic_json"},
+        }
+        monkeypatch.setattr(
+            "osprey.cli.ariel.get_config_value",
+            lambda key, default=None: mock_config if key == "ariel" else default,
+        )
+
+        result = runner.invoke(ariel_group, ["watch", "--once"])
+
+        assert result.exit_code == 1
+        assert "source" in result.output.lower()
+
+    def test_watch_no_config_shows_error(self, runner, monkeypatch):
+        """watch shows error when ARIEL not configured."""
+        monkeypatch.setattr(
+            "osprey.cli.ariel.get_config_value",
+            lambda key, default=None: default,
+        )
+        result = runner.invoke(ariel_group, ["watch", "--once"])
+        assert result.exit_code == 1
+        assert "not configured" in result.output.lower()
+
+    def test_watch_adapter_choices(self, runner):
+        """watch command validates adapter choices."""
+        result = runner.invoke(ariel_group, ["watch", "--help"])
+        assert "als_logbook" in result.output
+        assert "generic_json" in result.output
 
 
 class TestQuickstartCommand:

@@ -170,9 +170,7 @@ def migrate_command(rollback: bool) -> None:
 
 
 @ariel_group.command("ingest")
-@click.option(
-    "--source", "-s", required=True, type=click.Path(exists=True), help="Source file path"
-)
+@click.option("--source", "-s", required=True, help="Source file path or URL")
 @click.option(
     "--adapter",
     "-a",
@@ -190,10 +188,11 @@ def ingest_command(
     limit: int | None,
     dry_run: bool,
 ) -> None:
-    """Ingest logbook entries from a source file.
+    """Ingest logbook entries from a source file or URL.
 
-    Parses entries from the source file using the specified adapter
-    and stores them in the ARIEL database.
+    Parses entries from the source using the specified adapter
+    and stores them in the ARIEL database. Accepts both local
+    file paths and HTTP/HTTPS URLs.
     """
 
     async def _ingest() -> None:
@@ -239,39 +238,58 @@ def ingest_command(
                 click.echo(f"Enhancement modules would run: {[e.name for e in enhancers]}")
             return
 
-        # Full ingestion with enhancement
+        # Full ingestion with enhancement and run tracking
         service = await create_ariel_service(config)
         async with service:
+            source_system = adapter_instance.source_system_name
+            run_id = await service.repository.start_ingestion_run(source_system)
+
             count = 0
             enhanced_count = 0
-            async with service.pool.connection() as conn:
-                async for entry in adapter_instance.fetch_entries(since=since, limit=limit):
-                    # Store entry
-                    await service.repository.upsert_entry(entry)
-                    count += 1
+            failed_count = 0
 
-                    # Run enabled enhancement modules
-                    if enhancers:
-                        for enhancer in enhancers:
-                            try:
-                                await enhancer.enhance(entry, conn)
-                                await service.repository.mark_enhancement_complete(
-                                    entry["entry_id"],
-                                    enhancer.name,
-                                )
-                                enhanced_count += 1
-                            except Exception as e:
-                                await service.repository.mark_enhancement_failed(
-                                    entry["entry_id"],
-                                    enhancer.name,
-                                    str(e),
-                                )
+            try:
+                async with service.pool.connection() as conn:
+                    async for entry in adapter_instance.fetch_entries(
+                        since=since, limit=limit
+                    ):
+                        # Store entry
+                        await service.repository.upsert_entry(entry)
+                        count += 1
 
-                    if count % 100 == 0:
+                        # Run enabled enhancement modules
                         if enhancers:
-                            click.echo(f"  Ingested and enhanced {count} entries...")
-                        else:
-                            click.echo(f"  Ingested {count} entries...")
+                            for enhancer in enhancers:
+                                try:
+                                    await enhancer.enhance(entry, conn)
+                                    await service.repository.mark_enhancement_complete(
+                                        entry["entry_id"],
+                                        enhancer.name,
+                                    )
+                                    enhanced_count += 1
+                                except Exception as e:
+                                    await service.repository.mark_enhancement_failed(
+                                        entry["entry_id"],
+                                        enhancer.name,
+                                        str(e),
+                                    )
+                                    failed_count += 1
+
+                        if count % 100 == 0:
+                            if enhancers:
+                                click.echo(f"  Ingested and enhanced {count} entries...")
+                            else:
+                                click.echo(f"  Ingested {count} entries...")
+
+                await service.repository.complete_ingestion_run(
+                    run_id,
+                    entries_added=count,
+                    entries_updated=0,
+                    entries_failed=failed_count,
+                )
+            except Exception as e:
+                await service.repository.fail_ingestion_run(run_id, str(e))
+                raise
 
             click.echo(f"\nIngestion complete: {count} entries stored")
             if enhancers:
@@ -288,6 +306,128 @@ def ingest_command(
             click.echo("Run 'osprey ariel migrate' to create the required tables.", err=True)
             raise SystemExit(1) from None
         raise  # Re-raise other database errors
+    except Exception as e:
+        if "connection" in str(e).lower() or "connect" in str(e).lower():
+            click.echo("Error: Cannot connect to the ARIEL database.", err=True)
+            click.echo("Make sure the database is running: osprey deploy up", err=True)
+            raise SystemExit(1) from None
+        raise
+
+
+@ariel_group.command("watch")
+@click.option("--source", "-s", help="Source file path or URL (overrides config)")
+@click.option(
+    "--adapter",
+    "-a",
+    type=click.Choice(["als_logbook", "jlab_logbook", "ornl_logbook", "generic_json"]),
+    help="Adapter type (overrides config)",
+)
+@click.option("--once", is_flag=True, help="Run a single poll cycle and exit")
+@click.option("--interval", type=int, help="Override poll interval (seconds)")
+@click.option("--dry-run", is_flag=True, help="Show what would be ingested without storing")
+def watch_command(
+    source: str | None,
+    adapter: str | None,
+    once: bool,
+    interval: int | None,
+    dry_run: bool,
+) -> None:
+    """Watch a source for new logbook entries.
+
+    Continuously polls the configured source for new entries and
+    ingests them into the ARIEL database. Uses the last successful
+    ingestion timestamp to fetch only new entries.
+
+    Requires at least one prior 'osprey ariel ingest' run by default.
+    Use --once for a single poll cycle.
+
+    Example:
+        osprey ariel watch                         # Watch using config
+        osprey ariel watch --once --dry-run        # Preview one cycle
+        osprey ariel watch --interval 300          # Poll every 5 minutes
+        osprey ariel watch -s https://api/logbook  # Override source URL
+    """
+    import signal
+
+    async def _watch() -> None:
+        from osprey.services.ariel_search import ARIELConfig, create_ariel_service
+        from osprey.services.ariel_search.ingestion.scheduler import IngestionScheduler
+
+        # Load config
+        config_dict = get_config_value("ariel", {})
+        if not config_dict:
+            click.echo("Error: ARIEL not configured in config.yml", err=True)
+            raise SystemExit(1)
+
+        # Apply CLI overrides
+        if source or adapter:
+            if "ingestion" not in config_dict:
+                config_dict["ingestion"] = {}
+            if source:
+                config_dict["ingestion"]["source_url"] = source
+            if adapter:
+                config_dict["ingestion"]["adapter"] = adapter
+
+        if interval is not None:
+            if "ingestion" not in config_dict:
+                config_dict["ingestion"] = {}
+            config_dict["ingestion"]["poll_interval_seconds"] = interval
+
+        config = ARIELConfig.from_dict(config_dict)
+
+        if not config.ingestion or not config.ingestion.source_url:
+            click.echo(
+                "Error: No ingestion source configured. "
+                "Set ingestion.source_url in config.yml or use --source.",
+                err=True,
+            )
+            raise SystemExit(1)
+
+        service = await create_ariel_service(config)
+        async with service:
+            scheduler = IngestionScheduler(
+                config=config,
+                repository=service.repository,
+            )
+
+            if once:
+                click.echo(f"Running single poll cycle (source: {config.ingestion.source_url})")
+                result = await scheduler.poll_once(dry_run=dry_run)
+                prefix = "[dry-run] " if dry_run else ""
+                click.echo(
+                    f"\n{prefix}Poll complete: "
+                    f"{result.entries_added} added, "
+                    f"{result.entries_failed} failed "
+                    f"({result.duration_seconds:.1f}s)"
+                )
+                if result.since:
+                    click.echo(f"  Since: {result.since.isoformat()}")
+                return
+
+            # Daemon mode with signal handling
+            poll_secs = config.ingestion.poll_interval_seconds
+            click.echo(f"Watching: {config.ingestion.source_url}")
+            click.echo(f"Poll interval: {poll_secs}s")
+            click.echo("Press Ctrl+C to stop\n")
+
+            loop = asyncio.get_event_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, lambda: asyncio.ensure_future(scheduler.stop()))
+
+            await scheduler.start()
+
+    from osprey.services.ariel_search.exceptions import DatabaseQueryError
+
+    try:
+        asyncio.run(_watch())
+    except DatabaseQueryError as e:
+        if "relation" in str(e) and "does not exist" in str(e):
+            click.echo("Error: ARIEL database is not initialized.", err=True)
+            click.echo("Run 'osprey ariel migrate' to create the required tables.", err=True)
+            raise SystemExit(1) from None
+        raise
+    except KeyboardInterrupt:
+        click.echo("\nStopping watcher...")
     except Exception as e:
         if "connection" in str(e).lower() or "connect" in str(e).lower():
             click.echo("Error: Cannot connect to the ARIEL database.", err=True)
