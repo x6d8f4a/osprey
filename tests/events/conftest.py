@@ -103,9 +103,10 @@ def sample_events() -> dict[str, Any]:
             timestamp=now,
         ),
         "code_generated": CodeGeneratedEvent(
+            code="def hello(): ...",
+            attempt=1,
+            success=True,
             language="python",
-            code_preview="def hello(): ...",
-            code_length=50,
             component="python_executor",
             timestamp=now,
         ),
