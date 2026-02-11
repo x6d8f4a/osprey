@@ -35,8 +35,11 @@ logger = logging.getLogger(__name__)
 
 
 def _build_ariel_mock_registry():
-    """Build a mock Osprey registry with ARIEL search/enhancement/pipeline modules."""
-    from osprey.registry.base import ArielEnhancementModuleRegistration
+    """Build a mock Osprey registry with ARIEL search/enhancement/pipeline/ingestion modules."""
+    from osprey.registry.base import (
+        ArielEnhancementModuleRegistration,
+        ArielIngestionAdapterRegistration,
+    )
 
     registry = MagicMock()
 
@@ -92,6 +95,53 @@ def _build_ariel_mock_registry():
     _pipelines = {"rag": rag_mod, "agent": agent_mod}
     registry.list_ariel_pipelines.return_value = list(_pipelines)
     registry.get_ariel_pipeline.side_effect = _pipelines.get
+
+    # --- Ingestion adapters ---
+    from osprey.services.ariel_search.ingestion.adapters.als import ALSLogbookAdapter
+    from osprey.services.ariel_search.ingestion.adapters.generic import GenericJSONAdapter
+    from osprey.services.ariel_search.ingestion.adapters.jlab import JLabLogbookAdapter
+    from osprey.services.ariel_search.ingestion.adapters.ornl import ORNLLogbookAdapter
+
+    _ingestion_adapters = {
+        "als_logbook": (
+            ALSLogbookAdapter,
+            ArielIngestionAdapterRegistration(
+                name="als_logbook",
+                module_path="osprey.services.ariel_search.ingestion.adapters.als",
+                class_name="ALSLogbookAdapter",
+                description="ALS eLog adapter",
+            ),
+        ),
+        "jlab_logbook": (
+            JLabLogbookAdapter,
+            ArielIngestionAdapterRegistration(
+                name="jlab_logbook",
+                module_path="osprey.services.ariel_search.ingestion.adapters.jlab",
+                class_name="JLabLogbookAdapter",
+                description="JLab logbook adapter",
+            ),
+        ),
+        "ornl_logbook": (
+            ORNLLogbookAdapter,
+            ArielIngestionAdapterRegistration(
+                name="ornl_logbook",
+                module_path="osprey.services.ariel_search.ingestion.adapters.ornl",
+                class_name="ORNLLogbookAdapter",
+                description="ORNL logbook adapter",
+            ),
+        ),
+        "generic_json": (
+            GenericJSONAdapter,
+            ArielIngestionAdapterRegistration(
+                name="generic_json",
+                module_path="osprey.services.ariel_search.ingestion.adapters.generic",
+                class_name="GenericJSONAdapter",
+                description="Generic JSON adapter",
+            ),
+        ),
+    }
+    registry.list_ariel_ingestion_adapters.return_value = list(_ingestion_adapters)
+    registry.get_ariel_ingestion_adapter.side_effect = _ingestion_adapters.get
 
     return registry
 

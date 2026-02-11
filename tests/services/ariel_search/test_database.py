@@ -597,13 +597,14 @@ class TestIngestionAdaptersInit:
 
         assert BaseAdapter is not None
 
-    def test_known_adapters_registry(self) -> None:
-        """KNOWN_ADAPTERS registry exists."""
-        from osprey.services.ariel_search.ingestion.adapters import KNOWN_ADAPTERS
+    def test_ingestion_adapters_in_registry(self) -> None:
+        """Ingestion adapters are discoverable via the Osprey registry."""
+        from osprey.registry import get_registry
 
-        assert isinstance(KNOWN_ADAPTERS, dict)
-        assert "als_logbook" in KNOWN_ADAPTERS
-        assert "generic_json" in KNOWN_ADAPTERS
+        registry = get_registry()
+        adapters = registry.list_ariel_ingestion_adapters()
+        assert "als_logbook" in adapters
+        assert "generic_json" in adapters
 
     def test_get_adapter_function(self) -> None:
         """get_adapter function exists."""

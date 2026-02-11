@@ -258,6 +258,7 @@ class RegistryManager:
             "ariel_search_modules": {},
             "ariel_enhancement_modules": {},
             "ariel_pipelines": {},
+            "ariel_ingestion_adapters": {},
         }
 
         # Provider-specific storage for metadata introspection
@@ -324,6 +325,7 @@ class RegistryManager:
                     ariel_search_modules=framework_config.ariel_search_modules.copy(),
                     ariel_enhancement_modules=framework_config.ariel_enhancement_modules.copy(),
                     ariel_pipelines=framework_config.ariel_pipelines.copy(),
+                    ariel_ingestion_adapters=framework_config.ariel_ingestion_adapters.copy(),
                     initialization_order=framework_config.initialization_order.copy(),
                 )
 
@@ -929,6 +931,12 @@ class RegistryManager:
             "ARIEL pipeline",
             app_name,
         )
+        self._merge_named_registrations(
+            merged.ariel_ingestion_adapters,
+            getattr(app_config, "ariel_ingestion_adapters", []),
+            "ARIEL ingestion adapter",
+            app_name,
+        )
 
     @staticmethod
     def _merge_named_registrations(
@@ -1161,6 +1169,8 @@ class RegistryManager:
             self._initialize_ariel_enhancement_modules()
         elif component_type == "ariel_pipelines":
             self._initialize_ariel_pipelines()
+        elif component_type == "ariel_ingestion_adapters":
+            self._initialize_ariel_ingestion_adapters()
         else:
             raise ValueError(f"Unknown component type: {component_type}")
 
@@ -1589,6 +1599,49 @@ class RegistryManager:
         logger.info(
             f"ARIEL pipeline initialization complete: "
             f"{len(self._registries['ariel_pipelines'])} pipelines loaded"
+        )
+
+    def _initialize_ariel_ingestion_adapters(self) -> None:
+        """Initialize ARIEL ingestion adapters from registry configuration.
+
+        Imports each ingestion adapter class and stores (class, registration) tuples
+        in the ``ariel_ingestion_adapters`` registry.
+        """
+        if not self.config.ariel_ingestion_adapters:
+            return
+
+        logger.info(
+            f"Initializing {len(self.config.ariel_ingestion_adapters)} "
+            f"ARIEL ingestion adapter(s)..."
+        )
+
+        for registration in self.config.ariel_ingestion_adapters:
+            try:
+                module = importlib.import_module(registration.module_path)
+                cls = getattr(module, registration.class_name)
+
+                self._registries["ariel_ingestion_adapters"][registration.name] = (
+                    cls,
+                    registration,
+                )
+                logger.debug(f"  ✓ Registered ARIEL ingestion adapter: {registration.name}")
+
+            except ImportError as e:
+                logger.warning(
+                    f"  ⊘ Skipping ARIEL ingestion adapter '{registration.name}' "
+                    f"(import failed): {e}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"  ✗ Failed to register ARIEL ingestion adapter '{registration.name}': {e}"
+                )
+                raise RegistryError(
+                    f"ARIEL ingestion adapter registration failed for {registration.name}"
+                ) from e
+
+        logger.info(
+            f"ARIEL ingestion adapter initialization complete: "
+            f"{len(self._registries['ariel_ingestion_adapters'])} adapters loaded"
         )
 
     def _initialize_execution_policy_analyzers(self) -> None:
@@ -2385,6 +2438,21 @@ class RegistryManager:
         :return: List of pipeline names
         """
         return list(self._registries["ariel_pipelines"].keys())
+
+    def get_ariel_ingestion_adapter(self, name: str) -> tuple[type, Any] | None:
+        """Retrieve an ARIEL ingestion adapter class and registration.
+
+        :param name: Registry name, e.g., "als_logbook"
+        :return: Tuple of (class, registration) if registered, None otherwise
+        """
+        return self._registries["ariel_ingestion_adapters"].get(name)
+
+    def list_ariel_ingestion_adapters(self) -> list[str]:
+        """List registered ARIEL ingestion adapter names.
+
+        :return: List of ingestion adapter names
+        """
+        return list(self._registries["ariel_ingestion_adapters"].keys())
 
     def get_service(self, name: str) -> Any | None:
         """Retrieve registered service graph by name.

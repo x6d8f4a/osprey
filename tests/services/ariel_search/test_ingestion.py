@@ -11,7 +11,7 @@ import pytest
 
 from osprey.services.ariel_search.config import ARIELConfig
 from osprey.services.ariel_search.exceptions import AdapterNotFoundError, IngestionError
-from osprey.services.ariel_search.ingestion import KNOWN_ADAPTERS, get_adapter
+from osprey.services.ariel_search.ingestion import get_adapter
 from osprey.services.ariel_search.ingestion.adapters.als import (
     ALSLogbookAdapter,
     parse_als_categories,
@@ -24,24 +24,47 @@ from osprey.services.ariel_search.ingestion.adapters.ornl import ORNLLogbookAdap
 FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "ariel"
 
 
-class TestKnownAdapters:
-    """Tests for adapter discovery."""
+class TestRegisteredAdapters:
+    """Tests for adapter registry discovery."""
 
-    def test_known_adapters_has_als(self):
-        """ALS adapter is registered."""
-        assert "als_logbook" in KNOWN_ADAPTERS
+    def test_registry_has_als(self):
+        """ALS adapter is registered in the Osprey registry."""
+        from osprey.registry import get_registry
 
-    def test_known_adapters_has_jlab(self):
-        """JLab adapter is registered."""
-        assert "jlab_logbook" in KNOWN_ADAPTERS
+        registry = get_registry()
+        assert registry.get_ariel_ingestion_adapter("als_logbook") is not None
 
-    def test_known_adapters_has_ornl(self):
-        """ORNL adapter is registered."""
-        assert "ornl_logbook" in KNOWN_ADAPTERS
+    def test_registry_has_jlab(self):
+        """JLab adapter is registered in the Osprey registry."""
+        from osprey.registry import get_registry
 
-    def test_known_adapters_has_generic(self):
-        """Generic adapter is registered."""
-        assert "generic_json" in KNOWN_ADAPTERS
+        registry = get_registry()
+        assert registry.get_ariel_ingestion_adapter("jlab_logbook") is not None
+
+    def test_registry_has_ornl(self):
+        """ORNL adapter is registered in the Osprey registry."""
+        from osprey.registry import get_registry
+
+        registry = get_registry()
+        assert registry.get_ariel_ingestion_adapter("ornl_logbook") is not None
+
+    def test_registry_has_generic(self):
+        """Generic adapter is registered in the Osprey registry."""
+        from osprey.registry import get_registry
+
+        registry = get_registry()
+        assert registry.get_ariel_ingestion_adapter("generic_json") is not None
+
+    def test_list_adapters(self):
+        """All four adapters are listed."""
+        from osprey.registry import get_registry
+
+        registry = get_registry()
+        adapters = registry.list_ariel_ingestion_adapters()
+        assert "als_logbook" in adapters
+        assert "jlab_logbook" in adapters
+        assert "ornl_logbook" in adapters
+        assert "generic_json" in adapters
 
 
 class TestGetAdapter:

@@ -559,6 +559,29 @@ class ArielEnhancementModuleRegistration:
 
 
 @dataclass
+class ArielIngestionAdapterRegistration:
+    """Registration metadata for ARIEL ingestion adapters.
+
+    Defines the metadata required for lazy loading of ingestion adapter classes
+    that connect to facility-specific logbook data sources.
+
+    :param name: Config key, e.g., "als_logbook"
+    :type name: str
+    :param module_path: Module containing the adapter class
+    :type module_path: str
+    :param class_name: Adapter class name, e.g., "ALSLogbookAdapter"
+    :type class_name: str
+    :param description: Human-readable description
+    :type description: str
+    """
+
+    name: str
+    module_path: str
+    class_name: str
+    description: str
+
+
+@dataclass
 class ArielPipelineRegistration:
     """Registration metadata for ARIEL pipeline descriptors.
 
@@ -655,6 +678,9 @@ class RegistryConfig:
         default_factory=list
     )
     ariel_pipelines: list[ArielPipelineRegistration] = field(default_factory=list)
+    ariel_ingestion_adapters: list[ArielIngestionAdapterRegistration] = field(
+        default_factory=list
+    )
     framework_exclusions: dict[str, list[str]] = field(default_factory=dict)
     initialization_order: list[str] = field(
         default_factory=lambda: [
@@ -668,6 +694,7 @@ class RegistryConfig:
             "ariel_search_modules",
             "ariel_enhancement_modules",
             "ariel_pipelines",
+            "ariel_ingestion_adapters",
             "capabilities",
             "framework_prompt_providers",
             "core_nodes",

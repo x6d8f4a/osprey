@@ -96,6 +96,7 @@ Examples:
 # Framework components for application use - all shared definitions in base
 from .base import (
     ArielEnhancementModuleRegistration,
+    ArielIngestionAdapterRegistration,
     ArielPipelineRegistration,
     ArielSearchModuleRegistration,
     CapabilityRegistration,
@@ -144,6 +145,7 @@ __all__ = [
     "ArielSearchModuleRegistration",
     "ArielEnhancementModuleRegistration",
     "ArielPipelineRegistration",
+    "ArielIngestionAdapterRegistration",
     # Helper functions (NEW - Phase 4.6)
     "extend_framework_registry",
     "get_framework_defaults",

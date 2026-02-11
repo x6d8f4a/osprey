@@ -79,6 +79,7 @@ Examples:
 
 from .base import (
     ArielEnhancementModuleRegistration,
+    ArielIngestionAdapterRegistration,
     ArielPipelineRegistration,
     ArielSearchModuleRegistration,
     CapabilityRegistration,
@@ -640,6 +641,33 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     description="Autonomous ReAct agent with multi-step reasoning",
                 ),
             ],
+            # ARIEL ingestion adapters
+            ariel_ingestion_adapters=[
+                ArielIngestionAdapterRegistration(
+                    name="als_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.als",
+                    class_name="ALSLogbookAdapter",
+                    description="ALS eLog adapter with JSONL streaming and HTTP API support",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="jlab_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.jlab",
+                    class_name="JLabLogbookAdapter",
+                    description="Jefferson Lab logbook adapter",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="ornl_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.ornl",
+                    class_name="ORNLLogbookAdapter",
+                    description="Oak Ridge National Laboratory logbook adapter",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="generic_json",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.generic",
+                    class_name="GenericJSONAdapter",
+                    description="Generic JSON adapter for testing and facilities without custom APIs",
+                ),
+            ],
             # Simplified initialization order - decorators and subgraphs are imported directly when needed
             initialization_order=[
                 "context_classes",  # First - needed by capabilities
@@ -650,9 +678,10 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                 "ariel_search_modules",  # Sixth - ARIEL search modules
                 "ariel_enhancement_modules",  # Seventh - ARIEL enhancement modules
                 "ariel_pipelines",  # Eighth - ARIEL pipelines
-                "core_nodes",  # Ninth - infrastructure nodes
-                "services",  # Tenth - internal service graphs
-                "capabilities",  # Eleventh - depends on everything else including services
+                "ariel_ingestion_adapters",  # Ninth - ARIEL ingestion adapters
+                "core_nodes",  # Tenth - infrastructure nodes
+                "services",  # Eleventh - internal service graphs
+                "capabilities",  # Twelfth - depends on everything else including services
                 "framework_prompt_providers",  # Last - imports applications that may need capabilities/context
             ],
         )

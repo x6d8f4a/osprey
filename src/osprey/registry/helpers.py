@@ -10,6 +10,7 @@ intuitive API for application developers to define their registries.
 
 from .base import (
     ArielEnhancementModuleRegistration,
+    ArielIngestionAdapterRegistration,
     ArielPipelineRegistration,
     ArielSearchModuleRegistration,
     CapabilityRegistration,
@@ -45,9 +46,11 @@ def extend_framework_registry(
     ariel_search_modules: list[ArielSearchModuleRegistration] | None = None,
     ariel_enhancement_modules: list[ArielEnhancementModuleRegistration] | None = None,
     ariel_pipelines: list[ArielPipelineRegistration] | None = None,
+    ariel_ingestion_adapters: list[ArielIngestionAdapterRegistration] | None = None,
     exclude_ariel_search_modules: list[str] | None = None,
     exclude_ariel_enhancement_modules: list[str] | None = None,
     exclude_ariel_pipelines: list[str] | None = None,
+    exclude_ariel_ingestion_adapters: list[str] | None = None,
     override_capabilities: list[CapabilityRegistration] | None = None,
     override_nodes: list[NodeRegistration] | None = None,
     override_providers: list[ProviderRegistration] | None = None,
@@ -226,6 +229,9 @@ def extend_framework_registry(
     if exclude_ariel_pipelines:
         framework_exclusions["ariel_pipelines"] = exclude_ariel_pipelines
 
+    if exclude_ariel_ingestion_adapters:
+        framework_exclusions["ariel_ingestion_adapters"] = exclude_ariel_ingestion_adapters
+
     # Combine override and regular components
     all_capabilities = list(capabilities or [])
     if override_capabilities:
@@ -258,6 +264,7 @@ def extend_framework_registry(
         ariel_search_modules=list(ariel_search_modules or []),
         ariel_enhancement_modules=list(ariel_enhancement_modules or []),
         ariel_pipelines=list(ariel_pipelines or []),
+        ariel_ingestion_adapters=list(ariel_ingestion_adapters or []),
         framework_exclusions=framework_exclusions if framework_exclusions else None,
     )
 
