@@ -108,6 +108,21 @@ def _create_lifespan(config_path: str | Path | None = None):
 
         logger.info("Starting ARIEL Web Interface...")
 
+        # Initialize the framework-only registry before any search code runs.
+        # ARIEL doesn't need an application registry (e.g. my_control_assistant/registry.py),
+        # but config.yml may reference one. Pre-creating the singleton with no registry_path
+        # prevents get_registry() from failing when the capabilities/agent/enhancement
+        # code paths try to load it.
+        try:
+            import osprey.registry.manager as _reg_mod
+            from osprey.registry.manager import RegistryManager
+
+            _reg_mod._registry = RegistryManager(registry_path=None)
+            _reg_mod._registry.initialize(silent=True)
+            logger.info("Framework registry initialized for ARIEL")
+        except Exception as e:
+            logger.warning(f"Registry initialization failed (non-fatal): {e}")
+
         # Load configuration
         config_dict = load_ariel_config(config_path)
         config = ARIELConfig.from_dict(config_dict)
