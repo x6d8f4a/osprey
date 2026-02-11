@@ -685,6 +685,17 @@ textarea.input {
   padding: var(--space-4);
 }
 
+/* === Filters Section (full-width in grid) === */
+.advanced-section.filters-section {
+  grid-column: 1 / -1;
+}
+
+.advanced-section.filters-section .advanced-section-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
 /* === Advanced Section === */
 .advanced-section {
   background: var(--bg-primary);

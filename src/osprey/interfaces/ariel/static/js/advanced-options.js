@@ -10,6 +10,7 @@ let capabilities = null;
 let currentMode = 'rag';
 let isPanelOpen = false;
 let paramValues = {};
+const dynamicOptionsCache = {};
 
 // --- Fallback ---
 const FALLBACK_CAPABILITIES = {
@@ -47,8 +48,9 @@ export function initAdvancedOptions(caps) {
   renderModeTabs();
   selectMode(currentMode);
 
-  // Wire up toggle button
-  const toggleBtn = document.getElementById('advanced-toggle');
+  // Wire up toggle button (try both IDs for backward compat)
+  const toggleBtn = document.getElementById('advanced-toggle-btn')
+    || document.getElementById('advanced-toggle');
   toggleBtn?.addEventListener('click', () => {
     isPanelOpen = !isPanelOpen;
     const panel = document.getElementById('advanced-panel');
@@ -67,7 +69,9 @@ export function initAdvancedOptions(caps) {
     closeBtn?.addEventListener('click', () => {
       isPanelOpen = false;
       document.getElementById('advanced-panel')?.classList.add('hidden');
-      document.getElementById('advanced-toggle')?.classList.remove('active');
+      const btn = document.getElementById('advanced-toggle-btn')
+        || document.getElementById('advanced-toggle');
+      btn?.classList.remove('active');
     });
   }
 
@@ -128,6 +132,18 @@ export function getAdvancedOptions(mode) {
  */
 export function isAdvancedPanelOpen() {
   return isPanelOpen;
+}
+
+/**
+ * Close the advanced panel if it is open.
+ */
+export function closeAdvancedPanel() {
+  if (!isPanelOpen) return;
+  isPanelOpen = false;
+  document.getElementById('advanced-panel')?.classList.add('hidden');
+  const btn = document.getElementById('advanced-toggle-btn')
+    || document.getElementById('advanced-toggle');
+  btn?.classList.remove('active');
 }
 
 // --- Internal ---
@@ -225,16 +241,38 @@ function renderAdvancedPanel() {
     return;
   }
 
-  // Group by section
-  const sections = {};
+  // Group by section, separate "Filters" from the rest
+  const filterParams = [];
+  const otherSections = {};
   for (const param of allParams) {
     const section = param.section || 'General';
-    if (!sections[section]) sections[section] = [];
-    sections[section].push(param);
+    if (section === 'Filters') {
+      filterParams.push(param);
+    } else {
+      if (!otherSections[section]) otherSections[section] = [];
+      otherSections[section].push(param);
+    }
   }
 
   let html = '';
-  for (const [sectionName, params] of Object.entries(sections)) {
+
+  // Render Filters section first (full-width)
+  if (filterParams.length > 0) {
+    html += `
+      <div class="advanced-section filters-section">
+        <div class="advanced-section-header">
+          <span class="section-title">Filters</span>
+        </div>
+        <div class="advanced-section-body">
+    `;
+    for (const param of filterParams) {
+      html += renderParameter(param);
+    }
+    html += `</div></div>`;
+  }
+
+  // Render remaining sections
+  for (const [sectionName, params] of Object.entries(otherSections)) {
     html += `
       <div class="advanced-section">
         <div class="advanced-section-header">
@@ -254,6 +292,9 @@ function renderAdvancedPanel() {
 
   // Attach event listeners
   attachParamListeners(container);
+
+  // Load dynamic select options asynchronously
+  loadDynamicSelectOptions(container);
 }
 
 /**
@@ -272,6 +313,12 @@ function renderParameter(param) {
       return renderToggle(param, value);
     case 'select':
       return renderSelect(param, value);
+    case 'date':
+      return renderDateInput(param, value);
+    case 'text':
+      return renderTextInput(param, value);
+    case 'dynamic_select':
+      return renderDynamicSelect(param, value);
     default:
       return '';
   }
@@ -335,6 +382,89 @@ function renderSelect(param, value) {
 }
 
 /**
+ * Render a date input control.
+ */
+function renderDateInput(param, value) {
+  const val = value || '';
+  return `
+    <div class="input-group">
+      <label class="input-label" for="param-${param.name}" title="${escapeHtml(param.description)}">${escapeHtml(param.label)}</label>
+      <input type="date" id="param-${param.name}" class="input"
+        data-param="${param.name}" data-type="date" value="${escapeHtml(val)}">
+    </div>
+  `;
+}
+
+/**
+ * Render a text input control.
+ */
+function renderTextInput(param, value) {
+  const val = value || '';
+  const placeholder = param.placeholder || '';
+  return `
+    <div class="input-group">
+      <label class="input-label" for="param-${param.name}" title="${escapeHtml(param.description)}">${escapeHtml(param.label)}</label>
+      <input type="text" id="param-${param.name}" class="input"
+        data-param="${param.name}" data-type="text"
+        value="${escapeHtml(val)}" placeholder="${escapeHtml(placeholder)}">
+    </div>
+  `;
+}
+
+/**
+ * Render a dynamic select that fetches options from an endpoint.
+ */
+function renderDynamicSelect(param, value) {
+  const val = value || '';
+  return `
+    <div class="input-group">
+      <label class="input-label" for="param-${param.name}" title="${escapeHtml(param.description)}">${escapeHtml(param.label)}</label>
+      <select id="param-${param.name}" class="select"
+        data-param="${param.name}" data-type="dynamic_select"
+        data-endpoint="${escapeHtml(param.options_endpoint || '')}">
+        <option value="">All</option>
+      </select>
+    </div>
+  `;
+}
+
+/**
+ * Fetch and populate options for dynamic_select elements.
+ */
+async function loadDynamicSelectOptions(container) {
+  const selects = container.querySelectorAll('select[data-type="dynamic_select"]');
+  for (const select of selects) {
+    const endpoint = select.dataset.endpoint;
+    if (!endpoint) continue;
+
+    const currentValue = paramValues[select.dataset.param] || '';
+
+    try {
+      let options;
+      if (dynamicOptionsCache[endpoint]) {
+        options = dynamicOptionsCache[endpoint];
+      } else {
+        const response = await fetch(endpoint);
+        if (!response.ok) continue;
+        const data = await response.json();
+        options = data.options || [];
+        dynamicOptionsCache[endpoint] = options;
+      }
+
+      // Preserve the "All" option and append fetched options
+      let html = '<option value="">All</option>';
+      for (const opt of options) {
+        const selected = opt.value === currentValue ? 'selected' : '';
+        html += `<option value="${escapeHtml(opt.value)}" ${selected}>${escapeHtml(opt.label)}</option>`;
+      }
+      select.innerHTML = html;
+    } catch (err) {
+      console.warn(`Failed to load options from ${endpoint}:`, err);
+    }
+  }
+}
+
+/**
  * Attach change listeners to parameter controls.
  */
 function attachParamListeners(container) {
@@ -361,10 +491,24 @@ function attachParamListeners(container) {
     });
   });
 
-  // Selects
+  // Selects (including dynamic_select)
   container.querySelectorAll('select[data-param]').forEach(select => {
     select.addEventListener('change', () => {
-      paramValues[select.dataset.param] = select.value;
+      paramValues[select.dataset.param] = select.value || null;
+    });
+  });
+
+  // Date inputs
+  container.querySelectorAll('input[type="date"][data-param]').forEach(input => {
+    input.addEventListener('change', () => {
+      paramValues[input.dataset.param] = input.value || null;
+    });
+  });
+
+  // Text inputs
+  container.querySelectorAll('input[type="text"][data-param]').forEach(input => {
+    input.addEventListener('input', () => {
+      paramValues[input.dataset.param] = input.value.trim() || null;
     });
   });
 }
@@ -411,4 +555,5 @@ export default {
   getAdvancedParams,
   getAdvancedOptions,
   isAdvancedPanelOpen,
+  closeAdvancedPanel,
 };

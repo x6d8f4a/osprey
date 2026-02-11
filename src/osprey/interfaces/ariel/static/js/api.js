@@ -82,10 +82,6 @@ export const searchApi = {
       query: params.query,
       mode: params.mode || 'rag',
       max_results: params.maxResults || 10,
-      start_date: params.startDate || null,
-      end_date: params.endDate || null,
-      author: params.author || null,
-      source_system: params.sourceSystem || null,
       advanced_params: params.advancedParams || {},
     };
 

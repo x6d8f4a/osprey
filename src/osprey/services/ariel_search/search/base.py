@@ -30,25 +30,30 @@ class ParameterDescriptor:
         name: Parameter key (e.g. "similarity_threshold")
         label: Human-readable label (e.g. "Similarity Threshold")
         description: Help text for the parameter
-        param_type: One of "float", "int", "bool", "select"
+        param_type: One of "float", "int", "bool", "select", "date", "text",
+            "dynamic_select"
         default: Default value
         min_value: Minimum value (float/int types)
         max_value: Maximum value (float/int types)
         step: Step increment (float/int types)
         options: Choices for select type, e.g. [{"value": "rrf", "label": "RRF"}]
         section: Grouping label in the advanced panel (e.g. "Retrieval")
+        placeholder: Placeholder text for text inputs
+        options_endpoint: API endpoint for dynamic_select to fetch options
     """
 
     name: str
     label: str
     description: str
-    param_type: str  # "float", "int", "bool", "select"
+    param_type: str  # "float", "int", "bool", "select", "date", "text", "dynamic_select"
     default: Any
     min_value: float | None = None
     max_value: float | None = None
     step: float | None = None
     options: list[dict[str, str]] | None = None
     section: str = "General"
+    placeholder: str | None = None
+    options_endpoint: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-friendly dict."""
@@ -68,6 +73,10 @@ class ParameterDescriptor:
             d["step"] = self.step
         if self.options is not None:
             d["options"] = self.options
+        if self.placeholder is not None:
+            d["placeholder"] = self.placeholder
+        if self.options_endpoint is not None:
+            d["options_endpoint"] = self.options_endpoint
         return d
 
 

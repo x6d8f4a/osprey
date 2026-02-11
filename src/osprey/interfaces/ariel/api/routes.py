@@ -65,6 +65,38 @@ async def get_capabilities(request: Request) -> dict:
     return _get_caps(service.config)
 
 
+@router.get("/filter-options/{field_name}")
+async def get_filter_options(request: Request, field_name: str) -> dict:
+    """Return distinct values for a filterable field.
+
+    Used by dynamic_select parameters to populate dropdown options.
+    """
+    service: ARIELSearchService = request.app.state.ariel_service
+
+    field_methods = {
+        "authors": "get_distinct_authors",
+        "source_systems": "get_distinct_source_systems",
+    }
+
+    method_name = field_methods.get(field_name)
+    if not method_name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown filter field: {field_name}. "
+            f"Available: {', '.join(field_methods)}",
+        )
+
+    try:
+        method = getattr(service.repository, method_name)
+        values = await method()
+        return {
+            "field": field_name,
+            "options": [{"value": v, "label": v} for v in values],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.post("/search", response_model=SearchResponse)
 async def search(request: Request, search_req: SearchRequest) -> SearchResponse:
     """Execute search query.
@@ -86,10 +118,29 @@ async def search(request: Request, search_req: SearchRequest) -> SearchResponse:
         }
         service_mode = mode_map.get(search_req.mode)
 
+        # Merge filter values: advanced_params takes precedence over top-level fields
+        adv = search_req.advanced_params
+        start_date = adv.pop("start_date", None) or search_req.start_date
+        end_date = adv.pop("end_date", None) or search_req.end_date
+        author = adv.pop("author", None) or search_req.author
+        source_system = adv.pop("source_system", None) or search_req.source_system
+
+        # Parse date strings from advanced_params if needed
+        if isinstance(start_date, str) and start_date:
+            start_date = datetime.fromisoformat(start_date)
+        if isinstance(end_date, str) and end_date:
+            end_date = datetime.fromisoformat(end_date)
+
         # Build time range if provided
         time_range = None
-        if search_req.start_date or search_req.end_date:
-            time_range = (search_req.start_date, search_req.end_date)
+        if start_date or end_date:
+            time_range = (start_date, end_date)
+
+        # Re-inject non-date filters into advanced_params for downstream use
+        if author:
+            adv["author"] = author
+        if source_system:
+            adv["source_system"] = source_system
 
         # Execute search
         result = await service.search(
@@ -97,7 +148,7 @@ async def search(request: Request, search_req: SearchRequest) -> SearchResponse:
             max_results=search_req.max_results,
             time_range=time_range,
             mode=service_mode,
-            advanced_params=search_req.advanced_params,
+            advanced_params=adv,
         )
 
         execution_time = int((time.time() - start_time) * 1000)

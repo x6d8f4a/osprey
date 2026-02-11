@@ -877,3 +877,110 @@ class TestServiceIntegration:
         start, end = call_kwargs["time_range"]
         assert start is not None
         assert end is not None
+
+    @pytest.mark.asyncio
+    async def test_search_merges_advanced_params_dates(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Search merges date filters from advanced_params."""
+        await client.post(
+            "/api/search",
+            json={
+                "query": "test",
+                "advanced_params": {
+                    "start_date": "2024-06-01",
+                    "end_date": "2024-06-30",
+                },
+            },
+        )
+
+        mock_ariel_service.search.assert_called_once()
+        call_kwargs = mock_ariel_service.search.call_args.kwargs
+        assert call_kwargs["time_range"] is not None
+
+    @pytest.mark.asyncio
+    async def test_search_merges_advanced_params_author(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Search merges author filter from advanced_params."""
+        await client.post(
+            "/api/search",
+            json={
+                "query": "test",
+                "advanced_params": {"author": "Alice"},
+            },
+        )
+
+        mock_ariel_service.search.assert_called_once()
+        call_kwargs = mock_ariel_service.search.call_args.kwargs
+        assert call_kwargs["advanced_params"]["author"] == "Alice"
+
+
+# =============================================================================
+# GET /api/filter-options Tests
+# =============================================================================
+
+
+class TestFilterOptionsEndpoint:
+    """Tests for GET /api/filter-options/{field_name} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_get_authors(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Returns list of distinct authors."""
+        response = await client.get("/api/filter-options/authors")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["field"] == "authors"
+        assert len(data["options"]) == 3
+        assert data["options"][0] == {"value": "Alice", "label": "Alice"}
+
+    @pytest.mark.asyncio
+    async def test_get_source_systems(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Returns list of distinct source systems."""
+        response = await client.get("/api/filter-options/source_systems")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["field"] == "source_systems"
+        assert len(data["options"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_invalid_field_name(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Invalid field name returns 400 error."""
+        response = await client.get("/api/filter-options/invalid_field")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "Unknown filter field" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_service_error(
+        self,
+        client: AsyncClient,
+        mock_ariel_service: MagicMock,
+    ) -> None:
+        """Service exception returns 500 error."""
+        mock_ariel_service.repository.get_distinct_authors = AsyncMock(
+            side_effect=RuntimeError("Database error")
+        )
+
+        response = await client.get("/api/filter-options/authors")
+
+        assert response.status_code == 500

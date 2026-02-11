@@ -144,6 +144,12 @@ if _fastapi_available and _httpx_available:
         service.repository.search_by_time_range = AsyncMock(return_value=[sample_entry])
         service.repository.get_entry = AsyncMock(return_value=sample_entry)
         service.repository.upsert_entry = AsyncMock()
+        service.repository.get_distinct_authors = AsyncMock(
+            return_value=["Alice", "Bob", "Charlie"]
+        )
+        service.repository.get_distinct_source_systems = AsyncMock(
+            return_value=["ALS eLog", "ARIEL Web", "JLab Logbook"]
+        )
 
         return service
 

@@ -94,6 +94,72 @@ class TestParameterDescriptor:
         assert "step" not in d
         assert "options" not in d
 
+    def test_to_dict_includes_placeholder(self):
+        """to_dict includes placeholder when set."""
+        param = ParameterDescriptor(
+            name="author",
+            label="Author",
+            description="Filter by author",
+            param_type="text",
+            default=None,
+            placeholder="Filter by author...",
+        )
+        d = param.to_dict()
+        assert d["placeholder"] == "Filter by author..."
+
+    def test_to_dict_includes_options_endpoint(self):
+        """to_dict includes options_endpoint when set."""
+        param = ParameterDescriptor(
+            name="source",
+            label="Source",
+            description="Filter by source",
+            param_type="dynamic_select",
+            default=None,
+            options_endpoint="/api/filter-options/source_systems",
+        )
+        d = param.to_dict()
+        assert d["options_endpoint"] == "/api/filter-options/source_systems"
+
+    def test_to_dict_omits_placeholder_when_none(self):
+        """to_dict omits placeholder when None."""
+        param = ParameterDescriptor(
+            name="x",
+            label="X",
+            description="x",
+            param_type="text",
+            default=None,
+        )
+        d = param.to_dict()
+        assert "placeholder" not in d
+        assert "options_endpoint" not in d
+
+    def test_create_date_param(self):
+        """Date parameter descriptor has correct fields."""
+        param = ParameterDescriptor(
+            name="start_date",
+            label="Start Date",
+            description="Filter start date",
+            param_type="date",
+            default=None,
+            section="Filters",
+        )
+        assert param.param_type == "date"
+        d = param.to_dict()
+        assert d["type"] == "date"
+
+    def test_create_dynamic_select_param(self):
+        """Dynamic select parameter descriptor has correct fields."""
+        param = ParameterDescriptor(
+            name="source",
+            label="Source",
+            description="Filter by source",
+            param_type="dynamic_select",
+            default=None,
+            options_endpoint="/api/filter-options/source_systems",
+        )
+        assert param.param_type == "dynamic_select"
+        assert param.options_endpoint == "/api/filter-options/source_systems"
+
     def test_frozen(self):
         """ParameterDescriptor is frozen (immutable)."""
         param = ParameterDescriptor(
@@ -285,6 +351,39 @@ class TestGetCapabilities:
         assert len(result["shared_parameters"]) > 0
         param_names = [p["name"] for p in result["shared_parameters"]]
         assert "max_results" in param_names
+        assert "start_date" in param_names
+        assert "end_date" in param_names
+        assert "author" in param_names
+        assert "source_system" in param_names
+
+    def test_shared_filter_params_have_correct_types(self):
+        """Filter shared params have correct param types."""
+        config = self._make_config()
+        result = get_capabilities(config)
+        params = {p["name"]: p for p in result["shared_parameters"]}
+
+        assert params["start_date"]["type"] == "date"
+        assert params["end_date"]["type"] == "date"
+        assert params["author"]["type"] == "text"
+        assert params["source_system"]["type"] == "dynamic_select"
+
+    def test_author_param_has_placeholder(self):
+        """Author parameter includes placeholder."""
+        config = self._make_config()
+        result = get_capabilities(config)
+        params = {p["name"]: p for p in result["shared_parameters"]}
+
+        assert "placeholder" in params["author"]
+        assert params["author"]["placeholder"] == "Filter by author..."
+
+    def test_source_system_param_has_options_endpoint(self):
+        """Source system parameter includes options_endpoint."""
+        config = self._make_config()
+        result = get_capabilities(config)
+        params = {p["name"]: p for p in result["shared_parameters"]}
+
+        assert "options_endpoint" in params["source_system"]
+        assert params["source_system"]["options_endpoint"] == "/api/filter-options/source_systems"
 
     def test_no_search_modules_returns_empty_direct(self):
         """No search modules produces empty direct modes list."""

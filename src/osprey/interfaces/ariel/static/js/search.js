@@ -12,7 +12,7 @@ import {
   renderEmptyState,
   escapeHtml,
 } from './components.js';
-import { getCurrentMode, getAdvancedParams } from './advanced-options.js';
+import { getCurrentMode, getAdvancedParams, closeAdvancedPanel } from './advanced-options.js';
 
 // Search state
 let currentQuery = '';
@@ -25,8 +25,6 @@ let lastResults = null;
 export function initSearch() {
   const searchInput = document.getElementById('search-input');
   const searchBtn = document.getElementById('search-btn');
-  const filtersToggle = document.getElementById('filters-toggle');
-  const filtersPanel = document.getElementById('filters-panel');
 
   // Search input enter key
   searchInput?.addEventListener('keydown', (e) => {
@@ -39,11 +37,6 @@ export function initSearch() {
   // Search button click
   searchBtn?.addEventListener('click', () => {
     performSearch();
-  });
-
-  // Filters toggle
-  filtersToggle?.addEventListener('click', () => {
-    filtersPanel?.classList.toggle('hidden');
   });
 
   // Focus search on page load
@@ -77,18 +70,15 @@ export async function performSearch(query = null) {
   currentQuery = query;
   isSearching = true;
 
+  // Collapse the filters & options panel
+  closeAdvancedPanel();
+
   // Show loading state
   if (resultsContainer) {
     resultsContainer.innerHTML = renderLoading('Searching...');
   }
 
-  // Get filter values
-  const startDate = document.getElementById('filter-start-date')?.value || null;
-  const endDate = document.getElementById('filter-end-date')?.value || null;
-  const author = document.getElementById('filter-author')?.value?.trim() || null;
-  const sourceSystem = document.getElementById('filter-source')?.value || null;
-
-  // Get mode and advanced params from the capabilities-driven UI
+  // Get mode and advanced params from the unified capabilities-driven UI
   const mode = getCurrentMode();
   const advancedParams = getAdvancedParams();
 
@@ -97,10 +87,6 @@ export async function performSearch(query = null) {
       query,
       mode,
       maxResults: advancedParams.max_results || 10,
-      startDate: startDate ? new Date(startDate).toISOString() : null,
-      endDate: endDate ? new Date(endDate).toISOString() : null,
-      author,
-      sourceSystem,
       advancedParams,
     });
 

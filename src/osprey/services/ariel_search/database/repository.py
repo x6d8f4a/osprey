@@ -256,6 +256,48 @@ class ARIELRepository:
                 query="SELECT COUNT(*)",
             ) from e
 
+    async def get_distinct_authors(self) -> list[str]:
+        """Get distinct author values from the database.
+
+        Returns:
+            Sorted list of unique author names
+        """
+        try:
+            async with self.pool.connection() as conn:
+                result = await conn.execute(
+                    "SELECT DISTINCT author FROM enhanced_entries "
+                    "WHERE author IS NOT NULL AND author != '' "
+                    "ORDER BY author"
+                )
+                rows = await result.fetchall()
+                return [row[0] for row in rows]
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to get distinct authors: {e}",
+                query="SELECT DISTINCT author",
+            ) from e
+
+    async def get_distinct_source_systems(self) -> list[str]:
+        """Get distinct source_system values from the database.
+
+        Returns:
+            Sorted list of unique source system names
+        """
+        try:
+            async with self.pool.connection() as conn:
+                result = await conn.execute(
+                    "SELECT DISTINCT source_system FROM enhanced_entries "
+                    "WHERE source_system IS NOT NULL AND source_system != '' "
+                    "ORDER BY source_system"
+                )
+                rows = await result.fetchall()
+                return [row[0] for row in rows]
+        except Exception as e:
+            raise DatabaseQueryError(
+                f"Failed to get distinct source systems: {e}",
+                query="SELECT DISTINCT source_system",
+            ) from e
+
     # === Enhancement Status Methods ===
 
     async def get_incomplete_entries(

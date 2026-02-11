@@ -96,56 +96,19 @@
 
           <!-- Search Options Bar -->
           <div class="search-options-bar">
-            <button type="button" class="btn btn-secondary btn-sm" id="filters-show-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
-              </svg>
-              Filters
-            </button>
             <button type="button" class="btn btn-secondary btn-sm" id="advanced-toggle-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
               </svg>
-              Advanced
+              Filters &amp; Options
             </button>
           </div>
 
-          <!-- Filters -->
-          <div id="filters-panel" class="filters-panel hidden">
-            <div class="filters-header">
-              <span>Filters</span>
-              <button class="btn btn-ghost btn-sm" id="filters-toggle">Hide</button>
-            </div>
-            <div class="filters-grid">
-              <div class="input-group">
-                <label class="input-label" for="filter-start-date">Start Date</label>
-                <input type="date" id="filter-start-date" class="input">
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="filter-end-date">End Date</label>
-                <input type="date" id="filter-end-date" class="input">
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="filter-author">Author</label>
-                <input type="text" id="filter-author" class="input" placeholder="Filter by author">
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="filter-source">Source System</label>
-                <select id="filter-source" class="select">
-                  <option value="">All Systems</option>
-                  <option value="ALS eLog">ALS eLog</option>
-                  <option value="JLab Logbook">JLab Logbook</option>
-                  <option value="ARIEL Web">ARIEL Web</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Advanced Options Panel -->
+          <!-- Filters & Options Panel -->
           <div id="advanced-panel" class="advanced-panel hidden">
             <div class="advanced-header">
-              <span class="advanced-title">Advanced Options</span>
+              <span class="advanced-title">Filters &amp; Options</span>
               <div class="advanced-header-actions">
                 <button type="button" class="btn btn-ghost btn-sm" id="advanced-reset-btn">Reset</button>
                 <button type="button" class="btn btn-ghost btn-sm" id="advanced-close-btn">Close</button>

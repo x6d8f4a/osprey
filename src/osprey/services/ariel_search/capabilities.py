@@ -42,6 +42,24 @@ SHARED_PARAMETERS = [
         default=None,
         section="Filters",
     ),
+    ParameterDescriptor(
+        name="author",
+        label="Author",
+        description="Filter entries by author name",
+        param_type="text",
+        default=None,
+        placeholder="Filter by author...",
+        section="Filters",
+    ),
+    ParameterDescriptor(
+        name="source_system",
+        label="Source System",
+        description="Filter entries by source system",
+        param_type="dynamic_select",
+        default=None,
+        options_endpoint="/api/filter-options/source_systems",
+        section="Filters",
+    ),
 ]
 
 
