@@ -1114,6 +1114,7 @@ ArtifactViewer {
     width: 100%;
     height: auto;
     padding: 1 2 1 4;
+    text-align: right;
     color: $text-muted;
 }
 
