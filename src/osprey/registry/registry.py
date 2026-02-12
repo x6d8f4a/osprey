@@ -468,15 +468,6 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                         "python_approval_node",
                     ],
                 ),
-                # Channel finder service (framework-level)
-                ServiceRegistration(
-                    name="channel_finder",
-                    module_path="osprey.services.channel_finder.service",
-                    class_name="ChannelFinderService",
-                    description="Channel address discovery and search service",
-                    provides=["CHANNEL_ADDRESSES"],
-                    requires=[],
-                ),
             ],
             # Framework prompt providers (defaults - typically overridden by applications)
             framework_prompt_providers=[
