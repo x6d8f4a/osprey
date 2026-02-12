@@ -3,6 +3,7 @@
 This module tests the TUI artifact display system including:
 - ArtifactItem widget rendering
 - ArtifactGallery tracking of new vs seen artifacts
+- ArtifactViewer combined split-panel viewer
 - Integration with ChatDisplay
 """
 
@@ -27,40 +28,37 @@ class TestArtifactItemWidget:
 
     def test_artifact_item_default_name_image(self):
         """ArtifactItem should derive default name from path for images."""
-        from osprey.interfaces.tui.widgets.artifacts import ArtifactItem
+        from osprey.interfaces.tui.widgets.artifacts import _get_artifact_display_name
 
         artifact = create_artifact(
             ArtifactType.IMAGE, "test", {"path": "/path/to/analysis_plot.png", "format": "png"}
         )
-        item = ArtifactItem(artifact)
 
-        assert item._get_default_name() == "analysis_plot.png"
+        assert _get_artifact_display_name(artifact) == "analysis_plot.png"
 
     def test_artifact_item_default_name_notebook(self):
         """ArtifactItem should derive default name from path for notebooks."""
-        from osprey.interfaces.tui.widgets.artifacts import ArtifactItem
+        from osprey.interfaces.tui.widgets.artifacts import _get_artifact_display_name
 
         artifact = create_artifact(
             ArtifactType.NOTEBOOK,
             "test",
             {"path": "/path/to/execution.ipynb", "url": "http://jupyter"},
         )
-        item = ArtifactItem(artifact)
 
-        assert item._get_default_name() == "execution.ipynb"
+        assert _get_artifact_display_name(artifact) == "execution.ipynb"
 
     def test_artifact_item_default_name_command(self):
         """ArtifactItem should use command_type for commands."""
-        from osprey.interfaces.tui.widgets.artifacts import ArtifactItem
+        from osprey.interfaces.tui.widgets.artifacts import _get_artifact_display_name
 
         artifact = create_artifact(
             ArtifactType.COMMAND,
             "test",
             {"uri": "http://localhost:8080", "command_type": "web_app"},
         )
-        item = ArtifactItem(artifact)
 
-        assert item._get_default_name() == "web_app"
+        assert _get_artifact_display_name(artifact) == "web_app"
 
     def test_artifact_item_uses_display_name_if_provided(self):
         """ArtifactItem should use display_name when available."""
@@ -228,10 +226,10 @@ class TestArtifactGallery:
 
 
 class TestArtifactViewer:
-    """Tests for the ArtifactViewer modal."""
+    """Tests for the ArtifactViewer combined split-panel modal."""
 
-    def test_viewer_creation_image(self):
-        """ArtifactViewer should be creatable with an image artifact."""
+    def test_viewer_creation_single_image(self):
+        """ArtifactViewer should accept a list of artifacts."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(
@@ -240,10 +238,26 @@ class TestArtifactViewer:
             {"path": "/path/to/plot.png", "format": "png"},
             display_name="Analysis Plot",
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer.artifact == artifact
         assert viewer._artifact_type == ArtifactType.IMAGE
+        assert viewer._selected_index == 0
+
+    def test_viewer_creation_multiple(self):
+        """ArtifactViewer should handle multiple artifacts."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifacts = [
+            create_artifact(ArtifactType.IMAGE, "test", {"path": "/a.png"}),
+            create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}),
+            create_artifact(ArtifactType.COMMAND, "test", {"uri": "http://localhost"}),
+        ]
+        viewer = ArtifactViewer(artifacts, selected_index=1)
+
+        assert viewer.artifact == artifacts[1]
+        assert viewer._artifact_type == ArtifactType.NOTEBOOK
+        assert viewer._selected_index == 1
 
     def test_viewer_creation_notebook(self):
         """ArtifactViewer should be creatable with a notebook artifact."""
@@ -254,7 +268,7 @@ class TestArtifactViewer:
             "python_executor",
             {"path": "/path/to/notebook.ipynb", "url": "http://jupyter/notebook"},
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._artifact_type == ArtifactType.NOTEBOOK
 
@@ -267,7 +281,7 @@ class TestArtifactViewer:
             "dashboard",
             {"uri": "http://localhost:8080/dashboard", "command_type": "web_app"},
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._artifact_type == ArtifactType.COMMAND
 
@@ -278,7 +292,7 @@ class TestArtifactViewer:
         artifact = create_artifact(
             ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png", "format": "png"}
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._get_openable_target() == "/path/to/plot.png"
 
@@ -291,7 +305,7 @@ class TestArtifactViewer:
             "test",
             {"path": "/path/to/notebook.ipynb", "url": "http://jupyter/notebook"},
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._get_openable_target() == "http://jupyter/notebook"
 
@@ -300,7 +314,7 @@ class TestArtifactViewer:
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(ArtifactType.COMMAND, "test", {"uri": "http://localhost:8080"})
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._get_openable_target() == "http://localhost:8080"
 
@@ -311,21 +325,104 @@ class TestArtifactViewer:
         artifact = create_artifact(
             ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png", "format": "png"}
         )
-        viewer = ArtifactViewer(artifact)
+        viewer = ArtifactViewer([artifact])
 
         assert viewer._get_copyable_path() == "/path/to/plot.png"
 
-    def test_viewer_format_size(self):
-        """ArtifactViewer should format file sizes correctly."""
+    def test_viewer_selected_index_clamped(self):
+        """ArtifactViewer should clamp selected_index to valid range."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        artifact = create_artifact(ArtifactType.FILE, "test", {"path": "/file.csv"})
-        viewer = ArtifactViewer(artifact)
+        artifacts = [
+            create_artifact(ArtifactType.IMAGE, "test", {"path": "/a.png"}),
+        ]
+        viewer = ArtifactViewer(artifacts, selected_index=99)
 
-        assert viewer._format_size(100) == "100.0 B"
-        assert viewer._format_size(1024) == "1.0 KB"
-        assert viewer._format_size(1024 * 1024) == "1.0 MB"
-        assert viewer._format_size(1024 * 1024 * 1024) == "1.0 GB"
+        assert viewer._selected_index == 0
+        assert viewer.artifact == artifacts[0]
+
+    def test_viewer_empty_artifacts(self):
+        """ArtifactViewer should handle empty artifact list gracefully."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([])
+
+        assert viewer.artifact == {}
+        assert viewer._selected_index == 0
+
+    def test_viewer_build_title(self):
+        """ArtifactViewer title should be path basename, not display_name."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifact = create_artifact(
+            ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png"},
+            display_name="My Plot",
+        )
+        viewer = ArtifactViewer([artifact])
+
+        # Path basename takes priority over display_name
+        assert viewer._build_title() == "plot.png"
+
+    def test_viewer_build_title_from_path(self):
+        """ArtifactViewer title should derive from path basename."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifact = create_artifact(
+            ArtifactType.IMAGE, "test", {"path": "/path/to/analysis_plot.png"},
+        )
+        viewer = ArtifactViewer([artifact])
+
+        assert viewer._build_title() == "analysis_plot.png"
+
+    def test_viewer_build_title_empty(self):
+        """ArtifactViewer should show fallback title when empty."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([])
+
+        assert viewer._build_title() == "Artifacts"
+
+    def test_viewer_metadata_table(self):
+        """ArtifactViewer should build a Rich Table for metadata."""
+        from rich.table import Table
+
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifact = create_artifact(
+            ArtifactType.IMAGE, "test",
+            {"path": "/plot.png", "format": "png"},
+        )
+        viewer = ArtifactViewer([artifact])
+
+        table = viewer._build_metadata_table()
+        assert isinstance(table, Table)
+
+    def test_viewer_list_row_truncation(self):
+        """Long filenames should be truncated in list rows with tooltip."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer, _LIST_NAME_MAX
+
+        long_name = "very_long_filename_that_exceeds_the_limit.png"
+        artifact = create_artifact(
+            ArtifactType.IMAGE, "test",
+            {"path": f"/path/to/{long_name}"},
+        )
+        viewer = ArtifactViewer([artifact])
+
+        row = viewer._compose_list_row(artifact, 0)
+        # Tooltip should reveal full name
+        assert row.tooltip == long_name
+
+    def test_viewer_list_row_no_tooltip_for_short_names(self):
+        """Short filenames should not have a tooltip."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifact = create_artifact(
+            ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png"},
+        )
+        viewer = ArtifactViewer([artifact])
+
+        row = viewer._compose_list_row(artifact, 0)
+        assert row.tooltip is None
 
 
 class TestChatDisplayArtifactIntegration:
@@ -353,6 +450,52 @@ class TestChatDisplayArtifactIntegration:
         display.clear_artifact_history()
 
         assert display._seen_artifact_ids == set()
+
+
+class TestArtifactSection:
+    """Tests for the redesigned ArtifactSection widget."""
+
+    def test_artifact_section_creation(self):
+        """ArtifactSection should store artifacts internally."""
+        from osprey.interfaces.tui.widgets.artifacts import ArtifactSection
+
+        artifacts = [
+            create_artifact(ArtifactType.IMAGE, "test", {"path": "/a.png"}),
+            create_artifact(ArtifactType.IMAGE, "test", {"path": "/b.png"}),
+        ]
+        section = ArtifactSection(artifacts, section_id="artifacts-1")
+
+        assert section._artifacts == artifacts
+        assert len(section._artifacts) == 2
+
+    def test_artifact_section_id(self):
+        """ArtifactSection should have the provided section ID."""
+        from osprey.interfaces.tui.widgets.artifacts import ArtifactSection
+
+        section = ArtifactSection([], section_id="artifacts-5")
+        assert section.id == "artifacts-5"
+
+
+class TestArtifactViewerSelection:
+    """Tests for ArtifactViewer click-based selection."""
+
+    def test_viewer_artifact_property_changes_with_selection(self):
+        """ArtifactViewer.artifact should reflect the selected index."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifacts = [
+            create_artifact(ArtifactType.IMAGE, "test", {"path": "/a.png"}),
+            create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}),
+        ]
+        viewer = ArtifactViewer(artifacts)
+
+        assert viewer.artifact == artifacts[0]
+        assert viewer._artifact_type == ArtifactType.IMAGE
+
+        # Simulate click-based selection change
+        viewer._selected_index = 1
+        assert viewer.artifact == artifacts[1]
+        assert viewer._artifact_type == ArtifactType.NOTEBOOK
 
 
 class TestArtifactTypeIcons:

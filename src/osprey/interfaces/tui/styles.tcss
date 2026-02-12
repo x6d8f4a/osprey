@@ -1075,13 +1075,55 @@ ArtifactViewer {
 }
 
 #artifact-viewer-container {
-    width: 110;
-    height: auto;
-    max-height: 90%;
+    width: 100%;
+    height: 80%;
     margin: 0;
-    padding: 1 4;
+    padding: 0;
     background: $surface;
     border: none;
+}
+
+#artifact-viewer-body {
+    width: 100%;
+    height: 1fr;
+}
+
+/* Left panel: file list */
+#artifact-list-panel {
+    width: 32;
+    min-width: 32;
+    max-width: 32;
+    height: 1fr;
+    scrollbar-size: 0 0;
+    padding: 1 0;
+    &:dark {
+        background: $surface-darken-1;
+    }
+    &:light {
+        background: $surface-lighten-1;
+    }
+}
+
+.artifact-list-row {
+    width: 100%;
+    height: auto;
+    padding: 0 1 0 3;
+    color: $text;
+}
+
+.artifact-list-row:hover {
+    background: $surface;
+}
+
+.artifact-row-selected {
+    background: $primary-muted;
+}
+
+/* Right panel wrapper: header + detail + footer */
+#artifact-viewer-right {
+    width: 1fr;
+    height: 1fr;
+    padding: 1 4 0 2;
 }
 
 #artifact-viewer-header {
@@ -1104,74 +1146,62 @@ ArtifactViewer {
     color: $text-muted;
 }
 
-#artifact-viewer-content {
-    width: 100%;
-    height: auto;
-    margin-bottom: 1;
+#artifact-detail-panel {
+    width: 1fr;
+    height: 1fr;
+    scrollbar-size: 0 0;
 }
 
-#image-preview {
+.image-preview {
     width: 100%;
     height: auto;
 }
 
-#artifact-viewer-actions {
-    width: 100%;
+.artifact-meta-display {
+    width: 1fr;
     height: auto;
-    margin: 1 0;
-}
-
-#artifact-viewer-actions Button {
-    margin-right: 1;
+    margin: 0;
+    padding: 0;
 }
 
 #artifact-viewer-footer {
+    dock: bottom;
     width: 100%;
-    height: 1;
+    height: auto;
+    padding-top: 1;
+    padding-bottom: 1;
     text-align: right;
     color: $text-muted;
 }
 
-/* Detail rows in artifact viewer */
+/* Detail rows (used for image fallback messages) */
 .detail-row {
     width: 100%;
     height: auto;
     margin-bottom: 0;
 }
 
-.detail-label {
-    width: 100%;
-    color: $text;
-    margin-top: 1;
-}
+/* =============================================================================
+   Per-Query Artifact Section (inline link in chat flow)
+   ============================================================================= */
 
-.detail-value {
+ArtifactSection {
     width: 100%;
-    color: $text-muted;
+    height: auto;
+    background: transparent;
     margin-bottom: 1;
+    padding: 0;
 }
 
-.detail-path {
-    color: $primary;
+ArtifactSection .artifact-toggle-link {
+    width: auto;
+    color: $text-muted;
+    text-style: none;
+    padding: 0 4;
 }
 
-.detail-url {
+ArtifactSection .artifact-toggle-link:hover,
+ArtifactSection .artifact-toggle-link:focus {
     color: $accent;
     text-style: underline;
-}
-
-.detail-separator {
-    width: 100%;
-    height: 1;
-    color: $surface;
-    margin: 1 0;
-}
-
-.detail-section-header {
-    color: $text;
-    margin-top: 1;
-}
-
-.detail-metadata {
-    color: $text-muted;
 }

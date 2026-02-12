@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from textual.containers import ScrollableContainer
 from textual.widgets import Markdown
 
-from osprey.interfaces.tui.widgets.artifacts import ArtifactGallery
+from osprey.interfaces.tui.widgets.artifacts import ArtifactGallery, ArtifactSection
 from osprey.interfaces.tui.widgets.blocks import ExecutionStep, ProcessingBlock
 from osprey.interfaces.tui.widgets.debug import DebugBlock
 from osprey.interfaces.tui.widgets.messages import (
@@ -55,7 +55,9 @@ class ChatDisplay(ScrollableContainer):
         self._respond_block_mounted: asyncio.Event = asyncio.Event()
         # Debounced scroll timer for streaming
         self._scroll_timer = None
-        # Artifact gallery - tracks "new" vs "seen" across conversation turns
+        # Per-query artifact sections (new approach)
+        self._query_count: int = 0
+        # Legacy artifact gallery (deprecated, kept for backward compatibility)
         self._artifact_gallery: ArtifactGallery | None = None
         # Seen artifact IDs persist across conversation turns (session-scoped)
         self._seen_artifact_ids: set[str] = set()
@@ -78,11 +80,9 @@ class ChatDisplay(ScrollableContainer):
         self._code_gen_message = None  # Reset code generation message
         self._respond_block_mounted = asyncio.Event()  # Reset for new query
         self._scroll_timer = None
+        self._query_count += 1
         if self._debug_block:
             self._debug_block.clear()
-        # Hide artifact gallery for new query (will be shown when artifacts arrive)
-        if self._artifact_gallery:
-            self._artifact_gallery.display = False
         self.add_message(user_query, "user")
         # Force scroll to bottom on new query (reset scroll behavior)
         self.scroll_end(animate=False)
@@ -348,37 +348,14 @@ class ChatDisplay(ScrollableContainer):
         if python_block:
             self.scroll_to_widget(python_block, animate=False)
 
-    # ===== ARTIFACT GALLERY METHODS =====
+    # ===== ARTIFACT METHODS =====
 
-    def get_artifact_gallery(self) -> ArtifactGallery | None:
-        """Get the artifact gallery widget if it exists.
+    def mount_artifact_section(self, artifacts: list[dict[str, Any]]) -> None:
+        """Mount a per-query artifact section inline in the chat flow.
 
-        Returns:
-            The artifact gallery widget, or None if not yet created
-        """
-        return self._artifact_gallery
-
-    def get_or_create_artifact_gallery(self) -> ArtifactGallery:
-        """Get or create the artifact gallery widget.
-
-        The gallery is lazily created on first use and reused across
-        conversation turns, maintaining "seen" state for artifact tracking.
-
-        Returns:
-            The artifact gallery widget
-        """
-        if not self._artifact_gallery:
-            self._artifact_gallery = ArtifactGallery(id="artifact-gallery")
-            # Transfer any previously seen IDs
-            self._artifact_gallery._seen_ids = self._seen_artifact_ids
-            self.mount(self._artifact_gallery)
-        return self._artifact_gallery
-
-    def update_artifacts(self, artifacts: list[dict[str, Any]]) -> None:
-        """Update the artifact gallery with artifacts from the current execution.
-
-        Marks artifacts as "new" if their ID hasn't been seen before in this session,
-        then adds all IDs to the seen set for future reference.
+        Creates an ArtifactSection widget with image thumbnails and clickable
+        cards, mounted after the current response. Each query gets its own
+        section with a unique ID.
 
         Args:
             artifacts: List of artifact dictionaries from state.ui_artifacts
@@ -386,25 +363,23 @@ class ChatDisplay(ScrollableContainer):
         if not artifacts:
             return
 
-        gallery = self.get_or_create_artifact_gallery()
+        section_id = f"artifacts-{self._query_count}"
+        section = ArtifactSection(artifacts, section_id=section_id)
+        self.mount(section)
+        self.auto_scroll_if_at_bottom()
 
-        # Mark new artifacts (before updating gallery's seen set)
-        for artifact in artifacts:
-            artifact_id = artifact.get("id", "")
-            artifact["_is_new"] = artifact_id not in self._seen_artifact_ids
-            if artifact_id:
-                self._seen_artifact_ids.add(artifact_id)
+    # --- Legacy artifact gallery methods (deprecated) ---
 
-        # Update gallery with marked artifacts
-        gallery._artifacts = artifacts
-        gallery._update_display()
-        self.scroll_end(animate=False)
+    def get_artifact_gallery(self) -> ArtifactGallery | None:
+        """Get the artifact gallery widget if it exists (deprecated)."""
+        return self._artifact_gallery
+
+    def update_artifacts(self, artifacts: list[dict[str, Any]]) -> None:
+        """Update artifacts (deprecated — delegates to mount_artifact_section)."""
+        self.mount_artifact_section(artifacts)
 
     def clear_artifact_history(self) -> None:
-        """Clear the seen artifacts history (e.g., on new session).
-
-        This resets the "new" tracking so all artifacts will appear as new.
-        """
+        """Clear the seen artifacts history (e.g., on new session)."""
         self._seen_artifact_ids.clear()
         if self._artifact_gallery:
             self._artifact_gallery._seen_ids.clear()

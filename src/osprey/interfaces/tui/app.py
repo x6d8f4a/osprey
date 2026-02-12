@@ -263,7 +263,7 @@ class OspreyTUI(App):
         Args:
             event: The artifact selection event containing the artifact data.
         """
-        self.push_screen(ArtifactViewer(event.artifact))
+        self.push_screen(ArtifactViewer([event.artifact]))
 
     def action_exit_app(self) -> None:
         """Exit the application."""
@@ -294,14 +294,16 @@ class OspreyTUI(App):
             chat.scroll_end(animate=False)
 
     def action_focus_artifacts(self) -> None:
-        """Focus the artifact gallery for keyboard navigation."""
+        """Scroll to the most recent artifact section."""
         try:
+            from osprey.interfaces.tui.widgets.artifacts import ArtifactSection
+
             chat_display = self.query_one("#chat-display", ChatDisplay)
-            gallery = chat_display.get_artifact_gallery()
-            if gallery and gallery.display:
-                gallery.focus()
-                # Scroll to make gallery visible
-                chat_display.scroll_to_widget(gallery)
+            # Find the last ArtifactSection in the chat flow
+            sections = list(chat_display.query(ArtifactSection))
+            if sections:
+                last_section = sections[-1]
+                chat_display.scroll_to_widget(last_section)
             else:
                 self.notify("No artifacts available", severity="information")
         except Exception:
@@ -884,7 +886,7 @@ class OspreyTUI(App):
             # Show artifacts AFTER the response (so they appear below)
             artifacts = state.values.get("ui_artifacts", [])
             if artifacts:
-                chat_display.update_artifacts(artifacts)
+                chat_display.mount_artifact_section(artifacts)
 
         except Exception as e:
             chat_display.add_message(f"Error: {e}", "assistant", message_type="agent")

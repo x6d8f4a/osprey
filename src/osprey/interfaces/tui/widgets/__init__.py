@@ -1,7 +1,11 @@
 """TUI Widget components."""
 
 from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
-from osprey.interfaces.tui.widgets.artifacts import ArtifactGallery, ArtifactItem
+from osprey.interfaces.tui.widgets.artifacts import (
+    ArtifactGallery,
+    ArtifactItem,
+    ArtifactSection,
+)
 from osprey.interfaces.tui.widgets.blocks import (
     ClassificationBlock,
     ClassificationStep,
@@ -39,6 +43,7 @@ __all__ = [
     # Artifact widgets
     "ArtifactGallery",
     "ArtifactItem",
+    "ArtifactSection",
     "ArtifactViewer",
     # Chat and display
     "ChatMessage",
