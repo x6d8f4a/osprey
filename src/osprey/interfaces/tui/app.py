@@ -16,7 +16,6 @@ from textual.containers import Vertical
 from textual.widgets import TextArea
 
 from osprey.events import parse_event
-from osprey.events.types import CodeGenerationStartEvent
 from osprey.graph import create_graph
 from osprey.infrastructure.gateway import Gateway
 from osprey.interfaces.tui.event_handler import TUIEventHandler
@@ -25,17 +24,12 @@ from osprey.interfaces.tui.widgets import (
     ArtifactViewer,
     ChatDisplay,
     ChatInput,
-    ClassificationBlock,
-    ClassificationStep,
     CommandDropdown,
     CommandPalette,
     ExecutionStep,
-    OrchestrationStep,
     PlanProgressBar,
     ProcessingBlock,
-    ProcessingStep,
     StatusPanel,
-    TaskExtractionStep,
     ThemePicker,
     WelcomeScreen,
 )
@@ -727,16 +721,16 @@ class OspreyTUI(App):
             streamed_response = False
             streamed_code = False  # Track code generation streaming
             previous_node = None  # Track node transitions for immediate finalization
-            previous_code_attempt = 0  # Track which attempt is being streamed
+            _previous_code_attempt = 0  # Track which attempt is being streamed
             # Track retry attempts from state updates
-            current_generation_attempt = 1
+            _current_generation_attempt = 1
 
             try:
                 # Stream events using multi-mode: custom events + LLM message tokens + state updates
                 # All modes arrive through a single ordered stream with mode tags
                 # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
                 # "updates" mode enables tracking state changes like generation_attempt for retry distinction
-                async for ns, mode, chunk in self.graph.astream(
+                async for _ns, mode, chunk in self.graph.astream(
                     input_data,
                     config=self.base_config,
                     stream_mode=["custom", "messages", "updates"],
@@ -746,7 +740,7 @@ class OspreyTUI(App):
                         # Track state changes for retry attempt distinction
                         # generation_attempt is incremented by generator node on each retry
                         if isinstance(chunk, dict) and "generation_attempt" in chunk:
-                            current_generation_attempt = chunk["generation_attempt"]
+                            _current_generation_attempt = chunk["generation_attempt"]
                         # Skip updates - TUI doesn't display retry attempts separately yet
                         continue
 
@@ -768,14 +762,21 @@ class OspreyTUI(App):
                             node_name = metadata.get("langgraph_node", "") if metadata else ""
 
                             # Detect node transition: finalize code immediately when transitioning away from code generator
-                            if previous_node == "python_code_generator" and node_name != "python_code_generator":
+                            if (
+                                previous_node == "python_code_generator"
+                                and node_name != "python_code_generator"
+                            ):
                                 # Code generation just ended, finalize immediately
                                 if streamed_code:
-                                    full_code = await chat_display.finalize_code_generation_message()
+                                    full_code = (
+                                        await chat_display.finalize_code_generation_message()
+                                    )
                                     python_block = chat_display.get_python_execution_block()
                                     if python_block:
-                                        line_count = len(full_code.split('\n')) if full_code else 0
-                                        python_block.set_complete("success", f"Code generated ({line_count} lines)")
+                                        line_count = len(full_code.split("\n")) if full_code else 0
+                                        python_block.set_complete(
+                                            "success", f"Code generated ({line_count} lines)"
+                                        )
                                     streamed_code = False  # Mark as finalized
 
                             previous_node = node_name
@@ -797,7 +798,7 @@ class OspreyTUI(App):
                                         python_block.set_partial_output("Generating code...")
                                     await chat_display.start_code_generation_message(attempt=1)
                                     streamed_code = True
-                                    previous_code_attempt = 1
+                                    _previous_code_attempt = 1
 
                                 # Append token to current attempt's widget
                                 await chat_display.append_to_code_generation_message(
@@ -816,7 +817,7 @@ class OspreyTUI(App):
                                         await asyncio.wait_for(
                                             chat_display._respond_block_mounted.wait(), timeout=0.2
                                         )
-                                    except asyncio.TimeoutError:
+                                    except TimeoutError:
                                         pass  # Proceed anyway, just won't update block status
                                     # Update respond block to show streaming status
                                     respond_block = chat_display.get_respond_execution_block()
@@ -825,7 +826,9 @@ class OspreyTUI(App):
                                     await chat_display.start_streaming_message()
                                     streamed_response = True
                                 # Append token to streaming message (async for MarkdownStream)
-                                await chat_display.append_to_streaming_message(message_chunk.content)
+                                await chat_display.append_to_streaming_message(
+                                    message_chunk.content
+                                )
 
                 # Wait for queue to be fully processed
                 await chat_display._event_queue.join()
@@ -838,7 +841,7 @@ class OspreyTUI(App):
                     # Update ExecutionStep with status (no code preview)
                     python_block = chat_display.get_python_execution_block()
                     if python_block:
-                        line_count = len(full_code.split('\n')) if full_code else 0
+                        line_count = len(full_code.split("\n")) if full_code else 0
                         python_block.set_complete("success", f"Code generated ({line_count} lines)")
 
                 # Finalize streaming message if we were streaming

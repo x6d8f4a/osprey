@@ -545,7 +545,9 @@ class PythonCapability(BaseCapability):
         logger.success(f"Python execution complete - {execution_time:.2f}s, {figure_count} figures")
 
         # Also emit as key_info for final result display in TUI
-        logger.key_info(f"Python execution complete - {execution_time:.2f}s, {figure_count} figures")
+        logger.key_info(
+            f"Python execution complete - {execution_time:.2f}s, {figure_count} figures"
+        )
 
         # Store context using StateManager
         result_updates = StateManager.store_context(

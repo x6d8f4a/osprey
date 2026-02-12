@@ -20,18 +20,8 @@ from collections import deque
 from collections.abc import Generator, Iterator
 from typing import Any
 
-from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessageChunk
 from pydantic import BaseModel, Field
-
-from osprey.graph import create_graph
-from osprey.infrastructure.gateway import Gateway
-
-# NOTE: sys.path manipulation removed - osprey is pip-installed
-# In pip-installable architecture, osprey modules are directly importable
-from osprey.registry import get_registry, initialize_registry
-from osprey.utils.config import get_current_application, get_full_configuration, get_pipeline_config
-from osprey.utils.logger import get_logger
 
 # Event parsing for unified streaming system
 from osprey.events.parser import parse_event
@@ -44,6 +34,14 @@ from osprey.events.types import (
     PhaseStartEvent,
     StatusEvent,
 )
+from osprey.graph import create_graph
+from osprey.infrastructure.gateway import Gateway
+
+# NOTE: sys.path manipulation removed - osprey is pip-installed
+# In pip-installable architecture, osprey modules are directly importable
+from osprey.registry import get_registry, initialize_registry
+from osprey.utils.config import get_current_application, get_full_configuration, get_pipeline_config
+from osprey.utils.logger import get_logger
 
 logger = get_logger("pipeline")
 
@@ -952,9 +950,7 @@ class Pipeline:
                 if result.resume_command:
                     yield self._create_status_event("🔄 Resuming from interrupt...", False)
                     # Resume execution with streaming
-                    yield from self._execute_graph_with_streaming(
-                        result.resume_command, config
-                    )
+                    yield from self._execute_graph_with_streaming(result.resume_command, config)
 
                 elif result.agent_state:
                     # Execute new conversation with streaming
@@ -986,9 +982,7 @@ class Pipeline:
                         if response:
                             # Handle large responses by chunking for streaming
                             if len(response) > 50000:  # 50KB threshold
-                                logger.info(
-                                    f"Large response detected ({len(response)} chars)"
-                                )
+                                logger.info(f"Large response detected ({len(response)} chars)")
                                 chunk_size = 50000
                                 for i in range(0, len(response), chunk_size):
                                     chunk = response[i : i + chunk_size]
@@ -1012,9 +1006,7 @@ class Pipeline:
             yield self._create_status_event("", True)
             yield f"Error: {str(e)}"
 
-    def _execute_graph_with_streaming(
-        self, input_data: Any, config: dict
-    ):
+    def _execute_graph_with_streaming(self, input_data: Any, config: dict):
         """Execute graph with streaming in sync context and yield events
 
         Uses unified streaming system with 3-value unpacking to capture:
@@ -1061,16 +1053,16 @@ class Pipeline:
             thread_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(thread_loop)
 
-            logger.debug(f"[streaming] Background thread started")
+            logger.debug("[streaming] Background thread started")
 
             try:
 
                 async def stream_execution():
-                    logger.debug(f"[streaming] astream() starting")
+                    logger.debug("[streaming] astream() starting")
                     try:
                         # CRITICAL: Single pipe with 3-value unpacking
                         # Expanding consumer to handle all modes from unified stream
-                        async for ns, mode, chunk in self._graph.astream(
+                        async for _ns, mode, chunk in self._graph.astream(
                             input_data,
                             config=config,
                             stream_mode=["custom", "messages", "updates"],
@@ -1138,7 +1130,10 @@ class Pipeline:
                                     response_was_streamed[0] = True
 
                                     # Close code fence when transitioning away from code generator
-                                    if code_streaming_active[0] and node_name != "python_code_generator":
+                                    if (
+                                        code_streaming_active[0]
+                                        and node_name != "python_code_generator"
+                                    ):
                                         code_streaming_active[0] = False
                                         stream_queue.put(("response_token", "\n```\n\n"))
 
@@ -1180,8 +1175,14 @@ class Pipeline:
                                             continue
 
                                         # After buffer phase: strip mid-stream fence artifacts
-                                        content = content.replace("```python\n", "").replace("```python", "")
-                                        content = content.replace("\n```\n", "").replace("\n```", "").replace("```", "")
+                                        content = content.replace("```python\n", "").replace(
+                                            "```python", ""
+                                        )
+                                        content = (
+                                            content.replace("\n```\n", "")
+                                            .replace("\n```", "")
+                                            .replace("```", "")
+                                        )
 
                                         if content:
                                             response_was_streamed[0] = True
@@ -1193,14 +1194,12 @@ class Pipeline:
                                         # Open WebUI handles markdown rendering automatically
                                         response_was_streamed[0] = True
                                         accumulated_response[0] += message_chunk.content
-                                        stream_queue.put(
-                                            ("response_token", message_chunk.content)
-                                        )
+                                        stream_queue.put(("response_token", message_chunk.content))
 
                     except asyncio.CancelledError:
                         logger.info("[streaming] astream() cancelled via CancelledError")
 
-                    logger.debug(f"[streaming] astream() finished")
+                    logger.debug("[streaming] astream() finished")
 
                     # Close any trailing code fence
                     if code_streaming_active[0]:
@@ -1208,9 +1207,7 @@ class Pipeline:
                         stream_queue.put(("response_token", "\n```\n"))
 
                     # Signal completion (both natural and cancelled paths)
-                    stream_queue.put(
-                        ("done", (response_was_streamed[0], accumulated_response[0]))
-                    )
+                    stream_queue.put(("done", (response_was_streamed[0], accumulated_response[0])))
 
                 async def monitored_execution():
                     """Run stream_execution as a task with cancel_event monitoring."""
@@ -1233,8 +1230,9 @@ class Pipeline:
                     # Cancel remaining tasks (subprocess transports, pending I/O, etc.)
                     # This prevents "Event loop is closed" errors from orphaned transports
                     current = asyncio.current_task()
-                    remaining = [t for t in asyncio.all_tasks()
-                                 if t is not current and not t.done()]
+                    remaining = [
+                        t for t in asyncio.all_tasks() if t is not current and not t.done()
+                    ]
                     for t in remaining:
                         t.cancel()
                     if remaining:
@@ -1253,7 +1251,7 @@ class Pipeline:
                 except Exception:
                     pass
                 thread_loop.close()
-                logger.debug(f"[streaming] Background thread exiting")
+                logger.debug("[streaming] Background thread exiting")
 
         # Start streaming in background thread
         thread = threading.Thread(target=run_async_streaming, name="osprey-stream")

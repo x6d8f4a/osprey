@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from rich.table import Table
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.events import Click, Key
@@ -67,9 +66,7 @@ class ArtifactViewer(ModalScreen[None]):
 
     AUTO_FOCUS = "#artifact-detail-panel"
 
-    def __init__(
-        self, artifacts: list[dict[str, Any]], selected_index: int = 0
-    ) -> None:
+    def __init__(self, artifacts: list[dict[str, Any]], selected_index: int = 0) -> None:
         super().__init__()
         self._artifacts = artifacts
         self._selected_index = min(selected_index, max(len(artifacts) - 1, 0))
@@ -270,9 +267,7 @@ class ArtifactViewer(ModalScreen[None]):
             )
             yield Static("")
 
-    def _compose_notebook_preview(
-        self, data: dict[str, Any]
-    ) -> ComposeResult:
+    def _compose_notebook_preview(self, data: dict[str, Any]) -> ComposeResult:
         """Compose inline notebook preview with theme-adaptive cells."""
         path = data.get("path", "")
         if not path:
@@ -334,18 +329,12 @@ class ArtifactViewer(ModalScreen[None]):
                     return f"[{rel}]({abs_p})"
 
                 source = _IMG_RE.sub(_img_to_link, source)
-                yield Markdown(
-                    source, classes="notebook-md-cell"
-                )
+                yield Markdown(source, classes="notebook-md-cell")
                 has_content = True
 
             elif cell_type == "code":
                 ec = cell.get("execution_count")
-                label = (
-                    f"In [{ec}]"
-                    if ec is not None
-                    else "In [ ]"
-                )
+                label = f"In [{ec}]" if ec is not None else "In [ ]"
                 yield Static(
                     f"[dim]{label}[/dim]",
                     classes="notebook-cell-label",
@@ -365,9 +354,7 @@ class ArtifactViewer(ModalScreen[None]):
                         )
 
             elif cell_type == "raw":
-                yield Static(
-                    source, classes="notebook-raw-cell"
-                )
+                yield Static(source, classes="notebook-raw-cell")
                 has_content = True
 
         if not has_content:
@@ -381,15 +368,12 @@ class ArtifactViewer(ModalScreen[None]):
         if len(cells) > _MAX_PREVIEW_CELLS:
             remaining = len(cells) - _MAX_PREVIEW_CELLS
             yield Static(
-                f"[dim italic]... ({remaining} more cells"
-                " not shown)[/dim italic]",
+                f"[dim italic]... ({remaining} more cells not shown)[/dim italic]",
             )
 
         yield Static("")  # spacer before metadata
 
-    def _extract_cell_output_text(
-        self, output: dict[str, Any]
-    ) -> str:
+    def _extract_cell_output_text(self, output: dict[str, Any]) -> str:
         """Extract displayable text from a notebook cell output."""
         output_type = output.get("output_type", "")
 
@@ -399,10 +383,7 @@ class ArtifactViewer(ModalScreen[None]):
                 text = "".join(text)
             lines = text.split("\n")
             if len(lines) > 20:
-                return (
-                    "\n".join(lines[:20])
-                    + f"\n... ({len(lines) - 20} more lines)"
-                )
+                return "\n".join(lines[:20]) + f"\n... ({len(lines) - 20} more lines)"
             return text
 
         if output_type == "execute_result":
@@ -414,14 +395,10 @@ class ArtifactViewer(ModalScreen[None]):
         if output_type == "error":
             tb = output.get("traceback", [])
             if tb:
-                clean = re.sub(
-                    r"\x1b\[[0-9;]*m", "", "\n".join(tb)
-                )
+                clean = re.sub(r"\x1b\[[0-9;]*m", "", "\n".join(tb))
                 lines = clean.split("\n")
                 if len(lines) > 15:
-                    return (
-                        "\n".join(lines[:15]) + "\n... (truncated)"
-                    )
+                    return "\n".join(lines[:15]) + "\n... (truncated)"
                 return clean
 
         # Skip display_data (images, HTML)
@@ -537,9 +514,7 @@ class ArtifactViewer(ModalScreen[None]):
             self._open_artifact_dir()
             event.stop()
 
-    def on_markdown_link_clicked(
-        self, event: Markdown.LinkClicked
-    ) -> None:
+    def on_markdown_link_clicked(self, event: Markdown.LinkClicked) -> None:
         """Handle clicks on links in notebook markdown cells."""
         event.stop()
         self._open_path(event.href)
@@ -594,11 +569,7 @@ class ArtifactViewer(ModalScreen[None]):
                 subprocess.Popen(["xdg-open", target])
             elif system == "Windows":
                 subprocess.Popen(["start", target], shell=True)
-            display = (
-                target[:50] + "..."
-                if len(target) > 50
-                else target
-            )
+            display = target[:50] + "..." if len(target) > 50 else target
             self._show_feedback(f"Opened: {display}")
         except Exception as e:
             self._show_feedback(f"Failed to open: {e}")

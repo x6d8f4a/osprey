@@ -195,7 +195,12 @@ class TestCapabilitiesSelectedEvent:
             component="classifier",
         )
         assert event.capability_names == ["python_executor", "search"]
-        assert event.all_capability_names == ["python_executor", "search", "web_browser", "file_manager"]
+        assert event.all_capability_names == [
+            "python_executor",
+            "search",
+            "web_browser",
+            "file_manager",
+        ]
         assert event.component == "classifier"
 
     def test_default_values(self):
@@ -220,7 +225,11 @@ class TestPlanCreatedEvent:
     def test_creation_with_steps(self):
         """Test PlanCreatedEvent with execution steps."""
         steps = [
-            {"capability": "python_executor", "context_key": "step_1", "task_objective": "Run code"},
+            {
+                "capability": "python_executor",
+                "context_key": "step_1",
+                "task_objective": "Run code",
+            },
             {"capability": "respond", "context_key": "step_2", "task_objective": "Respond to user"},
         ]
         event = PlanCreatedEvent(steps=steps, component="orchestrator")

@@ -109,9 +109,7 @@ async def consume_stream(
     mode_strings = [m.value if isinstance(m, StreamMode) else m for m in modes]
 
     # Use multi-mode streaming
-    async for mode, chunk in graph.astream(
-        input_data, config=config, stream_mode=mode_strings
-    ):
+    async for mode, chunk in graph.astream(input_data, config=config, stream_mode=mode_strings):
         if mode == StreamMode.CUSTOM.value:
             # Parse as typed OspreyEvent
             event = parse_event(chunk) if isinstance(chunk, dict) else None

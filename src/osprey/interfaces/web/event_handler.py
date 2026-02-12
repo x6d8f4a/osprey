@@ -85,9 +85,9 @@ class WebEventHandler:
             "id": self._event_count,
             "type": event.__class__.__name__,
             "received_at": datetime.now().isoformat(),  # When handler got it
-            "created_at": created_at,                   # When event was created
+            "created_at": created_at,  # When event was created
             "component": component,
-            "data": event_dict,                         # Type-specific fields
+            "data": event_dict,  # Type-specific fields
         }
 
         try:
@@ -95,6 +95,7 @@ class WebEventHandler:
         except Exception as e:
             # Log the error for debugging (don't silently swallow)
             import logging
+
             logging.getLogger(__name__).warning(f"Failed to send event: {e}")
 
     async def handle_dict(self, event_dict: dict) -> None:

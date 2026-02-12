@@ -78,9 +78,9 @@ class PhaseStartEvent(BaseEvent):
         description: Human-readable description of the phase
     """
 
-    phase: Literal[
-        "task_extraction", "classification", "planning", "execution", "response"
-    ] = "execution"
+    phase: Literal["task_extraction", "classification", "planning", "execution", "response"] = (
+        "execution"
+    )
     description: str = ""
 
 
@@ -96,9 +96,9 @@ class PhaseCompleteEvent(BaseEvent):
         success: Whether the phase completed successfully
     """
 
-    phase: Literal[
-        "task_extraction", "classification", "planning", "execution", "response"
-    ] = "execution"
+    phase: Literal["task_extraction", "classification", "planning", "execution", "response"] = (
+        "execution"
+    )
     duration_ms: int = 0
     success: bool = True
 

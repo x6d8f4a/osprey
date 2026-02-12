@@ -99,13 +99,16 @@ class TestConsumeStream:
         mock_graph = MagicMock()
 
         async def mock_astream(*args, **kwargs):
-            yield "custom", {
-                "event_class": "StatusEvent",
-                "message": "Test status",
-                "level": "info",
-                "component": "test",
-                "timestamp": datetime.now().isoformat(),
-            }
+            yield (
+                "custom",
+                {
+                    "event_class": "StatusEvent",
+                    "message": "Test status",
+                    "level": "info",
+                    "component": "test",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
 
         mock_graph.astream = mock_astream
 
@@ -149,9 +152,7 @@ class TestConsumeStream:
         mock_graph.astream = mock_astream
 
         outputs = []
-        async for output in consume_stream(
-            mock_graph, {}, {}, modes=[StreamMode.UPDATES]
-        ):
+        async for output in consume_stream(mock_graph, {}, {}, modes=[StreamMode.UPDATES]):
             outputs.append(output)
 
         assert len(outputs) == 1
@@ -171,11 +172,14 @@ class TestConsumeStream:
             modes = kwargs.get("stream_mode", [])
             assert "custom" in modes
             assert "messages" in modes
-            yield "custom", {
-                "event_class": "StatusEvent",
-                "message": "Test",
-                "timestamp": datetime.now().isoformat(),
-            }
+            yield (
+                "custom",
+                {
+                    "event_class": "StatusEvent",
+                    "message": "Test",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
             yield "messages", (mock_message, {})
 
         mock_graph.astream = mock_astream
@@ -197,11 +201,14 @@ class TestConsumeStream:
             # Invalid: no event_class
             yield "custom", {"message": "test"}
             # Valid
-            yield "custom", {
-                "event_class": "StatusEvent",
-                "message": "Valid",
-                "timestamp": datetime.now().isoformat(),
-            }
+            yield (
+                "custom",
+                {
+                    "event_class": "StatusEvent",
+                    "message": "Valid",
+                    "timestamp": datetime.now().isoformat(),
+                },
+            )
 
         mock_graph.astream = mock_astream
 
@@ -370,17 +377,18 @@ class TestStreamingEdgeCases:
         mock_graph = MagicMock()
 
         async def mock_astream(*args, **kwargs):
-            yield "updates", {
-                "classifier": {"caps": ["python"]},
-                "orchestrator": {"plan": []},
-            }
+            yield (
+                "updates",
+                {
+                    "classifier": {"caps": ["python"]},
+                    "orchestrator": {"plan": []},
+                },
+            )
 
         mock_graph.astream = mock_astream
 
         outputs = []
-        async for output in consume_stream(
-            mock_graph, {}, {}, modes=[StreamMode.UPDATES]
-        ):
+        async for output in consume_stream(mock_graph, {}, {}, modes=[StreamMode.UPDATES]):
             outputs.append(output)
 
         assert len(outputs) == 2

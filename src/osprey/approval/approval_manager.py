@@ -333,7 +333,7 @@ def get_approval_manager() -> ApprovalManager:
             _approval_manager = ApprovalManager(approval_config)
             # Emit initialization success
             emitter = EventEmitter("approval_manager")
-            capabilities = list(approval_config.get('capabilities', {}).keys())
+            capabilities = list(approval_config.get("capabilities", {}).keys())
             emitter.emit(
                 StatusEvent(
                     component="approval_manager",

@@ -234,9 +234,7 @@ class CLIEventHandler:
                 self._print_aligned(role, f"✗ {msg}", "red", "red")
 
             # StatusEvent - debug level (only in verbose mode)
-            case StatusEvent(
-                message=msg, level="debug", component=comp
-            ) if self.verbose:
+            case StatusEvent(message=msg, level="debug", component=comp) if self.verbose:
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
                 self._print_aligned(role, f"🔍 {msg}", f"dim {color}", f"dim {color}")
@@ -252,9 +250,7 @@ class CLIEventHandler:
                 self._print_aligned(role, msg, color, color)
 
             # LLMResponseEvent - "LLM response received"
-            case LLMResponseEvent(
-                component=comp, response_length=length, duration_ms=dur, key=key
-            ):
+            case LLMResponseEvent(component=comp, response_length=length, duration_ms=dur, key=key):
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
                 dur_sec = dur / 1000 if dur else 0
@@ -265,9 +261,7 @@ class CLIEventHandler:
                 self._print_aligned(role, msg, color, color)
 
             # ErrorEvent - execution errors
-            case ErrorEvent(
-                error_type=err_type, error_message=msg, component=comp
-            ):
+            case ErrorEvent(error_type=err_type, error_message=msg, component=comp):
                 role = self._format_role_name(comp)
                 self._print_aligned(role, f"✗ {err_type}", "red", "red")
                 # Error detail on next line, aligned with message column
@@ -341,9 +335,7 @@ class CLIEventHandler:
                 self._print_aligned(role, f"✗ {msg}", "red", "red")
 
             # StatusEvent - debug level (verbose only)
-            case StatusEvent(
-                message=msg, level="debug", component=comp
-            ) if self.verbose:
+            case StatusEvent(message=msg, level="debug", component=comp) if self.verbose:
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
                 self._print_aligned(role, f"🔍 {msg}", f"dim {color}", f"dim {color}")
@@ -359,9 +351,7 @@ class CLIEventHandler:
                 self._print_aligned(role, msg, color, color)
 
             # LLMResponseEvent - "LLM response received"
-            case LLMResponseEvent(
-                component=comp, response_length=length, duration_ms=dur, key=key
-            ):
+            case LLMResponseEvent(component=comp, response_length=length, duration_ms=dur, key=key):
                 color = self._get_component_color(comp)
                 role = self._format_role_name(comp)
                 dur_sec = dur / 1000 if dur else 0
@@ -372,9 +362,7 @@ class CLIEventHandler:
                 self._print_aligned(role, msg, color, color)
 
             # ErrorEvent
-            case ErrorEvent(
-                error_type=err_type, error_message=msg, component=comp
-            ):
+            case ErrorEvent(error_type=err_type, error_message=msg, component=comp):
                 role = self._format_role_name(comp)
                 self._print_aligned(role, f"✗ {err_type}", "red", "red")
                 # Error detail on next line, aligned with message column

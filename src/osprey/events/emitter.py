@@ -36,9 +36,7 @@ from .types import OspreyEvent
 _fallback_handlers: list[Callable[[dict[str, Any]], None]] = []
 
 
-def register_fallback_handler(
-    handler: Callable[[dict[str, Any]], None]
-) -> Callable[[], None]:
+def register_fallback_handler(handler: Callable[[dict[str, Any]], None]) -> Callable[[], None]:
     """Register a handler for events emitted outside LangGraph context.
 
     Use this when a UI needs to capture startup/shutdown events that happen

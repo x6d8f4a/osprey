@@ -255,12 +255,14 @@ async def test_end_to_end_factory_and_generation(mock_llm_response):
 
 class _MockChunk:
     """Mock LangChain AIMessageChunk with .content attribute."""
+
     def __init__(self, content: str):
         self.content = content
 
 
 class _MockModel:
     """Mock LangChain model with async astream()."""
+
     def __init__(self, response_text: str):
         self._response = response_text
 
@@ -270,6 +272,7 @@ class _MockModel:
 
 class _MockErrorModel:
     """Mock LangChain model that raises on astream()."""
+
     def __init__(self, error):
         self._error = error
 

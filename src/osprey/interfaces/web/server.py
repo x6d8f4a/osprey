@@ -10,7 +10,6 @@ The server:
     - Supports multiple concurrent client connections
 """
 
-import asyncio
 from pathlib import Path
 
 from osprey.events import parse_event, register_fallback_handler
@@ -46,8 +45,7 @@ def _ensure_dependencies():
             HTMLResponse = _HTMLResponse
         except ImportError as e:
             raise ImportError(
-                "Web UI dependencies not installed. "
-                "Install with: pip install osprey-framework[web]"
+                "Web UI dependencies not installed. Install with: pip install osprey-framework[web]"
             ) from e
 
 
@@ -181,9 +179,7 @@ def create_app(
             pass
         except Exception as e:
             try:
-                await websocket.send_json(
-                    {"type": "error", "message": str(e)}
-                )
+                await websocket.send_json({"type": "error", "message": str(e)})
             except Exception:
                 pass
         finally:
@@ -216,8 +212,8 @@ async def _execute_query(
 
         from langgraph.checkpoint.memory import MemorySaver
 
-        from osprey.infrastructure.gateway import Gateway
         from osprey.graph import create_graph
+        from osprey.infrastructure.gateway import Gateway
         from osprey.registry import get_registry, initialize_registry
         from osprey.utils.config import get_config_value, get_full_configuration
         from osprey.utils.log_filter import quiet_logger
@@ -237,27 +233,29 @@ async def _execute_query(
         # 4. Set up config (like CLI)
         thread_id = f"web_session_{uuid.uuid4().hex[:8]}"
         configurable = get_full_configuration(config_path=config_path).copy()
-        configurable.update({
-            "user_id": "web_user",
-            "thread_id": thread_id,
-            "chat_id": "web_chat",
-            "session_id": thread_id,
-            "interface_context": "web",
-        })
-        recursion_limit = get_config_value(
-            "execution_control.limits.graph_recursion_limit", 100
+        configurable.update(
+            {
+                "user_id": "web_user",
+                "thread_id": thread_id,
+                "chat_id": "web_chat",
+                "session_id": thread_id,
+                "interface_context": "web",
+            }
         )
+        recursion_limit = get_config_value("execution_control.limits.graph_recursion_limit", 100)
         base_config = {
             "configurable": configurable,
             "recursion_limit": recursion_limit,
         }
 
         # Send execution started event
-        await handler.websocket.send_json({
-            "type": "execution_started",
-            "query": query,
-            "timestamp": datetime.now().isoformat(),
-        })
+        await handler.websocket.send_json(
+            {
+                "type": "execution_started",
+                "query": query,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # 5. Process message through Gateway (like CLI)
         result = await gateway.process_message(query, graph, base_config)
@@ -274,7 +272,7 @@ async def _execute_query(
             # Use multi-mode streaming to get both typed events and LLM tokens
             # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
             # "updates" mode enables tracking state changes like generation_attempt for retry distinction
-            async for ns, mode, chunk in graph.astream(
+            async for _ns, mode, chunk in graph.astream(
                 result.agent_state,
                 config=base_config,
                 stream_mode=["custom", "messages", "updates"],
@@ -305,32 +303,38 @@ async def _execute_query(
                         accumulated_response += message_chunk.content
                         # Send per-token data with metadata for grouped display
                         # Include generation_attempt for retry distinction
-                        await handler.websocket.send_json({
-                            "type": "streaming_token",
-                            "token": message_chunk.content,
-                            "accumulated_response": accumulated_response,
-                            "token_index": token_count,
-                            "node_name": _metadata.get("langgraph_node", "respond"),
-                            "session_id": thread_id,
-                            "timestamp": datetime.now().isoformat(),
-                            "generation_attempt": current_generation_attempt,
-                        })
+                        await handler.websocket.send_json(
+                            {
+                                "type": "streaming_token",
+                                "token": message_chunk.content,
+                                "accumulated_response": accumulated_response,
+                                "token_index": token_count,
+                                "node_name": _metadata.get("langgraph_node", "respond"),
+                                "session_id": thread_id,
+                                "timestamp": datetime.now().isoformat(),
+                                "generation_attempt": current_generation_attempt,
+                            }
+                        )
 
         # Send execution completed event
-        await handler.websocket.send_json({
-            "type": "execution_completed",
-            "event_count": handler.event_count,
-            "timestamp": datetime.now().isoformat(),
-        })
+        await handler.websocket.send_json(
+            {
+                "type": "execution_completed",
+                "event_count": handler.event_count,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
     except Exception as e:
         from datetime import datetime
 
-        await handler.websocket.send_json({
-            "type": "execution_error",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat(),
-        })
+        await handler.websocket.send_json(
+            {
+                "type": "execution_error",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
 
 def run_server(

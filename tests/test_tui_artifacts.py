@@ -355,7 +355,9 @@ class TestArtifactViewer:
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(
-            ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png"},
+            ArtifactType.IMAGE,
+            "test",
+            {"path": "/path/to/plot.png"},
             display_name="My Plot",
         )
         viewer = ArtifactViewer([artifact])
@@ -368,7 +370,9 @@ class TestArtifactViewer:
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(
-            ArtifactType.IMAGE, "test", {"path": "/path/to/analysis_plot.png"},
+            ArtifactType.IMAGE,
+            "test",
+            {"path": "/path/to/analysis_plot.png"},
         )
         viewer = ArtifactViewer([artifact])
 
@@ -389,7 +393,8 @@ class TestArtifactViewer:
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(
-            ArtifactType.IMAGE, "test",
+            ArtifactType.IMAGE,
+            "test",
             {"path": "/plot.png", "format": "png"},
         )
         viewer = ArtifactViewer([artifact])
@@ -399,11 +404,12 @@ class TestArtifactViewer:
 
     def test_viewer_list_row_truncation(self):
         """Long filenames should be truncated in list rows with tooltip."""
-        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer, _LIST_NAME_MAX
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         long_name = "very_long_filename_that_exceeds_the_limit.png"
         artifact = create_artifact(
-            ArtifactType.IMAGE, "test",
+            ArtifactType.IMAGE,
+            "test",
             {"path": f"/path/to/{long_name}"},
         )
         viewer = ArtifactViewer([artifact])
@@ -417,7 +423,9 @@ class TestArtifactViewer:
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
         artifact = create_artifact(
-            ArtifactType.IMAGE, "test", {"path": "/path/to/plot.png"},
+            ArtifactType.IMAGE,
+            "test",
+            {"path": "/path/to/plot.png"},
         )
         viewer = ArtifactViewer([artifact])
 
@@ -538,11 +546,9 @@ class TestArtifactViewerNotebookPreview:
         """Should extract text from stream outputs."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {"output_type": "stream", "text": "hello world\n"}
         assert viewer._extract_cell_output_text(output) == "hello world\n"
 
@@ -550,11 +556,9 @@ class TestArtifactViewerNotebookPreview:
         """Should handle stream output as list of strings."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "stream",
             "text": ["hello ", "world\n"],
@@ -565,11 +569,9 @@ class TestArtifactViewerNotebookPreview:
         """Should extract text/plain from execute_result."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "execute_result",
             "data": {"text/plain": "42"},
@@ -580,11 +582,9 @@ class TestArtifactViewerNotebookPreview:
         """Should handle execute_result text as list."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "execute_result",
             "data": {"text/plain": ["line1\n", "line2\n"]},
@@ -596,11 +596,9 @@ class TestArtifactViewerNotebookPreview:
         """Should return empty string for display_data outputs."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "display_data",
             "data": {"image/png": "base64data..."},
@@ -611,11 +609,9 @@ class TestArtifactViewerNotebookPreview:
         """Should extract and clean error tracebacks."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "error",
             "traceback": [
@@ -631,11 +627,9 @@ class TestArtifactViewerNotebookPreview:
         """Should strip ANSI escape codes from error tracebacks."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         output = {
             "output_type": "error",
             "traceback": ["\x1b[31mValueError\x1b[0m: bad"],
@@ -648,11 +642,9 @@ class TestArtifactViewerNotebookPreview:
         """Should truncate stream outputs longer than 20 lines."""
         from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
 
-        viewer = ArtifactViewer([
-            create_artifact(
-                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
-            )
-        ])
+        viewer = ArtifactViewer(
+            [create_artifact(ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"})]
+        )
         long_text = "\n".join(f"line {i}" for i in range(30))
         output = {"output_type": "stream", "text": long_text}
         result = viewer._extract_cell_output_text(output)

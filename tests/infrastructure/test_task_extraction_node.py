@@ -221,9 +221,7 @@ class TestFormatTaskContext:
 
             _format_task_context(messages, None, logger)
 
-        logger.info.assert_called_with(
-            "Bypass mode: skipping LLM, using formatted context as task"
-        )
+        logger.info.assert_called_with("Bypass mode: skipping LLM, using formatted context as task")
 
 
 class TestBuildTaskExtractionPrompt:
@@ -321,9 +319,7 @@ class TestExtractTask:
             result = _extract_task(messages, mock_result, logger)
 
         assert result == expected_task
-        logger.debug.assert_called_with(
-            "Injecting data sources into task extraction: Data summary"
-        )
+        logger.debug.assert_called_with("Injecting data sources into task extraction: Data summary")
 
     def test_extract_task_uses_correct_model_config(self):
         """Test that task extraction uses correct model configuration."""

@@ -47,13 +47,9 @@ def _emit_code_event(event_name: str, **kwargs) -> None:
         if stream_writer:
             # Create appropriate event based on name
             if event_name == "CodeGenerationStartEvent":
-                event = CodeGenerationStartEvent(
-                    component="python_code_generator", **kwargs
-                )
+                event = CodeGenerationStartEvent(component="python_code_generator", **kwargs)
             elif event_name == "CodeGeneratedEvent":
-                event = CodeGeneratedEvent(
-                    component="python_code_generator", **kwargs
-                )
+                event = CodeGeneratedEvent(component="python_code_generator", **kwargs)
             else:
                 logger.warning(f"Unknown event type: {event_name}")
                 return
@@ -160,10 +156,7 @@ def create_generator_node():
             # EMIT EVENT: Signal code generation completed successfully
             # This triggers TUI to finalize the widget (close stream, update title, auto-collapse)
             _emit_code_event(
-                "CodeGeneratedEvent",
-                code=generated_code,
-                attempt=current_attempt,
-                success=True
+                "CodeGeneratedEvent", code=generated_code, attempt=current_attempt, success=True
             )
 
             streamer.status(f"Generated {len(generated_code)} characters of code")

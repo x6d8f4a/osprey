@@ -116,9 +116,7 @@ class ChatDisplay(ScrollableContainer):
             self.scroll_end(animate=False)
         return self._debug_block
 
-    def add_message(
-        self, content: str, role: str = "user", message_type: str = ""
-    ) -> None:
+    def add_message(self, content: str, role: str = "user", message_type: str = "") -> None:
         """Add a message to the chat display.
 
         Args:
@@ -213,9 +211,7 @@ class ChatDisplay(ScrollableContainer):
 
     # --- Code Generation Streaming Methods ---
 
-    async def start_code_generation_message(
-        self, attempt: int = 1
-    ) -> CollapsibleCodeMessage:
+    async def start_code_generation_message(self, attempt: int = 1) -> CollapsibleCodeMessage:
         """Create and mount a new collapsible code message for streaming.
 
         Similar to start_streaming_message, but creates a CollapsibleCodeMessage

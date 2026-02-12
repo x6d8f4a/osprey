@@ -340,7 +340,7 @@ def capability_node(cls):
                 emitter.emit(
                     StatusEvent(
                         component=capability_name,
-                        message=f"GraphInterrupt detected - re-raising for LangGraph to handle",
+                        message="GraphInterrupt detected - re-raising for LangGraph to handle",
                         level="debug",
                     )
                 )
@@ -829,7 +829,7 @@ def _create_infrastructure_node(cls, quiet=False):
                 emitter.emit(
                     StatusEvent(
                         component=node_name,
-                        message=f"GraphInterrupt detected - re-raising for LangGraph to handle",
+                        message="GraphInterrupt detected - re-raising for LangGraph to handle",
                         level="debug",
                     )
                 )

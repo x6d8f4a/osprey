@@ -196,13 +196,16 @@ def mock_graph():
     async def mock_astream(*args, **kwargs):
         """Async generator that yields test data."""
         # Yield a status event
-        yield "custom", {
-            "event_class": "StatusEvent",
-            "message": "Test status",
-            "level": "info",
-            "component": "test",
-            "timestamp": datetime.now().isoformat(),
-        }
+        yield (
+            "custom",
+            {
+                "event_class": "StatusEvent",
+                "message": "Test status",
+                "level": "info",
+                "component": "test",
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
         # Yield an LLM token
         mock_message = MagicMock()
         mock_message.content = "Hello"

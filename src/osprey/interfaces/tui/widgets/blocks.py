@@ -523,9 +523,7 @@ class ProcessingStep(Static):
     class LogAdded(Message):
         """Posted when a new log is added to this step."""
 
-        def __init__(
-            self, status: str, message: str, timestamp: datetime | None
-        ) -> None:
+        def __init__(self, status: str, message: str, timestamp: datetime | None) -> None:
             super().__init__()
             self.status = status
             self.message = message
@@ -1068,9 +1066,7 @@ class TodoList(Vertical):
             return
 
         with self.app.batch_update():
-            for item, old_state, new_state in zip(
-                self._items, self._states, states, strict=True
-            ):
+            for item, old_state, new_state in zip(self._items, self._states, states, strict=True):
                 if old_state != new_state:
                     item.set_state(new_state)
         self._states = states.copy()

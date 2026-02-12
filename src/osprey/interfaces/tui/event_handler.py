@@ -60,22 +60,19 @@ COMPONENT_PHASE_MAP = {
     "classifier": "classification",
     "orchestrator": "planning",
     "router": "execution",
-
     # Capabilities (route to execution)
-    "clarify": "execution",        # Clarification capability
-    "respond": "execution",        # Response generation capability
-    "python": "execution",         # Python code execution
-    "memory": "execution",         # Memory operations
+    "clarify": "execution",  # Clarification capability
+    "respond": "execution",  # Response generation capability
+    "python": "execution",  # Python code execution
+    "memory": "execution",  # Memory operations
     "time_range_parsing": "execution",  # Time parsing
-
     # Sub-services (route to execution during capability execution)
-    "python_generator": "execution",   # Python code generation service
-    "python_executor": "execution",    # Python code execution service
-
+    "python_generator": "execution",  # Python code generation service
+    "python_executor": "execution",  # Python code execution service
     # Infrastructure/Utility (special handling - suppress or route carefully)
-    "StateManager": None,          # Infrastructure logs - suppress from user UI
-    "error": "execution",          # Error handling logs
-    "gateway": "execution",        # Gateway minimal logging
+    "StateManager": None,  # Infrastructure logs - suppress from user UI
+    "error": "execution",  # Error handling logs
+    "gateway": "execution",  # Gateway minimal logging
 }
 
 # Phase to component mapping (for block registration)
@@ -141,9 +138,7 @@ class TUIEventHandler:
             ):
                 await self._handle_task_extracted(task, depends_on_hist, depends_on_mem)
 
-            case CapabilitiesSelectedEvent(
-                capability_names=caps, all_capability_names=all_caps
-            ):
+            case CapabilitiesSelectedEvent(capability_names=caps, all_capability_names=all_caps):
                 await self._handle_capabilities_selected(caps, all_caps)
 
             case PlanCreatedEvent(steps=steps):
@@ -299,9 +294,7 @@ class TUIEventHandler:
             # Set output to display the extracted task
             block.set_output(task)
 
-    async def _handle_capabilities_selected(
-        self, caps: list[str], all_caps: list[str]
-    ) -> None:
+    async def _handle_capabilities_selected(self, caps: list[str], all_caps: list[str]) -> None:
         """Handle capability selection data - update block and shared data.
 
         Args:
@@ -425,16 +418,14 @@ class TUIEventHandler:
             full_code = await self.display.finalize_code_generation_message()
             python_block = self.display.get_python_execution_block()
             if python_block:
-                line_count = len(full_code.split('\n')) if full_code else 0
+                line_count = len(full_code.split("\n")) if full_code else 0
                 python_block.set_complete("success", f"Code generated ({line_count} lines)")
 
         # Update ExecutionStep status
         python_block = self.display.get_python_execution_block()
         if python_block:
             status_text = (
-                f"Generating code (attempt {attempt})..."
-                if is_retry
-                else "Generating code..."
+                f"Generating code (attempt {attempt})..." if is_retry else "Generating code..."
             )
             python_block.set_partial_output(status_text)
 
@@ -459,7 +450,7 @@ class TUIEventHandler:
             # Update ExecutionStep status
             python_block = self.display.get_python_execution_block()
             if python_block:
-                line_count = len(full_code.split('\n')) if full_code else 0
+                line_count = len(full_code.split("\n")) if full_code else 0
                 python_block.set_partial_output(f"Code generated ({line_count} lines)")
 
     async def _handle_capability_complete(
@@ -512,9 +503,7 @@ class TUIEventHandler:
                         PlanProgressBar,
                     )
 
-                    progress_bar = self.display.app.query_one(
-                        "#plan-progress", PlanProgressBar
-                    )
+                    progress_bar = self.display.app.query_one("#plan-progress", PlanProgressBar)
                     progress_bar.update_progress(self.display._plan_step_states)
                 except Exception:
                     pass  # Progress bar may not exist
@@ -646,9 +635,7 @@ class TUIEventHandler:
         # ResultEvent is not currently emitted - this method is a no-op
         pass
 
-    async def _handle_error(
-        self, error_type: str, error_message: str, recoverable: bool
-    ) -> None:
+    async def _handle_error(self, error_type: str, error_message: str, recoverable: bool) -> None:
         """Handle error event - display error in current block.
 
         Args:

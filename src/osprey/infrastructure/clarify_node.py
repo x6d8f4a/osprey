@@ -20,6 +20,7 @@ from osprey.prompts.loader import get_framework_prompts
 from osprey.utils.config import get_model_config
 from osprey.utils.logger import get_logger
 
+logger = get_logger("clarify")
 
 # --- Pydantic Model for Clarifying Questions ---
 
@@ -75,9 +76,6 @@ class ClarifyCapability(BaseCapability):
         :rtype: Dict[str, Any]
         """
         state = self._state
-
-        # Explicit logger retrieval - professional practice
-        logger = get_logger("clarify")
 
         # Extract task objective using helper method
         task_objective = self.get_task_objective(default="unknown")

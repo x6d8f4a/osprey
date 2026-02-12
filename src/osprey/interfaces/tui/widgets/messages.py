@@ -120,11 +120,7 @@ class CollapsibleCodeMessage(Static):
         """Compose with link-style toggle and markdown content."""
         # Link-style toggle (like logs/prompt/response links)
         # Show attempt number if > 1
-        label = (
-            f"code #{self._attempt}"
-            if self._attempt > 1
-            else "code"
-        )
+        label = f"code #{self._attempt}" if self._attempt > 1 else "code"
         yield Static(
             f"{label} (streaming...)",
             classes="code-toggle-link",
@@ -201,12 +197,8 @@ class CollapsibleCodeMessage(Static):
         # Auto-collapse and update toggle text
         self._is_collapsed = True
         toggle = self.query_one("#code-toggle", Static)
-        label = (
-            f"code #{self._attempt}"
-            if self._attempt > 1
-            else "code"
-        )
-        line_count = len(full_code.split('\n')) if full_code else 0
+        label = f"code #{self._attempt}" if self._attempt > 1 else "code"
+        line_count = len(full_code.split("\n")) if full_code else 0
         toggle.update(f"{label} ({line_count} lines)")
 
         # Hide content
@@ -230,11 +222,7 @@ class CollapsibleCodeMessage(Static):
         """Toggle code visibility."""
         content = self.query_one("#code-content", Markdown)
         toggle = self.query_one("#code-toggle", Static)
-        label = (
-            f"code #{self._attempt}"
-            if self._attempt > 1
-            else "code"
-        )
+        label = f"code #{self._attempt}" if self._attempt > 1 else "code"
 
         if self._is_collapsed:
             # Expand

@@ -36,9 +36,7 @@ from osprey.interfaces.cli.direct_conversation import run_cli
 @click.option(
     "--tui", is_flag=True, default=False, help="Launch Terminal User Interface (TUI) instead of CLI"
 )
-@click.option(
-    "--web", is_flag=True, default=False, help="Launch Web Debug UI instead of CLI"
-)
+@click.option("--web", is_flag=True, default=False, help="Launch Web Debug UI instead of CLI")
 def chat(project: str, config: str, tui: bool, web: bool):
     """Start interactive conversation interface (CLI, TUI, or Web).
 

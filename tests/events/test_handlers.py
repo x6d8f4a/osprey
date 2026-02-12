@@ -221,9 +221,7 @@ class TestCLIHandlerPhaseEvents:
         console = Console(file=output, force_terminal=True)
         handler = CLIEventHandler(console=console, verbose=True)
 
-        event = PhaseCompleteEvent(
-            phase="classification", success=True, duration_ms=150
-        )
+        event = PhaseCompleteEvent(phase="classification", success=True, duration_ms=150)
 
         await handler.handle(event)
         assert output.getvalue() == ""

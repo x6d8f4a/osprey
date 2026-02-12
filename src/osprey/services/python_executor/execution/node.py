@@ -115,14 +115,14 @@ class LocalCodeExecutor:
                 stdout = stdout_bytes.decode("utf-8", errors="replace")
                 stderr = stderr_bytes.decode("utf-8", errors="replace")
                 returncode = process.returncode
-            except asyncio.TimeoutError:
+            except TimeoutError as err:
                 process.kill()
                 await process.wait()
                 raise CodeRuntimeError(
                     message=f"Python execution timed out after {self.executor_config.execution_timeout_seconds} seconds",
                     traceback_info="",
                     execution_attempt=1,
-                )
+                ) from err
 
             execution_time = time.time() - start_time
 
@@ -181,7 +181,7 @@ class LocalCodeExecutor:
 
                 import aiofiles
 
-                async with aiofiles.open(metadata_path, "r", encoding="utf-8") as f:
+                async with aiofiles.open(metadata_path, encoding="utf-8") as f:
                     content = await f.read()
                     metadata = json.loads(content)
 
@@ -230,7 +230,7 @@ class LocalCodeExecutor:
                 results_data = {"execution_method": "local_subprocess", "python_env": python_path}
                 if await asyncio.to_thread(results_path.exists):
                     try:
-                        async with aiofiles.open(results_path, "r", encoding="utf-8") as f:
+                        async with aiofiles.open(results_path, encoding="utf-8") as f:
                             content = await f.read()
                             results_data.update(json.loads(content))
                         logger.info(f"Loaded results from {results_path}")
@@ -238,7 +238,9 @@ class LocalCodeExecutor:
                         logger.warning(f"Failed to load results.json: {e}")
 
                 # Collect figure files from execution directory (same logic as container mode)
-                figure_paths = await self._collect_figure_files_async(execution_folder or Path.cwd())
+                figure_paths = await self._collect_figure_files_async(
+                    execution_folder or Path.cwd()
+                )
 
                 # Generate proper notebook link (use final notebook name)
                 notebook_path = (execution_folder or Path.cwd()) / "notebook.ipynb"

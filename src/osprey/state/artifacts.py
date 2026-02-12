@@ -257,11 +257,11 @@ def get_artifact_type_icon(artifact_type: ArtifactType | str) -> str:
         artifact_type = ArtifactType(artifact_type)
 
     icons = {
-        ArtifactType.IMAGE: "\u25eb",     # ◫ half-filled square
+        ArtifactType.IMAGE: "\u25eb",  # ◫ half-filled square
         ArtifactType.NOTEBOOK: "\u2261",  # ≡ triple bar
-        ArtifactType.COMMAND: "\u25c7",   # ◇ open diamond
-        ArtifactType.HTML: "\u25c7",      # ◇ open diamond
-        ArtifactType.FILE: "\u25a1",      # □ open square
+        ArtifactType.COMMAND: "\u25c7",  # ◇ open diamond
+        ArtifactType.HTML: "\u25c7",  # ◇ open diamond
+        ArtifactType.FILE: "\u25a1",  # □ open square
     }
     return icons.get(artifact_type, "\u00b7")
 

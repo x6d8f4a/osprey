@@ -715,7 +715,7 @@ class FileBasedResultCollector:
                 logger.debug(f"File {filename} does not exist in execution folder")
                 return None
 
-            async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, encoding="utf-8") as f:
                 content = await f.read()
                 data = json.loads(content)
 

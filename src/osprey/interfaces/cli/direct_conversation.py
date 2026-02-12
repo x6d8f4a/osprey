@@ -241,10 +241,12 @@ class CLI:
             syntax,
             title="[bold yellow]Generated Code[/bold yellow]",
             border_style="yellow",
-            padding=(1, 2)
+            padding=(1, 2),
         )
         self.console.print(panel)
-        self.console.print(f"[green]✓[/green] Generated {len(cleaned_code)} characters of Python code\n")
+        self.console.print(
+            f"[green]✓[/green] Generated {len(cleaned_code)} characters of Python code\n"
+        )
 
     def _route_fallback_event(self, event_dict: dict) -> None:
         """Route events from fallback transport to TypedEventHandler.
@@ -688,7 +690,7 @@ class CLI:
                 # Track stream mode transitions to detect when code streaming ends
                 previous_mode = None
 
-                async for ns, mode, chunk in self.graph.astream(
+                async for _ns, mode, chunk in self.graph.astream(
                     result.resume_command,
                     config=self.base_config,
                     stream_mode=["custom", "messages", "updates"],
@@ -721,7 +723,10 @@ class CLI:
                             node_name = metadata.get("langgraph_node", "") if metadata else ""
 
                             # Detect transition from code generation to another node
-                            if previous_node == "python_code_generator" and node_name != "python_code_generator":
+                            if (
+                                previous_node == "python_code_generator"
+                                and node_name != "python_code_generator"
+                            ):
                                 # Code generation just finished - add line break for separation
                                 if code_gen_active:
                                     print()  # Line break after code streaming
@@ -732,7 +737,10 @@ class CLI:
                                 # Handle code generation streaming
                                 if not code_gen_active:
                                     # Add role prefix (like respond does)
-                                    self.console.print("\n[bold yellow]🤖 Assistant (Code Generator):[/bold yellow] ", end="")
+                                    self.console.print(
+                                        "\n[bold yellow]🤖 Assistant (Code Generator):[/bold yellow] ",
+                                        end="",
+                                    )
                                     code_gen_active = True
 
                                 # Stream token with dim color (shows it's thinking/intermediate)
@@ -743,7 +751,9 @@ class CLI:
                             else:
                                 # Handle response streaming (respond node)
                                 if not streamed_response:
-                                    self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                    self.console.print(
+                                        "\n[bold cyan]🤖 Assistant:[/bold cyan] ", end=""
+                                    )
                                     handler.start_response_streaming()
                                     streamed_response = True
                                 print(message_chunk.content, end="", flush=True)
@@ -780,7 +790,9 @@ class CLI:
                     await self._process_user_input(user_input)
                 else:
                     # Execution completed successfully
-                    await self._show_final_result(state.values, skip_text_response=streamed_response)
+                    await self._show_final_result(
+                        state.values, skip_text_response=streamed_response
+                    )
 
             except Exception as e:
                 self.console.print(f"[{Styles.ERROR}]❌ Resume error: {e}[/{Styles.ERROR}]")
@@ -790,9 +802,7 @@ class CLI:
             if result.agent_state:
                 # Mode switch (e.g., /chat:capability_name) - apply state update
                 self.graph.update_state(self.base_config, result.agent_state)
-                self.console.print(
-                    f"[system]✓ Mode switched. Ready for your message.[/system]"
-                )
+                self.console.print("[system]✓ Mode switched. Ready for your message.[/system]")
             # else: Command handled locally (e.g., /chat without args) - no state update needed
             # The command handler already displayed output, nothing more to do
         elif result.agent_state:
@@ -887,7 +897,7 @@ class CLI:
                 # All modes arrive through a single ordered stream with mode tags
                 # subgraphs=True enables streaming from nested service graphs (e.g., Python executor)
                 # "updates" mode enables tracking state changes like generation_attempt for retry distinction
-                async for ns, mode, chunk in self.graph.astream(
+                async for _ns, mode, chunk in self.graph.astream(
                     input_data,
                     config=self.base_config,
                     stream_mode=["custom", "messages", "updates"],
@@ -921,7 +931,10 @@ class CLI:
                             node_name = metadata.get("langgraph_node", "") if metadata else ""
 
                             # Detect transition from code generation to another node
-                            if previous_node == "python_code_generator" and node_name != "python_code_generator":
+                            if (
+                                previous_node == "python_code_generator"
+                                and node_name != "python_code_generator"
+                            ):
                                 # Code generation just finished - add line break for separation
                                 if code_gen_active:
                                     print()  # Line break after code streaming
@@ -932,7 +945,10 @@ class CLI:
                                 # Handle code generation streaming
                                 if not code_gen_active:
                                     # Add role prefix (like respond does)
-                                    self.console.print("\n[bold yellow]🤖 Assistant (Code Generator):[/bold yellow] ", end="")
+                                    self.console.print(
+                                        "\n[bold yellow]🤖 Assistant (Code Generator):[/bold yellow] ",
+                                        end="",
+                                    )
                                     code_gen_active = True
 
                                 # Stream token with dim color (shows it's thinking/intermediate)
@@ -944,7 +960,9 @@ class CLI:
                                 # Handle response streaming (respond node)
                                 if not streamed_response:
                                     # Print header before first token
-                                    self.console.print("\n[bold cyan]🤖 Assistant:[/bold cyan] ", end="")
+                                    self.console.print(
+                                        "\n[bold cyan]🤖 Assistant:[/bold cyan] ", end=""
+                                    )
                                     handler.start_response_streaming()
                                     streamed_response = True
                                 # Print token directly to console (no newline, immediate flush)
