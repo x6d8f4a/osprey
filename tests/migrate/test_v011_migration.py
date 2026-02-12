@@ -1140,7 +1140,7 @@ class TestValidationCommands:
         import subprocess
         import sys
 
-        cmd_fixed = sys.executable + cmd[len("python"):]
+        cmd_fixed = sys.executable + cmd[len("python") :]
         result = subprocess.run(cmd_fixed, shell=True, capture_output=True, text=True, timeout=30)
         assert result.returncode == 0, (
             f"Validation command failed: {cmd}\nstderr: {result.stderr}\nstdout: {result.stdout}"
