@@ -282,7 +282,7 @@ control_system:
   #     - 'my_custom_cs_lib\.read\('
 
   # Runtime Connectors (Layer 2)
-  # Used by: Capabilities (channel_value_retrieval, channel_write, archiver_retrieval)
+  # Used by: Capabilities (channel_read, channel_write, archiver_retrieval)
   #          and osprey.runtime API (read_channel, write_channel)
   # Purpose: Actual I/O operations to control systems with built-in safety features
   connector:
@@ -371,11 +371,6 @@ channel_finder:
         chunk_size: 50                # Number of channels per chunk when chunk_dictionary=true
         max_correction_iterations: 2  # Maximum LLM correction attempts when invalid channels are found (0-3 recommended)
 
-      # Example prompts for in-context pipeline
-      prompts:
-        path: src/{{ package_name }}/services/channel_finder/prompts/in_context
-        # UCSB FEL example prompts for semantic matching
-
       # Benchmark dataset for this pipeline
       benchmark:
         dataset_path: src/{{ package_name }}/data/benchmarks/datasets/in_context_benchmark.json
@@ -389,11 +384,6 @@ channel_finder:
         type: hierarchical            # Always "hierarchical" for this pipeline mode
         path: src/{{ package_name }}/data/channel_databases/hierarchical.json
                                       # Database must follow nested structure: system → family → device → field → subfield
-
-      # Example prompts for hierarchical pipeline
-      prompts:
-        path: src/{{ package_name }}/services/channel_finder/prompts/hierarchical
-        # Example accelerator prompts with hierarchical_context.py for level-specific navigation
 
       # Benchmark dataset for this pipeline
       benchmark:
@@ -409,11 +399,6 @@ channel_finder:
         path: src/{{ package_name }}/data/channel_databases/middle_layer.json
                                       # Database must follow MML structure: System → Family → Field → ChannelNames
                                       # Supports optional _description fields and device/sector filtering via DeviceList
-
-      # Example prompts for middle_layer pipeline
-      prompts:
-        path: src/{{ package_name }}/services/channel_finder/prompts/middle_layer
-        # Example accelerator prompts for React agent with database query tools
 
       # Benchmark dataset for this pipeline
       benchmark:

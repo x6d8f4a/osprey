@@ -153,6 +153,7 @@ class CapabilityRegistration:
     always_active: bool = False  # Whether capability is always active (no classification needed)
     functional_node: str = None  # Name of functional node (from capability.node attribute)
     example_usage: str = ""  # Example of how this capability is used
+    _is_explicit_override: bool = False  # Internal: True if registered via override_capabilities
 
 
 @dataclass

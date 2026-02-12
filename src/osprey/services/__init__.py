@@ -6,6 +6,7 @@ essential functionality for the Osprey Framework.
 Services included:
 - memory_storage: User memory persistence and retrieval
 - python_executor: Code execution and analysis services
+- channel_finder: Channel address discovery and search
 """
 
 # Note: Services are imported on-demand to avoid circular dependencies

@@ -639,20 +639,33 @@ class RegistryManager:
                 continue
 
             # Filter out excluded components
+            # ContextClassRegistration uses 'context_type' instead of 'name'
             original_count = len(component_collection)
-            filtered_components = [
-                comp for comp in component_collection if comp.name not in excluded_names
-            ]
+            if component_type == "context_classes":
+                filtered_components = [
+                    comp for comp in component_collection if comp.context_type not in excluded_names
+                ]
+            else:
+                filtered_components = [
+                    comp for comp in component_collection if comp.name not in excluded_names
+                ]
             setattr(merged, component_type, filtered_components)
 
             # Log exclusions that actually occurred
             excluded_count = original_count - len(filtered_components)
             if excluded_count > 0:
-                actually_excluded = [
-                    name
-                    for name in excluded_names
-                    if name in {comp.name for comp in component_collection}
-                ]
+                if component_type == "context_classes":
+                    actually_excluded = [
+                        name
+                        for name in excluded_names
+                        if name in {comp.context_type for comp in component_collection}
+                    ]
+                else:
+                    actually_excluded = [
+                        name
+                        for name in excluded_names
+                        if name in {comp.name for comp in component_collection}
+                    ]
                 if actually_excluded:
                     logger.info(
                         f"Application {app_name} excluded framework {component_type}: {actually_excluded}"
@@ -710,9 +723,45 @@ class RegistryManager:
             merged.capabilities.append(app_capability)
 
         if capability_overrides:
-            logger.info(
-                f"Application {app_name} overrode framework capabilities: {capability_overrides}"
-            )
+            # Check for shadow warnings: non-explicit overrides of native capabilities
+            native_control_capabilities = {
+                "channel_finding",
+                "channel_read",
+                "channel_write",
+                "archiver_retrieval",
+            }
+            shadow_caps = []
+            explicit_caps = []
+            for app_capability in app_capabilities:
+                if app_capability.name in capability_overrides:
+                    is_explicit = getattr(app_capability, "_is_explicit_override", False)
+                    if is_explicit:
+                        explicit_caps.append(app_capability.name)
+                    elif app_capability.name in native_control_capabilities:
+                        shadow_caps.append(app_capability.name)
+
+            if shadow_caps:
+                logger.warning(
+                    f"Application '{app_name}' shadows native framework capabilities: "
+                    f"{shadow_caps}. These capabilities are now built into OSPREY. "
+                    f"Run 'osprey migrate check' to update your application, or use "
+                    f"override_capabilities=[] in your registry to explicitly override."
+                )
+
+            if explicit_caps:
+                logger.info(
+                    f"Application {app_name} explicitly overrode framework capabilities: "
+                    f"{explicit_caps}"
+                )
+
+            # Log remaining non-native overrides at INFO level
+            other_overrides = [
+                c for c in capability_overrides if c not in shadow_caps and c not in explicit_caps
+            ]
+            if other_overrides:
+                logger.info(
+                    f"Application {app_name} overrode framework capabilities: {other_overrides}"
+                )
 
         # Merge data sources with override support
         framework_ds_names = {ds.name for ds in merged.data_sources}
