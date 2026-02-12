@@ -6,18 +6,21 @@ Right panel: title bar, content preview (if available), aligned metadata table, 
 
 from __future__ import annotations
 
+import json
 import platform
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from rich.table import Table
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.events import Click, Key
 from textual.screen import ModalScreen
-from rich.table import Table
-from textual.widgets import Static
+from textual.widgets import Markdown, Static
 
 from osprey.interfaces.tui.widgets.artifacts import (
     TextualImage,
@@ -28,6 +31,13 @@ from osprey.state.artifacts import ArtifactType
 # Max display length for filenames in the left panel
 # Panel is 32 chars wide, row padding 3+1=4, leading space 1 → 27 usable
 _LIST_NAME_MAX = 27
+
+# Notebook preview limits
+_MAX_PREVIEW_CELLS = 20
+_MAX_CELL_LINES = 50
+
+# Regex for markdown image references: ![alt](path)
+_IMG_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 
 
 def _get_artifact_filename(artifact: dict[str, Any]) -> str:
@@ -214,9 +224,11 @@ class ArtifactViewer(ModalScreen[None]):
 
         data = self.artifact.get("data", {})
 
-        # Content preview (image only for now)
+        # Content preview
         if self._artifact_type == ArtifactType.IMAGE:
             yield from self._compose_image_preview(data)
+        elif self._artifact_type == ArtifactType.NOTEBOOK:
+            yield from self._compose_notebook_preview(data)
 
         # Metadata table (all types)
         yield Static(
@@ -257,6 +269,163 @@ class ArtifactViewer(ModalScreen[None]):
                 classes="detail-row",
             )
             yield Static("")
+
+    def _compose_notebook_preview(
+        self, data: dict[str, Any]
+    ) -> ComposeResult:
+        """Compose inline notebook preview with theme-adaptive cells."""
+        path = data.get("path", "")
+        if not path:
+            return
+
+        notebook_path = Path(path)
+        if not notebook_path.exists():
+            yield Static(
+                "[dim]Notebook file not found[/dim]",
+                classes="detail-row",
+            )
+            return
+
+        try:
+            with open(notebook_path, encoding="utf-8") as f:
+                nb = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            yield Static(
+                "[dim]Could not read notebook[/dim]",
+                classes="detail-row",
+            )
+            return
+
+        cells = nb.get("cells", [])
+        if not cells:
+            yield Static(
+                "[dim]Notebook has no cells[/dim]",
+                classes="detail-row",
+            )
+            return
+
+        # Language from kernel metadata (fallback: python)
+        kernel = nb.get("metadata", {}).get("kernelspec", {})
+        language = kernel.get("language", "python")
+
+        has_content = False
+
+        for cell in cells[:_MAX_PREVIEW_CELLS]:
+            source = cell.get("source", "")
+            if isinstance(source, list):
+                source = "".join(source)
+            if not source.strip():
+                continue
+
+            # Truncate long cells
+            lines = source.split("\n")
+            if len(lines) > _MAX_CELL_LINES:
+                source = "\n".join(lines[:_MAX_CELL_LINES])
+                source += f"\n... ({len(lines) - _MAX_CELL_LINES} more lines)"
+
+            cell_type = cell.get("cell_type", "")
+
+            if cell_type == "markdown":
+                # Replace image refs with clickable links:
+                # ![Figure 1](temp.png) → [temp.png](/abs/path/temp.png)
+                def _img_to_link(m: re.Match) -> str:
+                    rel = m.group(2)
+                    abs_p = notebook_path.parent / rel
+                    return f"[{rel}]({abs_p})"
+
+                source = _IMG_RE.sub(_img_to_link, source)
+                yield Markdown(
+                    source, classes="notebook-md-cell"
+                )
+                has_content = True
+
+            elif cell_type == "code":
+                ec = cell.get("execution_count")
+                label = (
+                    f"In [{ec}]"
+                    if ec is not None
+                    else "In [ ]"
+                )
+                yield Static(
+                    f"[dim]{label}[/dim]",
+                    classes="notebook-cell-label",
+                )
+                yield Markdown(
+                    f"```{language}\n{source}\n```",
+                    classes="notebook-code-cell",
+                )
+                has_content = True
+                # Render text outputs
+                for output in cell.get("outputs", []):
+                    txt = self._extract_cell_output_text(output)
+                    if txt:
+                        yield Static(
+                            txt,
+                            classes="notebook-cell-output",
+                        )
+
+            elif cell_type == "raw":
+                yield Static(
+                    source, classes="notebook-raw-cell"
+                )
+                has_content = True
+
+        if not has_content:
+            yield Static(
+                "[dim]No displayable cells[/dim]",
+                classes="detail-row",
+            )
+            return
+
+        # Truncation notice
+        if len(cells) > _MAX_PREVIEW_CELLS:
+            remaining = len(cells) - _MAX_PREVIEW_CELLS
+            yield Static(
+                f"[dim italic]... ({remaining} more cells"
+                " not shown)[/dim italic]",
+            )
+
+        yield Static("")  # spacer before metadata
+
+    def _extract_cell_output_text(
+        self, output: dict[str, Any]
+    ) -> str:
+        """Extract displayable text from a notebook cell output."""
+        output_type = output.get("output_type", "")
+
+        if output_type == "stream":
+            text = output.get("text", "")
+            if isinstance(text, list):
+                text = "".join(text)
+            lines = text.split("\n")
+            if len(lines) > 20:
+                return (
+                    "\n".join(lines[:20])
+                    + f"\n... ({len(lines) - 20} more lines)"
+                )
+            return text
+
+        if output_type == "execute_result":
+            text = output.get("data", {}).get("text/plain", "")
+            if isinstance(text, list):
+                text = "".join(text)
+            return text
+
+        if output_type == "error":
+            tb = output.get("traceback", [])
+            if tb:
+                clean = re.sub(
+                    r"\x1b\[[0-9;]*m", "", "\n".join(tb)
+                )
+                lines = clean.split("\n")
+                if len(lines) > 15:
+                    return (
+                        "\n".join(lines[:15]) + "\n... (truncated)"
+                    )
+                return clean
+
+        # Skip display_data (images, HTML)
+        return ""
 
     def _build_metadata_table(self) -> Table:
         """Build a Rich Table with metadata fields for the selected artifact."""
@@ -368,14 +537,20 @@ class ArtifactViewer(ModalScreen[None]):
             self._open_artifact_dir()
             event.stop()
 
+    def on_markdown_link_clicked(
+        self, event: Markdown.LinkClicked
+    ) -> None:
+        """Handle clicks on links in notebook markdown cells."""
+        event.stop()
+        self._open_path(event.href)
+
     def on_click(self, event: Click) -> None:
         """Handle click on a list row or path link."""
         # Check if click target is a path link (container or children)
         for ancestor in event.widget.ancestors_with_self:
-            if (
-                hasattr(ancestor, "classes")
-                and "artifact-path-link" in ancestor.classes
-            ):
+            if not hasattr(ancestor, "classes"):
+                continue
+            if "artifact-path-link" in ancestor.classes:
                 self.action_open_external()
                 event.stop()
                 return
@@ -407,7 +582,10 @@ class ArtifactViewer(ModalScreen[None]):
         if not target:
             self._show_feedback("No path or URL available")
             return
+        self._open_path(target)
 
+    def _open_path(self, target: str) -> None:
+        """Open a path or URL in the system's default application."""
         try:
             system = platform.system()
             if system == "Darwin":
@@ -416,7 +594,11 @@ class ArtifactViewer(ModalScreen[None]):
                 subprocess.Popen(["xdg-open", target])
             elif system == "Windows":
                 subprocess.Popen(["start", target], shell=True)
-            display = target[:50] + "..." if len(target) > 50 else target
+            display = (
+                target[:50] + "..."
+                if len(target) > 50
+                else target
+            )
             self._show_feedback(f"Opened: {display}")
         except Exception as e:
             self._show_feedback(f"Failed to open: {e}")

@@ -517,3 +517,143 @@ class TestArtifactTypeIcons:
         assert get_artifact_type_icon("image") == get_artifact_type_icon(ArtifactType.IMAGE)
         assert get_artifact_type_icon("notebook") == get_artifact_type_icon(ArtifactType.NOTEBOOK)
         assert get_artifact_type_icon("command") == get_artifact_type_icon(ArtifactType.COMMAND)
+
+
+class TestArtifactViewerNotebookPreview:
+    """Tests for ArtifactViewer notebook preview rendering."""
+
+    def test_notebook_type_detected(self):
+        """ArtifactViewer should detect NOTEBOOK artifact type."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        artifact = create_artifact(
+            ArtifactType.NOTEBOOK,
+            "python_executor",
+            {"path": "/tmp/notebook.ipynb"},
+        )
+        viewer = ArtifactViewer([artifact])
+        assert viewer._artifact_type == ArtifactType.NOTEBOOK
+
+    def test_extract_stream_output(self):
+        """Should extract text from stream outputs."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {"output_type": "stream", "text": "hello world\n"}
+        assert viewer._extract_cell_output_text(output) == "hello world\n"
+
+    def test_extract_stream_output_list(self):
+        """Should handle stream output as list of strings."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "stream",
+            "text": ["hello ", "world\n"],
+        }
+        assert viewer._extract_cell_output_text(output) == "hello world\n"
+
+    def test_extract_execute_result(self):
+        """Should extract text/plain from execute_result."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "execute_result",
+            "data": {"text/plain": "42"},
+        }
+        assert viewer._extract_cell_output_text(output) == "42"
+
+    def test_extract_execute_result_list(self):
+        """Should handle execute_result text as list."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "execute_result",
+            "data": {"text/plain": ["line1\n", "line2\n"]},
+        }
+        result = viewer._extract_cell_output_text(output)
+        assert result == "line1\nline2\n"
+
+    def test_extract_display_data_skipped(self):
+        """Should return empty string for display_data outputs."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "display_data",
+            "data": {"image/png": "base64data..."},
+        }
+        assert viewer._extract_cell_output_text(output) == ""
+
+    def test_extract_error_output(self):
+        """Should extract and clean error tracebacks."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "error",
+            "traceback": [
+                "Traceback (most recent call last):",
+                '  File "test.py", line 1',
+                "ValueError: bad value",
+            ],
+        }
+        result = viewer._extract_cell_output_text(output)
+        assert "ValueError: bad value" in result
+
+    def test_extract_error_strips_ansi(self):
+        """Should strip ANSI escape codes from error tracebacks."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        output = {
+            "output_type": "error",
+            "traceback": ["\x1b[31mValueError\x1b[0m: bad"],
+        }
+        result = viewer._extract_cell_output_text(output)
+        assert result == "ValueError: bad"
+        assert "\x1b" not in result
+
+    def test_extract_stream_truncation(self):
+        """Should truncate stream outputs longer than 20 lines."""
+        from osprey.interfaces.tui.widgets.artifact_viewer import ArtifactViewer
+
+        viewer = ArtifactViewer([
+            create_artifact(
+                ArtifactType.NOTEBOOK, "test", {"path": "/nb.ipynb"}
+            )
+        ])
+        long_text = "\n".join(f"line {i}" for i in range(30))
+        output = {"output_type": "stream", "text": long_text}
+        result = viewer._extract_cell_output_text(output)
+        assert "... (10 more lines)" in result

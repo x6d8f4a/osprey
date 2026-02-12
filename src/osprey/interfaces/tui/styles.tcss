@@ -263,6 +263,7 @@ ChatMessage.message-user {
 /* Assistant message - base immersive style */
 ChatMessage.message-assistant {
     padding: 1 4;
+    margin-bottom: 0;
     background: transparent;
     border: none;
 }
@@ -1213,6 +1214,43 @@ ArtifactViewer {
     width: 100%;
     height: auto;
     margin-bottom: 0;
+}
+
+/* Notebook cell label (execution count) */
+.notebook-cell-label {
+    width: 1fr;
+    height: auto;
+    margin: 1 0 0 0;
+    padding: 0 2;
+    color: $text-muted;
+}
+
+/* Notebook code cell — Textual Markdown for theme-adaptive highlighting */
+.notebook-code-cell {
+    width: 1fr;
+    height: auto;
+    margin: 0;
+}
+
+/* Remove default MarkdownFence margin inside notebook code cells */
+.notebook-code-cell MarkdownFence {
+    margin: 0;
+}
+
+/* Notebook markdown cell */
+.notebook-md-cell {
+    width: 1fr;
+    height: auto;
+    margin: 0 0 1 0;
+}
+
+/* Notebook cell output (stdout, execution results) */
+.notebook-cell-output {
+    width: 1fr;
+    height: auto;
+    margin: 0;
+    padding: 0 2;
+    color: $text-muted;
 }
 
 /* =============================================================================
