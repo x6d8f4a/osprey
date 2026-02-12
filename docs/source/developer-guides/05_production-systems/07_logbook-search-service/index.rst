@@ -13,6 +13,32 @@ ARIEL is designed to be **facility-agnostic**. Pluggable ingestion adapters norm
 
 .. dropdown:: Quick Start
 
+   **0. (Recommended) Install Ollama** --- for semantic search with text embeddings:
+
+   .. tab-set::
+
+      .. tab-item:: macOS
+
+         .. code-block:: bash
+
+            brew install ollama
+            ollama serve &            # Start Ollama in the background
+            ollama pull nomic-embed-text
+
+      .. tab-item:: Linux
+
+         .. code-block:: bash
+
+            curl -fsSL https://ollama.com/install.sh | sh
+            ollama serve &            # Start Ollama in the background
+            ollama pull nomic-embed-text
+
+   .. note::
+
+      Ollama is optional. ARIEL degrades gracefully to keyword-only search
+      if Ollama or pgvector is unavailable. You can install them later and
+      re-run ``osprey ariel quickstart`` to enable semantic search.
+
    **1. Configure** --- add the ARIEL section to your ``config.yml`` and include the ``postgresql`` and ``ariel_web`` deployed services:
 
    .. code-block:: yaml
@@ -42,10 +68,21 @@ ARIEL is designed to be **facility-agnostic**. Pluggable ingestion adapters norm
         search_modules:
           keyword:
             enabled: true
+          semantic:
+            enabled: true        # Degrades gracefully if unavailable
+            provider: ollama
+            model: nomic-embed-text
         pipelines:
           rag:
             enabled: true
-            retrieval_modules: [keyword]
+            retrieval_modules: [keyword, semantic]
+        enhancement_modules:
+          text_embedding:
+            enabled: true        # Degrades gracefully if unavailable
+            provider: ollama
+            models:
+              - name: nomic-embed-text
+                dimension: 768
         reasoning:
           provider: cborg
           model_id: anthropic/claude-haiku

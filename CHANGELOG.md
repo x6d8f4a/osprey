@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **ARIEL**: Enable semantic search and text embedding by default in config template
+  - pgvector migration skips gracefully when extension is unavailable
+  - Search model validation disables semantic at runtime instead of throwing
+  - Text embedding module checks for table existence before processing
+  - New projects get keyword + semantic search out of the box (degrades to keyword-only without Ollama/pgvector)
+
+## [0.11.0] - 2026-02-12
+
 ### Added
 - **Capabilities**: Migrate control capabilities to native Python modules
   - `channel_finding`, `channel_read`, `channel_write`, `archiver_retrieval` moved from Jinja2 templates to `src/osprey/capabilities/`
