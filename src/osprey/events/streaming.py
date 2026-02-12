@@ -18,14 +18,14 @@ Usage:
 
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from .parser import parse_event
 from .types import OspreyEvent
 
 
-class StreamMode(str, Enum):
+class StreamMode(StrEnum):
     """Available LangGraph stream modes."""
 
     CUSTOM = "custom"
