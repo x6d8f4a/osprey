@@ -1,8 +1,10 @@
 name: Claude Code Review
 
+# Disabled: OIDC tokens not available for pull_request events in this org,
+# which prevents claude_code_oauth_token from working.
+# Use @claude comments via claude.yml (issue_comment trigger) for reviews instead.
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch: # Manual trigger only — auto PR review disabled
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
