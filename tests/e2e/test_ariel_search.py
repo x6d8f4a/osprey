@@ -499,51 +499,55 @@ class TestRAGSearchE2E:
     async def test_factual_qa(self, seeded_ariel_db, rag_config_env):
         """RAG answers 'What caused the RF trip in sector 3?' using E001."""
         from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
-        from osprey.services.ariel_search.search.rag import rag_search
+        from osprey.services.ariel_search.rag import RAGPipeline
 
-        embedder = OllamaEmbeddingProvider()
-        answer, sources = await rag_search(
-            query="What caused the RF trip in sector 3?",
+        pipeline = RAGPipeline(
             repository=seeded_ariel_db["repository"],
             config=seeded_ariel_db["config"],
-            embedder=embedder,
-            max_entries=5,
+            embedder_loader=OllamaEmbeddingProvider,
+        )
+        result = await pipeline.execute(
+            query="What caused the RF trip in sector 3?",
+            max_results=5,
             similarity_threshold=0.3,
         )
 
         # Deterministic: E001 should be in sources
-        source_ids = [s["entry_id"] for s in sources]
+        source_ids = [e["entry_id"] for e in result.entries]
         assert "E001" in source_ids, f"Expected E001 in sources, got: {source_ids}"
 
         # Answer should mention key terms from E001
-        answer_lower = answer.lower()
+        answer_lower = result.answer.lower()
         # Should mention klystron, VSWR, RF, or cavity
         key_terms = ["klystron", "vswr", "rf", "cavity", "reflected power"]
         found_terms = [term for term in key_terms if term in answer_lower]
         assert len(found_terms) > 0, (
-            f"Answer should mention RF trip details. Answer: {answer[:300]}"
+            f"Answer should mention RF trip details. Answer: {result.answer[:300]}"
         )
 
     async def test_multi_entry_synthesis(self, seeded_ariel_db, rag_config_env):
         """RAG synthesizes answer from multiple incident entries."""
         from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
-        from osprey.services.ariel_search.search.rag import rag_search
+        from osprey.services.ariel_search.rag import RAGPipeline
 
-        embedder = OllamaEmbeddingProvider()
-        answer, sources = await rag_search(
-            query="What equipment problems occurred during operations?",
+        pipeline = RAGPipeline(
             repository=seeded_ariel_db["repository"],
             config=seeded_ariel_db["config"],
-            embedder=embedder,
-            max_entries=5,
+            embedder_loader=OllamaEmbeddingProvider,
+        )
+        result = await pipeline.execute(
+            query="What equipment problems occurred during operations?",
+            max_results=5,
             similarity_threshold=0.3,
         )
 
         # Deterministic: should have multiple sources
-        assert len(sources) > 1, f"Expected multiple sources, got: {len(sources)}"
+        assert len(result.entries) > 1, (
+            f"Expected multiple sources, got: {len(result.entries)}"
+        )
 
         # Answer should synthesize information (mention multiple issues)
-        answer_lower = answer.lower()
+        answer_lower = result.answer.lower()
         # Count how many different issue types are mentioned
         issue_indicators = [
             "rf" in answer_lower or "cavity" in answer_lower,
@@ -554,27 +558,31 @@ class TestRAGSearchE2E:
         ]
         issues_mentioned = sum(issue_indicators)
         assert issues_mentioned >= 2, (
-            f"Answer should mention multiple issues. Answer: {answer[:300]}"
+            f"Answer should mention multiple issues. Answer: {result.answer[:300]}"
         )
 
     async def test_no_answer_for_unrelated_query(self, seeded_ariel_db, rag_config_env):
         """RAG gracefully handles queries with no relevant entries."""
         from osprey.models.embeddings.ollama import OllamaEmbeddingProvider
-        from osprey.services.ariel_search.search.rag import rag_search
+        from osprey.services.ariel_search.rag import RAGPipeline
 
-        embedder = OllamaEmbeddingProvider()
-        answer, sources = await rag_search(
-            query="What is the chemical composition of the moon?",
+        pipeline = RAGPipeline(
             repository=seeded_ariel_db["repository"],
             config=seeded_ariel_db["config"],
-            embedder=embedder,
-            max_entries=5,
+            embedder_loader=OllamaEmbeddingProvider,
+        )
+        result = await pipeline.execute(
+            query="What is the chemical composition of the moon?",
+            max_results=5,
             similarity_threshold=0.7,  # High threshold to ensure no matches
         )
 
         # Should have no sources or acknowledge lack of information
-        if not sources:
-            assert "don't have enough information" in answer.lower() or len(sources) == 0
+        if not result.entries:
+            assert (
+                "don't have enough information" in result.answer.lower()
+                or len(result.entries) == 0
+            )
         # If there are sources, they shouldn't be about moon composition
         # (the model should still ground its answer appropriately)
 
