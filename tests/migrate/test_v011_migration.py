@@ -1135,11 +1135,13 @@ class TestValidationCommands:
         if not cmd.startswith("python -c"):
             pytest.skip("Not a python -c command")
 
-        # Extract the Python code from the command
-        # Format: python -c 'code'
+        # Use sys.executable so the subprocess runs in the same venv as pytest,
+        # rather than whatever "python" resolves to via PATH/pyenv.
         import subprocess
+        import sys
 
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+        cmd_fixed = sys.executable + cmd[len("python"):]
+        result = subprocess.run(cmd_fixed, shell=True, capture_output=True, text=True, timeout=30)
         assert result.returncode == 0, (
             f"Validation command failed: {cmd}\nstderr: {result.stderr}\nstdout: {result.stdout}"
         )
