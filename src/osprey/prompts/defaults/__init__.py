@@ -12,6 +12,7 @@ from .channel_finder import (
 from .clarification import DefaultClarificationPromptBuilder
 from .classification import DefaultClassificationPromptBuilder
 from .error_analysis import DefaultErrorAnalysisPromptBuilder
+from .logbook_search import DefaultLogbookSearchPromptBuilder
 from .memory_extraction import DefaultMemoryExtractionPromptBuilder
 from .orchestrator import DefaultOrchestratorPromptBuilder
 from .python import DefaultPythonPromptBuilder
@@ -45,6 +46,9 @@ class DefaultPromptProvider(FrameworkPromptProvider):
         self._cf_in_context_builder = DefaultInContextPromptBuilder()
         self._cf_hierarchical_builder = DefaultHierarchicalPromptBuilder()
         self._cf_middle_layer_builder = DefaultMiddleLayerPromptBuilder()
+
+        # Logbook search prompt builder
+        self._logbook_search_builder = DefaultLogbookSearchPromptBuilder()
 
     # =================================================================
     # Infrastructure prompts
@@ -94,6 +98,13 @@ class DefaultPromptProvider(FrameworkPromptProvider):
     def get_channel_finder_middle_layer_prompt_builder(self) -> "FrameworkPromptBuilder":
         return self._cf_middle_layer_builder
 
+    # =================================================================
+    # Logbook search prompt builder
+    # =================================================================
+
+    def get_logbook_search_prompt_builder(self) -> "FrameworkPromptBuilder":
+        return self._logbook_search_builder
+
 
 __all__ = [
     "DefaultClassificationPromptBuilder",
@@ -108,6 +119,7 @@ __all__ = [
     "DefaultInContextPromptBuilder",
     "DefaultHierarchicalPromptBuilder",
     "DefaultMiddleLayerPromptBuilder",
+    "DefaultLogbookSearchPromptBuilder",
     "DefaultPromptProvider",
     "TaskExtractionExample",
     "ExtractedTask",

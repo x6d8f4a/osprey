@@ -78,6 +78,10 @@ Examples:
 """
 
 from .base import (
+    ArielEnhancementModuleRegistration,
+    ArielIngestionAdapterRegistration,
+    ArielPipelineRegistration,
+    ArielSearchModuleRegistration,
     CapabilityRegistration,
     CodeGeneratorRegistration,
     ConnectorRegistration,
@@ -379,6 +383,15 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     provides=["ARCHIVER_DATA"],
                     requires=["CHANNEL_ADDRESSES"],
                 ),
+                # Logbook search capability (native framework-level)
+                CapabilityRegistration(
+                    name="logbook_search",
+                    module_path="osprey.capabilities.logbook_search",
+                    class_name="LogbookSearchCapability",
+                    description="Search and query historical logbook entries",
+                    provides=["LOGBOOK_SEARCH_RESULTS"],
+                    requires=[],
+                ),
             ],
             # Framework-level context classes
             context_classes=[
@@ -420,6 +433,11 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     context_type="ARCHIVER_DATA",
                     module_path="osprey.capabilities.archiver_retrieval",
                     class_name="ArchiverDataContext",
+                ),
+                ContextClassRegistration(
+                    context_type="LOGBOOK_SEARCH_RESULTS",
+                    module_path="osprey.capabilities.logbook_search",
+                    class_name="LogbookSearchResultsContext",
                 ),
             ],
             # Framework-level data sources
@@ -477,6 +495,7 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                         "channel_finder_in_context": "DefaultInContextPromptBuilder",
                         "channel_finder_hierarchical": "DefaultHierarchicalPromptBuilder",
                         "channel_finder_middle_layer": "DefaultMiddleLayerPromptBuilder",
+                        "logbook_search": "DefaultLogbookSearchPromptBuilder",
                     },
                 )
             ],
@@ -579,6 +598,76 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                     optional_dependencies=["claude-agent-sdk"],
                 ),
             ],
+            # ARIEL search modules
+            ariel_search_modules=[
+                ArielSearchModuleRegistration(
+                    name="keyword",
+                    module_path="osprey.services.ariel_search.search.keyword",
+                    description="Full-text search with PostgreSQL FTS and fuzzy fallback",
+                ),
+                ArielSearchModuleRegistration(
+                    name="semantic",
+                    module_path="osprey.services.ariel_search.search.semantic",
+                    description="Embedding similarity search using vector cosine distance",
+                ),
+            ],
+            # ARIEL enhancement modules
+            ariel_enhancement_modules=[
+                ArielEnhancementModuleRegistration(
+                    name="semantic_processor",
+                    module_path="osprey.services.ariel_search.enhancement.semantic_processor.processor",
+                    class_name="SemanticProcessorModule",
+                    description="Extract keywords and summaries from logbook entries",
+                    execution_order=10,
+                ),
+                ArielEnhancementModuleRegistration(
+                    name="text_embedding",
+                    module_path="osprey.services.ariel_search.enhancement.text_embedding.embedder",
+                    class_name="TextEmbeddingModule",
+                    description="Generate vector embeddings for logbook entries",
+                    execution_order=20,
+                ),
+            ],
+            # ARIEL pipelines
+            ariel_pipelines=[
+                ArielPipelineRegistration(
+                    name="rag",
+                    module_path="osprey.services.ariel_search.pipelines",
+                    description="Deterministic RAG pipeline with hybrid retrieval and RRF fusion",
+                ),
+                ArielPipelineRegistration(
+                    name="agent",
+                    module_path="osprey.services.ariel_search.pipelines",
+                    description="Autonomous ReAct agent with multi-step reasoning",
+                ),
+            ],
+            # ARIEL ingestion adapters
+            ariel_ingestion_adapters=[
+                ArielIngestionAdapterRegistration(
+                    name="als_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.als",
+                    class_name="ALSLogbookAdapter",
+                    description="ALS eLog adapter with JSONL streaming and HTTP API support",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="jlab_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.jlab",
+                    class_name="JLabLogbookAdapter",
+                    description="Jefferson Lab logbook adapter",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="ornl_logbook",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.ornl",
+                    class_name="ORNLLogbookAdapter",
+                    description="Oak Ridge National Laboratory logbook adapter",
+                ),
+                ArielIngestionAdapterRegistration(
+                    name="generic_json",
+                    module_path="osprey.services.ariel_search.ingestion.adapters.generic",
+                    class_name="GenericJSONAdapter",
+                    description="Generic JSON adapter for testing and facilities without custom APIs",
+                ),
+            ],
             # Simplified initialization order - decorators and subgraphs are imported directly when needed
             initialization_order=[
                 "context_classes",  # First - needed by capabilities
@@ -586,9 +675,13 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                 "providers",  # Third - AI model providers early for use by capabilities
                 "connectors",  # Fourth - control system/archiver connectors
                 "code_generators",  # Fifth - code generators for Python executor
-                "core_nodes",  # Sixth - infrastructure nodes
-                "services",  # Seventh - internal service graphs
-                "capabilities",  # Eighth - depends on everything else including services
+                "ariel_search_modules",  # Sixth - ARIEL search modules
+                "ariel_enhancement_modules",  # Seventh - ARIEL enhancement modules
+                "ariel_pipelines",  # Eighth - ARIEL pipelines
+                "ariel_ingestion_adapters",  # Ninth - ARIEL ingestion adapters
+                "core_nodes",  # Tenth - infrastructure nodes
+                "services",  # Eleventh - internal service graphs
+                "capabilities",  # Twelfth - depends on everything else including services
                 "framework_prompt_providers",  # Last - imports applications that may need capabilities/context
             ],
         )

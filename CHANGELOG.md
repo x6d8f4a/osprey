@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database tools migrated from Jinja2 templates to native `osprey.services.channel_finder.tools`
   - Replaces generated `data/tools/` scripts with first-class CLI commands
   - LLM channel namer available as library via `osprey.services.channel_finder.tools.llm_channel_namer`
+- **ARIEL**: Add electronic logbook search capability
+  - Full-text and semantic search over facility logbooks (OLOG, custom sources)
+  - Web interface with dashboard, search, and entry browsing (`osprey ariel web`)
+  - CLI commands: `osprey ariel ingest`, `osprey ariel search`, `osprey ariel purge`
+  - Deployment support: PostgreSQL and web service templates for `osprey deploy up`
+  - Pluggable search modules and enhancement pipeline with registry-based discovery
 
 ### Changed
 - **Templates**: Simplify `control_assistant` template (~130 → ~40 files)
