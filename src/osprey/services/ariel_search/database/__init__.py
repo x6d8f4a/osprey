@@ -20,15 +20,23 @@ from osprey.services.ariel_search.database.migration import (
 if TYPE_CHECKING:
     from osprey.services.ariel_search.database.connection import (
         close_connection_pool as close_connection_pool,
+    )
+    from osprey.services.ariel_search.database.connection import (
         create_connection_pool as create_connection_pool,
     )
     from osprey.services.ariel_search.database.migrate import (
         KNOWN_MIGRATIONS as KNOWN_MIGRATIONS,
+    )
+    from osprey.services.ariel_search.database.migrate import (
         MigrationRunner as MigrationRunner,
+    )
+    from osprey.services.ariel_search.database.migrate import (
         run_migrations as run_migrations,
     )
     from osprey.services.ariel_search.database.repository import (
         ARIELRepository as ARIELRepository,
+    )
+    from osprey.services.ariel_search.database.repository import (
         requires_module as requires_module,
     )
 

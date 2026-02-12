@@ -4,13 +4,13 @@ Request and response models for the ARIEL search interface.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class SearchMode(str, Enum):
+class SearchMode(StrEnum):
     """Search mode options."""
 
     KEYWORD = "keyword"
