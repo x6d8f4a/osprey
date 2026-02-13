@@ -160,7 +160,7 @@ class ComponentLogger:
                             "phase": "Execution",
                         }
             except Exception:
-                pass  # Graceful degradation
+                logging.debug("Failed to extract step info from execution plan", exc_info=True)
 
         # Default: no step info
         return {
@@ -471,6 +471,7 @@ def _setup_rich_logging(level: int = logging.INFO) -> None:
 
     except Exception:
         # Secure defaults when configuration system is unavailable
+        logging.debug("Config system unavailable, using secure logging defaults", exc_info=True)
         rich_tracebacks = True
         show_traceback_locals = False
         show_full_paths = False
