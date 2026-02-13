@@ -31,6 +31,7 @@ from osprey.interfaces.tui.widgets.debug import DebugBlock
 from osprey.interfaces.tui.widgets.input import (
     ChatInput,
     CommandDropdown,
+    InfoBar,
     StatusPanel,
 )
 from osprey.interfaces.tui.widgets.log_viewer import LogViewer
@@ -73,6 +74,7 @@ __all__ = [
     "TodoList",
     "ExecutionStep",
     # Input widgets
+    "InfoBar",
     "StatusPanel",
     "CommandDropdown",
     # Welcome screen

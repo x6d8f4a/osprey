@@ -15,7 +15,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widgets import Header, TextArea
+from textual.widgets import TextArea
 
 from osprey.events import parse_event
 from osprey.graph import create_graph
@@ -29,6 +29,7 @@ from osprey.interfaces.tui.widgets import (
     CommandDropdown,
     CommandPalette,
     ExecutionStep,
+    InfoBar,
     PlanProgressBar,
     ProcessingBlock,
     StatusPanel,
@@ -44,19 +45,6 @@ logger = get_logger("tui")
 # Detect SSH session via environment variables
 _IS_SSH = bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_TTY"))
 
-# Detect terminal emulator (reuses pattern from artifacts.py)
-# Note: TERM_PROGRAM / ITERM_SESSION_ID may not be forwarded over SSH
-_TERM_PROGRAM = os.environ.get("TERM_PROGRAM", "").lower()
-_IS_ITERM = "iterm" in _TERM_PROGRAM or "ITERM_SESSION_ID" in os.environ
-
-
-def _ssh_subtitle() -> str:
-    """Build SSH header subtitle with terminal-appropriate selection hint."""
-    if not _IS_SSH:
-        return ""
-    drag_hint = "Option+drag to select" if _IS_ITERM else "Shift+drag to select"
-    return f"SSH \u00b7 {drag_hint} \u00b7 Ctrl+S select mode"
-
 
 class OspreyTUI(App):
     """Osprey Terminal User Interface.
@@ -65,7 +53,6 @@ class OspreyTUI(App):
     """
 
     TITLE = "Osprey"
-    SUB_TITLE = _ssh_subtitle()
 
     CSS_PATH = "styles.tcss"
 
@@ -137,20 +124,19 @@ class OspreyTUI(App):
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        # Show header bar in SSH mode with mouse workaround tips
-        if _IS_SSH:
-            yield Header(show_clock=False)
         # Welcome screen (shown initially)
         yield WelcomeScreen(version=self._get_version(), id="welcome-screen")
         # Chat screen (hidden initially)
         yield Vertical(
             ChatDisplay(id="chat-display"),
             CommandDropdown(id="command-dropdown"),
-            PlanProgressBar(id="plan-progress"),  # Floating todo progress bar
+            PlanProgressBar(id="plan-progress"),
             ChatInput(id="chat-input", placeholder="Type your message here..."),
             StatusPanel(id="status-panel"),
             id="main-content",
         )
+        # Bottom info bar — always visible (both welcome and chat)
+        yield InfoBar(is_ssh=_IS_SSH, id="info-bar")
 
     def action_request_quit(self) -> None:
         """Handle Ctrl+C - requires double press within 1.0s to quit."""
@@ -332,26 +318,39 @@ class OspreyTUI(App):
             from osprey.interfaces.tui.widgets.artifacts import ArtifactSection
 
             chat_display = self.query_one("#chat-display", ChatDisplay)
-            # Find the last ArtifactSection in the chat flow
             sections = list(chat_display.query(ArtifactSection))
             if sections:
                 last_section = sections[-1]
                 chat_display.scroll_to_widget(last_section)
             else:
-                self.notify("No artifacts available", severity="information")
+                info_bar = self._get_info_bar()
+                if info_bar:
+                    info_bar.show_temporary("No artifacts available")
         except Exception:
-            self.notify("No artifacts available", severity="information")
+            info_bar = self._get_info_bar()
+            if info_bar:
+                info_bar.show_temporary("No artifacts available")
 
     def action_copy_last_response(self) -> None:
         """Copy the last AI response to clipboard via OSC 52."""
+        info_bar = self._get_info_bar()
         if not self._last_response:
-            self.notify("No response to copy", severity="information")
+            if info_bar:
+                info_bar.show_temporary("No response to copy")
             return
-        # Use Textual's OSC 52 clipboard (works over SSH in iTerm2/most terminals)
+        # Use Textual's OSC 52 clipboard (works over SSH)
         self.copy_to_clipboard(self._last_response)
-        # Also try pyperclip for local sessions
+        # Also try native clipboard for local sessions
         self._copy_to_clipboard(self._last_response)
-        self.notify("Response copied to clipboard")
+        if info_bar:
+            info_bar.show_temporary("Response copied")
+
+    def _get_info_bar(self) -> InfoBar | None:
+        """Get the InfoBar widget."""
+        try:
+            return self.query_one("#info-bar", InfoBar)
+        except Exception:
+            return None
 
     def _write_terminal(self, data: str) -> None:
         """Write escape sequences directly to the terminal.
@@ -370,37 +369,18 @@ class OspreyTUI(App):
             self._write_terminal(
                 "\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l"
             )
-            # Update status bar
-            panel_id = "#welcome-status" if self._welcome_mode else "#status-panel"
-            try:
-                status = self.query_one(panel_id, StatusPanel)
-                status.set_tips(
-                    [
-                        ("SELECT MODE", ""),
-                        ("drag", "to select"),
-                        ("Cmd+C", "to copy"),
-                        ("Ctrl+S", "to exit"),
-                    ]
-                )
-            except Exception:
-                pass
-            self.notify("Selection mode ON \u2014 drag to select text, Ctrl+S to exit")
         else:
             # Re-enable mouse tracking
             self._write_terminal(
                 "\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h"
             )
-            # Restore status bar tips based on current focus
-            panel_id = "#welcome-status" if self._welcome_mode else "#status-panel"
-            try:
-                status = self.query_one(panel_id, StatusPanel)
-                if isinstance(self.focused, TextArea):
-                    status.set_tips(ChatInput.INPUT_TIPS)
-                else:
-                    status.set_tips(ChatInput.CHAT_TIPS)
-            except Exception:
-                pass
-            self.notify("Selection mode OFF \u2014 mouse tracking restored")
+        # Update InfoBar (no notification, no StatusPanel changes)
+        try:
+            self.query_one("#info-bar", InfoBar).set_selection_mode(
+                self._selection_mode
+            )
+        except Exception:
+            pass
 
     def _get_version(self) -> str:
         """Get the framework version."""
@@ -468,8 +448,11 @@ class OspreyTUI(App):
         # Hide main content initially (welcome screen is shown)
         self.query_one("#main-content").display = False
 
-        # Focus the welcome input field
+        # Focus the welcome input field (call_after_refresh ensures it sticks)
         self.query_one("#welcome-input", ChatInput).focus()
+        self.call_after_refresh(
+            lambda: self.query_one("#welcome-input", ChatInput).focus()
+        )
 
         # Note: QueueLogHandler removed as part of Phase 4 migration.
         # TUI now relies solely on typed events via LangGraph streaming.

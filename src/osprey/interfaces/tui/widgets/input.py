@@ -83,11 +83,21 @@ class ChatInput(TextArea):
         if status:
             status.set_tips(self.INPUT_TIPS)
 
+    # Tips shown on welcome screen when focus is lost (no chat to navigate)
+    WELCOME_BLUR_TIPS = [
+        ("Ctrl-L", "or"),
+        ("tab", "to focus input"),
+    ]
+
     def _on_blur(self, event: Blur) -> None:
-        """Show chat navigation tips when focus leaves input."""
+        """Show navigation tips when focus leaves input."""
         status = self._get_status_panel()
         if status:
-            status.set_tips(self.CHAT_TIPS)
+            # On welcome screen, show simplified refocus hint
+            if self.id == "welcome-input":
+                status.set_tips(self.WELCOME_BLUR_TIPS)
+            else:
+                status.set_tips(self.CHAT_TIPS)
 
     def _load_history(self) -> None:
         """Load history from file (prompt_toolkit FileHistory format)."""
@@ -649,3 +659,97 @@ class CommandDropdown(OptionList):
                 self.highlighted = 0  # Cycle to first
             else:
                 self.highlighted = self.highlighted + 1
+
+
+class InfoBar(Static):
+    """Bottom info bar showing environment, mode, and tips.
+
+    Always visible at the bottom of the window (1 line height).
+    SSH mode uses $warning background via CSS class.
+    """
+
+    COMPONENT_CLASSES: ClassVar[set[str]] = {
+        "info-bar--label",
+        "info-bar--value",
+    }
+
+    def __init__(self, is_ssh: bool = False, **kwargs):
+        """Initialize the info bar.
+
+        Args:
+            is_ssh: Whether the session is running over SSH.
+        """
+        super().__init__(**kwargs)
+        self._is_ssh = is_ssh
+        self._selection_mode = False
+        self._restore_timer = None
+
+    def on_mount(self) -> None:
+        """Apply SSH class and render initial content."""
+        if self._is_ssh:
+            self.add_class("info-bar--ssh")
+        self._update_content()
+
+    def set_selection_mode(self, enabled: bool) -> None:
+        """Update mode display (no notification, just update content)."""
+        self._selection_mode = enabled
+        self._update_content()
+
+    def show_temporary(self, msg: str, duration: float = 2.0) -> None:
+        """Show temporary message, then restore previous content."""
+        label_style = Style.from_styles(
+            self.get_component_styles("info-bar--label")
+        )
+        self.update(Content.assemble((msg, label_style)))
+        # Cancel any pending restore
+        if self._restore_timer is not None:
+            self._restore_timer.stop()
+        self._restore_timer = self.set_timer(duration, self._restore_content)
+
+    def _restore_content(self) -> None:
+        """Restore normal content after temporary message."""
+        self._restore_timer = None
+        self._update_content()
+
+    def _update_content(self) -> None:
+        """Render the info bar content based on current state."""
+        label_style = Style.from_styles(
+            self.get_component_styles("info-bar--label")
+        )
+        value_style = Style.from_styles(
+            self.get_component_styles("info-bar--value")
+        )
+
+        parts: list[tuple[str, Style]] = []
+        sep = (" \u00b7 ", value_style)  # " · "
+
+        if self._selection_mode:
+            parts.append(("SELECT MODE", label_style))
+            parts.append(sep)
+            parts.append(("drag", label_style))
+            parts.append((" to select", value_style))
+            parts.append(sep)
+            parts.append(("Cmd+C", label_style))
+            parts.append((" to copy", value_style))
+            parts.append(sep)
+            parts.append(("Ctrl+S", label_style))
+            parts.append((" exit", value_style))
+        elif self._is_ssh:
+            parts.append(("SSH", label_style))
+            parts.append(sep)
+            parts.append(("Shift+drag", label_style))
+            parts.append((" to select", value_style))
+            parts.append((" (", value_style))
+            parts.append(("Option+drag", label_style))
+            parts.append((" in iTerm)", value_style))
+            parts.append(sep)
+            parts.append(("Ctrl+S", label_style))
+            parts.append((" select mode", value_style))
+        else:
+            parts.append(("Ctrl+S", label_style))
+            parts.append((" select mode", value_style))
+            parts.append(sep)
+            parts.append(("Ctrl+Y", label_style))
+            parts.append((" copy response", value_style))
+
+        self.update(Content.assemble(*parts))

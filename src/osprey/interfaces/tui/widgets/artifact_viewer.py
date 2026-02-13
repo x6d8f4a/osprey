@@ -581,25 +581,23 @@ class ArtifactViewer(ModalScreen[None]):
             self._show_feedback("No path available")
             return
 
+        # OSC 52 — works over SSH (local terminal interprets it)
+        self.app.copy_to_clipboard(path)
+
+        # Also try native clipboard for local sessions (best effort)
         try:
             system = platform.system()
             if system == "Darwin":
-                subprocess.run(["pbcopy"], input=path.encode(), check=True)
+                subprocess.run(
+                    ["pbcopy"], input=path.encode(), check=True
+                )
             elif system == "Linux":
-                try:
-                    subprocess.run(
-                        ["xclip", "-selection", "clipboard"],
-                        input=path.encode(),
-                        check=True,
-                    )
-                except FileNotFoundError:
-                    subprocess.run(
-                        ["xsel", "--clipboard", "--input"],
-                        input=path.encode(),
-                        check=True,
-                    )
-            elif system == "Windows":
-                subprocess.run(["clip"], input=path.encode(), check=True)
-            self._show_feedback("Path copied to clipboard")
-        except Exception as e:
-            self._show_feedback(f"Failed to copy: {e}")
+                subprocess.run(
+                    ["xclip", "-selection", "clipboard"],
+                    input=path.encode(),
+                    check=True,
+                )
+        except Exception:
+            pass  # OSC 52 already handled it
+
+        self._show_feedback("Path copied to clipboard")
