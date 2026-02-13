@@ -50,9 +50,9 @@ class LogCapture(logging.Handler):
 
             # Add to buffer
             _log_buffer.append(formatted_entry)
-        except Exception as e:
-            # Don't let logging errors break the application
-            logger.debug("LogCapture.emit failed for record %s: %s", record.name, e)
+        except Exception:
+            # Silently suppress: logging inside a logging handler risks recursion
+            pass
 
 
 # Install the log capture handler

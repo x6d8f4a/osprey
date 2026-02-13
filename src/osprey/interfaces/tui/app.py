@@ -8,8 +8,6 @@ import logging
 import uuid
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from langgraph.checkpoint.memory import MemorySaver
 from textual import work
 from textual.app import App, ComposeResult
@@ -42,6 +40,9 @@ from osprey.interfaces.tui.widgets import (
 )
 from osprey.registry import get_registry, initialize_registry
 from osprey.utils.config import get_config_value, get_full_configuration
+from osprey.utils.logger import get_logger
+
+logger = get_logger("tui")
 
 
 class OspreyTUI(App):
