@@ -745,6 +745,9 @@ class InfoBar(Static):
             parts.append(sep)
             parts.append(("Ctrl+S", label_style))
             parts.append((" select mode", value_style))
+            parts.append(sep)
+            parts.append(("Ctrl+Y", label_style))
+            parts.append((" copy response", value_style))
         else:
             parts.append(("Ctrl+S", label_style))
             parts.append((" select mode", value_style))

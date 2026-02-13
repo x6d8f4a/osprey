@@ -5,9 +5,9 @@ Screen {
     scrollbar-size: 0 0;  /* Hide scrollbars, keep scroll functionality */
 }
 
-/* Info bar — bottom status bar (env, mode, tips) */
+/* Info bar — top status bar (env, mode, tips) */
 #info-bar {
-    dock: bottom;
+    dock: top;
     width: 100%;
     height: 1;
     padding: 0 1;
