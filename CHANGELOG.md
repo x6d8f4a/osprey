@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Capabilities**: Replace hardcoded year constraint with training-anchor prompt in time range parsing (#158)
+- **Dependencies/CI**: Move `psycopg[binary,pool]` from dev extra to core dependencies so ARIEL logbook search works without `pip install osprey[dev]`; fix macOS CI by bundling libpq via `[binary]`
+
 ## [0.11.0] - 2026-02-12
 
 ### Added
