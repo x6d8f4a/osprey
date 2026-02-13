@@ -624,12 +624,12 @@ class FrameworkRegistryProvider(RegistryConfigProvider):
                 ArielPipelineRegistration(
                     name="rag",
                     module_path="osprey.services.ariel_search.pipelines",
-                    description="Deterministic RAG pipeline with hybrid retrieval and RRF fusion",
+                    description="Retrieval-augmented generation with text embeddings, keyword search, and LLM summarization",
                 ),
                 ArielPipelineRegistration(
                     name="agent",
                     module_path="osprey.services.ariel_search.pipelines",
-                    description="Autonomous ReAct agent with multi-step reasoning",
+                    description="Autonomous ReAct agent with multi-step reasoning and all available search modules as tools",
                 ),
             ],
             # ARIEL ingestion adapters

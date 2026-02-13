@@ -158,6 +158,18 @@ async def semantic_search(
         source_system=source_system,
     )
 
+    if len(results) == 0:
+        try:
+            embedding_tables = await repository.get_embedding_tables()
+            all_empty = all(t.entry_count == 0 for t in embedding_tables)
+            if not embedding_tables or all_empty:
+                logger.warning(
+                    "Semantic search found 0 results: no embeddings exist. "
+                    "Run 'osprey ariel ingest' to generate embeddings."
+                )
+        except Exception:
+            pass  # Don't let diagnostic check break the search path
+
     logger.info(f"semantic_search: returning {len(results)} results")
     return results
 
@@ -237,7 +249,7 @@ def get_tool_descriptor() -> SearchToolDescriptor:
     return SearchToolDescriptor(
         name="semantic_search",
         description=(
-            "Find conceptually related entries using AI embeddings. "
+            "Find conceptually related entries using text embeddings. "
             "Use for queries describing concepts, situations, or events "
             "where exact words may not match."
         ),
