@@ -33,84 +33,127 @@ ARIEL is designed to be **facility-agnostic**. Pluggable ingestion adapters norm
             ollama serve &            # Start Ollama in the background
             ollama pull nomic-embed-text
 
-   .. note::
+   Ollama is optional. ARIEL degrades gracefully to keyword-only search
+   if Ollama or pgvector is unavailable. You can install them later and
+   re-run ``osprey ariel quickstart`` to enable semantic search.
 
-      Ollama is optional. ARIEL degrades gracefully to keyword-only search
-      if Ollama or pgvector is unavailable. You can install them later and
-      re-run ``osprey ariel quickstart`` to enable semantic search.
+   .. tab-set::
 
-   **1. Configure** --- add the ARIEL section to your ``config.yml`` and include the ``postgresql`` and ``ariel_web`` deployed services:
+      .. tab-item:: 1. Configure
 
-   .. code-block:: yaml
+         Add the ARIEL section to your ``config.yml`` and include the ``postgresql``
+         and ``ariel_web`` deployed services. If you created your project with
+         ``osprey init --template control_assistant``, this is already done --- skip
+         to Step 2.
 
-      # -- Deployed Services (add to existing list) --
-      deployed_services:
-        - jupyter
-        - postgresql          # Required for ARIEL
-        - ariel_web           # ARIEL web interface
+         .. code-block:: yaml
 
-      # -- Container Configuration --
-      services:
-        postgresql:
-          database: ariel
-          username: ariel
-          password: ariel
-          port_host: 5432
+            # -- Deployed Services (add to existing list) --
+            deployed_services:
+              - jupyter
+              - postgresql          # Required for ARIEL
+              - ariel_web           # ARIEL web interface
 
-        ariel_web:
-          path: ./services/ariel-web
-          port_host: 8085
+            # -- Container Configuration --
+            services:
+              postgresql:
+                database: ariel
+                username: ariel
+                password: ariel
+                port_host: 5432
 
-      # -- ARIEL Search Configuration --
-      ariel:
-        database:
-          uri: postgresql://ariel:ariel@localhost:5432/ariel
-        search_modules:
-          keyword:
-            enabled: true
-          semantic:
-            enabled: true        # Degrades gracefully if unavailable
-            provider: ollama
-            model: nomic-embed-text
-        pipelines:
-          rag:
-            enabled: true
-            retrieval_modules: [keyword, semantic]
-        enhancement_modules:
-          text_embedding:
-            enabled: true        # Degrades gracefully if unavailable
-            provider: ollama
-            models:
-              - name: nomic-embed-text
-                dimension: 768
-        reasoning:
-          provider: cborg
-          model_id: anthropic/claude-haiku
+              ariel_web:
+                path: ./services/ariel-web
+                port_host: 8085
 
-   **2. Deploy and ingest** --- start services, create tables, and load logbook data:
+            # -- ARIEL Search Configuration --
+            ariel:
+              database:
+                uri: postgresql://ariel:ariel@localhost:5432/ariel
+              search_modules:
+                keyword:
+                  enabled: true
+                semantic:
+                  enabled: true        # Degrades gracefully if unavailable
+                  provider: ollama
+                  model: nomic-embed-text
+              pipelines:
+                rag:
+                  enabled: true
+                  retrieval_modules: [keyword, semantic]
+                agent:
+                  enabled: true
+                  retrieval_modules: [keyword, semantic]
+              enhancement_modules:
+                text_embedding:
+                  enabled: true        # Degrades gracefully if unavailable
+                  provider: ollama
+                  models:
+                    - name: nomic-embed-text
+                      dimension: 768
+              reasoning:
+                provider: cborg
+                model_id: anthropic/claude-haiku
 
-   .. code-block:: bash
+      .. tab-item:: 2. Deploy
 
-      osprey deploy up            # Start PostgreSQL + ARIEL web
-      osprey ariel quickstart     # Migrate + ingest demo data
+         Two commands bring everything up. The first run pulls container images,
+         so it may take a few minutes depending on your internet connection and
+         how many services you have configured.
 
-   **3. Search** --- three ways to query the logbook:
+         Generate Docker Compose files from your ``config.yml``, pull the
+         container images (PostgreSQL, ARIEL web UI, and any other deployed
+         services), and start them in the background with networking and volume
+         mounts:
 
-   .. code-block:: bash
+         .. code-block:: bash
 
-      # Direct CLI search
-      osprey ariel search "What happened with the RF cavity?"
+            osprey deploy up
 
-   .. code-block:: bash
+         Once the containers are running, connect to PostgreSQL, run database
+         migrations (creates tables, indexes, and the ``pgvector`` extension if
+         available), then ingest the demo logbook data and generate embeddings:
 
-      # Through the Osprey agent (logbook_search capability is auto-registered)
-      osprey chat
-      >>> What does the logbook say about the last RF cavity trip?
+         .. code-block:: bash
 
-   .. code-block:: text
+            osprey ariel quickstart
 
-      # Web interface (already running from step 2)
-      Open http://localhost:8085 in your browser
+      .. tab-item:: 3. Search
+
+         Three ways to query the logbook. The web interface is the easiest way to
+         explore during development; the CLI and agent are better for scripting and
+         interactive sessions.
+
+         .. tab-set::
+
+            .. tab-item:: Web Interface
+               :selected:
+
+               Open the ARIEL web UI, which provides a direct interface to the
+               database and the full search service. Already running from Step 2.
+
+               .. code-block:: text
+
+                  Open http://localhost:8085 in your browser
+
+            .. tab-item:: CLI Search
+
+               Query the logbook service directly from the command line.
+
+               .. code-block:: bash
+
+                  osprey ariel search "What happened with the RF cavity?"
+
+            .. tab-item:: Osprey Chat
+
+               Ask the Osprey agent. The ``logbook_search`` capability connects
+               the main agent with the ARIEL search service, so it can combine
+               logbook results with other context.
+
+               .. code-block:: bash
+
+                  osprey chat
+                  >>> What does the logbook say about the last RF cavity trip?
 
 Learn More
 ==========
