@@ -1,4 +1,4 @@
-# Osprey Framework - Latest Release (v0.11.0)
+# Osprey Framework - Latest Release (v0.11.1)
 
 **Built-in Capabilities & ARIEL Logbook Search**
 
