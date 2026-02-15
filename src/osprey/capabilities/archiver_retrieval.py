@@ -25,7 +25,6 @@ Configuration:
     The capability code remains the same - just change the config!
 """
 
-import textwrap
 from datetime import datetime
 from typing import Any, ClassVar
 
