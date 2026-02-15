@@ -371,7 +371,7 @@ def _reactive_routing(state: AgentState, logger) -> str:
                     )
                     return "reactive_orchestrator"
 
-            # All other error severities (REPLANNING, RECLASSIFICATION, CRITICAL)
+            # Other error severities (REPLANNING, RECLASSIFICATION, CRITICAL)
             # route back to reactive orchestrator to decide the next action
             logger.error(
                 f"Reactive routing: {error_classification.severity.value} error in "
@@ -380,8 +380,8 @@ def _reactive_routing(state: AgentState, logger) -> str:
             return "reactive_orchestrator"
 
         # Fallback for unknown errors
-        logger.warning("Reactive routing: unknown error, routing to reactive_orchestrator")
-        return "reactive_orchestrator"
+        logger.warning("Reactive routing: unknown error, routing to error")
+        return "error"
 
     # ==== DIRECT RESPONSE GENERATED — skip to END ====
     if state.get("react_response_generated", False):

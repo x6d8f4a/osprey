@@ -94,7 +94,15 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
                 metadata={"technical_details": str(exc)},
             )
 
+        # Rate limit errors are retriable (with backoff handled by litellm)
         exc_str = str(exc).lower()
+        exc_type = type(exc).__name__.lower()
+        if "ratelimit" in exc_type or "rate_limit" in exc_type or "rate limit" in exc_str:
+            return ErrorClassification(
+                severity=ErrorSeverity.RETRIABLE,
+                user_message="LLM rate limit hit during reactive orchestration, retrying...",
+                metadata={"technical_details": str(exc)},
+            )
         if isinstance(exc, ValueError) and any(
             indicator in exc_str
             for indicator in ["validation error", "field required", "pydantic", "json", "parsing"]
