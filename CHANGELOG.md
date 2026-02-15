@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Prompts**: Add ReAct-specific system, planning, and tool prompt templates for orchestrator
 - **State**: Add `reactive_mode` flag and tool execution tracking to conversation state
 - **Config**: Add `orchestration_mode` setting to project and app config templates
+- **Infrastructure**: Add classifier-level dependency expansion for reactive orchestration
+  - Capabilities with unsatisfied `requires` automatically pull in their providers (e.g., selecting `channel_write` adds `channel_finding`)
+  - Transitive resolution ensures multi-hop dependency chains are fully expanded
+  - Reactive orchestrator auto-expands active capabilities at dispatch time as a safety net
+
+### Fixed
+- **Capabilities**: Remove redundant `found` field from `WriteOperationsOutput` schema — CBORG Haiku omits it from structured output, causing Pydantic validation failures
+- **Capabilities**: Clear approval state after approved `channel_write` completes to prevent reactive orchestrator from misinterpreting stale approval flags
 
 ## [0.11.1] - 2026-02-13
 

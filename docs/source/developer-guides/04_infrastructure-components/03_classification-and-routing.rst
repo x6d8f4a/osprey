@@ -120,6 +120,23 @@ Capability Selection Process
        elif result is True:
            active_capabilities.append(capability.name)
 
+**Step 3: Dependency Expansion**
+
+After LLM classification, the system automatically ensures that provider capabilities are included for any unsatisfied dependencies:
+
+.. code-block:: python
+
+   # After classification, expand dependencies transitively
+   active_capabilities = _expand_capability_dependencies(
+       active_capabilities, state, logger
+   )
+
+For each selected capability, the system checks its ``requires`` list. If a required context type is not already available in ``capability_context_data`` (from a previous turn), the capability that ``provides`` that type is automatically added to the active set. This expansion is transitive — added providers are themselves checked for their own dependencies.
+
+**Example:** Selecting ``channel_write`` (which requires ``CHANNEL_ADDRESSES``) automatically adds ``channel_finding`` (which provides ``CHANNEL_ADDRESSES``), unless ``CHANNEL_ADDRESSES`` is already present in the state from a prior turn.
+
+The reactive orchestrator also has a complementary safety net: if a capability's requirements are unresolved at dispatch time, the missing provider is auto-added to the active set and the LLM is prompted to call it first.
+
 The parallel classification system includes configurable concurrency limits to balance performance with API rate limits:
 
 .. code-block:: yaml

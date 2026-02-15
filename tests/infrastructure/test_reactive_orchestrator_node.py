@@ -20,6 +20,7 @@ from osprey.base.errors import (
 from osprey.infrastructure.reactive_orchestrator_node import (
     ReactiveOrchestratorNode,
     _build_chat_request,
+    _build_missing_requirements_response,
     _format_execution_history,
     _format_observation,
     _resolve_inputs,
@@ -1223,3 +1224,47 @@ class TestUnknownToolFeedback:
 
         assert mock_completion.call_count == 2
         assert result["planning_execution_plan"]["steps"][0]["capability"] == "channel_finding"
+
+
+class TestAutoExpandActiveCapabilities:
+    """Test _build_missing_requirements_response auto-expands active capabilities."""
+
+    def test_auto_expansion_adds_provider(self):
+        """Provider names from missing tuples are added to planning_active_capabilities."""
+        missing = [("CHANNEL_ADDRESSES", "channel_finding")]
+        state = {"planning_active_capabilities": ["channel_write", "respond"]}
+        logger = MagicMock()
+
+        result = _build_missing_requirements_response(
+            "channel_write", missing, [], 0, logger, state
+        )
+
+        assert "planning_active_capabilities" in result
+        assert "channel_finding" in result["planning_active_capabilities"]
+        assert "channel_write" in result["planning_active_capabilities"]
+        assert "respond" in result["planning_active_capabilities"]
+
+    def test_no_expansion_when_provider_already_active(self):
+        """No duplicate when provider is already in the active set."""
+        missing = [("CHANNEL_ADDRESSES", "channel_finding")]
+        state = {"planning_active_capabilities": ["channel_write", "channel_finding", "respond"]}
+        logger = MagicMock()
+
+        result = _build_missing_requirements_response(
+            "channel_write", missing, [], 0, logger, state
+        )
+
+        # No expansion needed — key should be absent from result
+        assert "planning_active_capabilities" not in result
+
+    def test_no_expansion_when_provider_is_none(self):
+        """When provider is None, the active set is unchanged."""
+        missing = [("UNKNOWN_TYPE", None)]
+        state = {"planning_active_capabilities": ["channel_write", "respond"]}
+        logger = MagicMock()
+
+        result = _build_missing_requirements_response(
+            "channel_write", missing, [], 0, logger, state
+        )
+
+        assert "planning_active_capabilities" not in result

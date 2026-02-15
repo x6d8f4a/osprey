@@ -414,7 +414,7 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
         missing = _check_unresolved_requirements(capability, inputs, active_caps)
         if missing:
             return _build_missing_requirements_response(
-                capability, missing, react_messages, react_step_count, logger
+                capability, missing, react_messages, react_step_count, logger, state
             )
 
         step_with_inputs = PlannedStep(
@@ -477,7 +477,7 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
         missing = _check_unresolved_requirements(capability, inputs, active_caps)
         if missing:
             return _build_missing_requirements_response(
-                capability, missing, react_messages, react_step_count, logger
+                capability, missing, react_messages, react_step_count, logger, state
             )
 
         step_with_inputs = PlannedStep(
@@ -744,12 +744,18 @@ def _check_unresolved_requirements(
     """Check if a capability's requirements are satisfied by the resolved inputs.
 
     Compares the capability's ``requires`` list against the resolved inputs to
-    identify missing context types.  For each missing type, looks up which active
-    capability ``provides`` it so the LLM can be told what to call first.
+    identify missing context types.  For each missing type, looks up which
+    registered capability ``provides`` it so the orchestrator can auto-expand
+    the active set and tell the LLM what to call first.
+
+    Searches **all** registered capabilities (not just active ones) so that
+    provider capabilities omitted by the classifier can be discovered and
+    activated automatically.
 
     :param capability_name: Name of the capability about to be dispatched
     :param resolved_inputs: Inputs returned by ``_resolve_inputs()``
-    :param active_capabilities: Currently active capability instances
+    :param active_capabilities: Currently active capability instances (unused but
+        kept for API consistency; the registry is searched instead)
     :return: List of ``(missing_context_type, provider_capability_name | None)`` tuples
     """
     registry = get_registry()
@@ -766,9 +772,9 @@ def _check_unresolved_requirements(
     for inp in resolved_inputs:
         resolved_types.update(inp.keys())
 
-    # Build a map: context_type -> providing capability name (from active set)
+    # Build a map: context_type -> providing capability name (from ALL registered)
     provider_map: dict[str, str] = {}
-    for cap in active_capabilities:
+    for cap in registry.get_all_capabilities():
         for provided_type in getattr(cap, "provides", []) or []:
             provider_map[provided_type] = getattr(cap, "name", "unknown")
 
@@ -843,6 +849,7 @@ def _build_missing_requirements_response(
     react_messages: list[dict],
     react_step_count: int,
     logger,
+    state: AgentState,
 ) -> dict[str, Any]:
     """Build a state update that feeds a dependency error back to the LLM.
 
@@ -850,11 +857,16 @@ def _build_missing_requirements_response(
     returns an observation explaining what's missing so the LLM can
     course-correct (e.g., call ``channel_finding`` before ``channel_write``).
 
+    As a safety net, any provider capabilities referenced in ``missing`` are
+    auto-added to ``planning_active_capabilities`` so the LLM can actually
+    call them on the next iteration.
+
     :param capability: Name of the capability that was attempted
     :param missing: List of ``(context_type, provider_name | None)`` tuples
     :param react_messages: Current react message history (mutated in-place)
     :param react_step_count: Current step count
     :param logger: Logger instance
+    :param state: Current agent state (for reading active capabilities)
     :return: State update dict that loops back to the orchestrator
     """
     parts = []
@@ -878,7 +890,16 @@ def _build_missing_requirements_response(
     )
     react_messages.append({"role": "observation", "content": observation})
 
-    return {
+    # Auto-expand active capabilities with providers for missing context types
+    active_set = set(state.get("planning_active_capabilities", []))
+    expanded = list(state.get("planning_active_capabilities", []))
+    for _context_type, provider in missing:
+        if provider and provider not in active_set:
+            expanded.append(provider)
+            active_set.add(provider)
+            logger.info(f"Auto-expanded active capabilities: added '{provider}'")
+
+    result: dict[str, Any] = {
         "react_messages": react_messages,
         "react_step_count": react_step_count + 1,
         "react_rejection_count": 0,
@@ -895,6 +916,11 @@ def _build_missing_requirements_response(
             capability=capability,
         ),
     }
+
+    if len(expanded) > len(state.get("planning_active_capabilities", [])):
+        result["planning_active_capabilities"] = expanded
+
+    return result
 
 
 def _format_execution_history(state: AgentState) -> str:
