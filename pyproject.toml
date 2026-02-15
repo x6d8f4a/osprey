@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "osprey-framework"
-version = "0.11.0"
+version = "0.11.1"
 description = "An open-source, domain-agnostic, capability-based architecture for building intelligent agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -70,7 +70,7 @@ dependencies = [
     "ollama>=0.5.1",
 
     # Advanced code generation
-    "claude-agent-sdk>=0.1.26",  # Claude Code SDK - 0.1.25 has CBORG-incompatible beta headers
+    "claude-agent-sdk==0.1.26",  # Claude Code SDK - pinned; 0.1.27+ bundled CLI breaks CBORG API
 
     # Data processing - required for archiver connectors and data handling
     # Archiver connectors return pandas DataFrames for time-series data
@@ -112,6 +112,17 @@ dependencies = [
 
     # Control system simulation (soft IOC generation)
     "caproto",
+
+    # PostgreSQL (required for native logbook_search capability and checkpointing)
+    "psycopg[binary,pool]>=3.1.0,<4.0.0",
+    "psycopg-pool>=3.1.0,<4.0.0",
+
+    # ARIEL Web Interface (FastAPI server for web-based logbook search)
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+
+    # ARIEL proxy support for HTTP ingestion through SOCKS tunnels
+    "aiohttp-socks>=0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -130,7 +141,6 @@ docs = [
 
 # Development and testing
 dev = [
-    "build>=1.0.0",  # Required for --dev mode wheel building (osprey deploy up --dev)
     "pytest",
     "pytest-asyncio",
     "pytest-cov",  # Code coverage reporting
@@ -140,18 +150,9 @@ dev = [
     "pre-commit",
     "ruff",
     "pyepics",  # EPICS connector support for testing
+    "build",  # Required for 'osprey deploy up --dev' to build local wheel
     "testcontainers[postgres]>=4.0.0",  # Real PostgreSQL for integration tests
     "docker>=7.0.0",  # Docker SDK for testcontainers availability check
-    "fastapi>=0.109.0",  # For ARIEL Web API tests
-    "psycopg[pool]>=3.1.0,<4.0.0",  # ARIEL search integration tests
-    "psycopg-pool>=3.1.0,<4.0.0",  # ARIEL search integration tests
-]
-
-# Web interfaces (Debug UI + ARIEL Web)
-web = [
-    "fastapi>=0.109.0",
-    "uvicorn[standard]>=0.27.0",
-    "websockets>=13.0",
 ]
 
 # Storage backends (databases, PostgreSQL checkpointing, vector/memory storage)
@@ -171,25 +172,9 @@ storage = [
     "vecs>=0.4.5",
 ]
 
-# ARIEL (Agentic Retrieval Interface for Electronic Logbooks)
-# See _ISSUES/MAJOR/ARIEL/ for specification
-ariel = [
-    # PostgreSQL with pgvector for vector similarity search
-    "psycopg[pool]>=3.1.0,<4.0.0",
-    "psycopg-pool>=3.1.0,<4.0.0",
-    # LangGraph for ReAct agent
-    "langgraph>=0.5.2",
-    "langchain-openai>=0.3.0",
-]
-
-# ARIEL proxy support for HTTP ingestion through SOCKS tunnels
-ariel-proxy = [
-    "aiohttp-socks>=0.8.0",
-]
-
 # All optional dependencies for complete installation
 all = [
-    "osprey-framework[docs,dev,storage,ariel,web]"
+    "osprey-framework[docs,dev,storage]"
 ]
 
 [project.urls]
@@ -278,7 +263,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --tb=short"
+addopts = "-ra -v --tb=short --strict-markers --color=yes"
 testpaths = [
     "tests",
     "src/applications/*/tests"
@@ -290,6 +275,24 @@ python_files = [
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+# WARNING: E2E tests MUST be run with 'pytest tests/e2e/' NOT 'pytest -m e2e'
+# See tests/e2e/README.md for details
+markers = [
+    "unit: Unit tests (mocked, no external dependencies)",
+    "integration: Integration tests (real external services)",
+    "e2e: End-to-end workflow tests - WARNING: Use 'pytest tests/e2e/' not '-m e2e' (see tests/e2e/README.md)",
+    "e2e_smoke: Quick smoke tests for critical workflows",
+    "e2e_tutorial: Tutorial workflow validation tests",
+    "slow: Tests that take significant time",
+    "requires_api: Tests that require API credentials",
+    "requires_openai: Tests that require OpenAI API key",
+    "requires_anthropic: Tests that require Anthropic API key",
+    "requires_google: Tests that require Google API key",
+    "requires_cborg: Tests that require CBORG API key",
+    "requires_ollama: Tests that require local Ollama service",
+    "asyncio: Async test marker",
+    "vcr: VCR cassette recording/replay marker",
+]
 
 # Ruff configuration for modern Python linting
 [tool.ruff]
