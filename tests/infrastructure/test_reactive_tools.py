@@ -137,6 +137,8 @@ class TestBuildCapabilityTools:
         cap = MagicMock()
         cap.name = "channel_finding"
         cap.description = "Find EPICS channels"
+        cap.requires = []
+        cap.provides = ["CHANNEL_ADDRESSES"]
 
         tools = build_capability_tools([cap])
 
@@ -149,14 +151,18 @@ class TestBuildCapabilityTools:
         assert "context_key" in fn["parameters"]["required"]
 
     def test_build_capability_tools_uses_capability_description(self):
-        """Tool description matches capability's description."""
+        """Tool description enriched with provides/requires info."""
         cap = MagicMock()
         cap.name = "channel_finding"
         cap.description = "Find EPICS channels by name or pattern"
+        cap.requires = []
+        cap.provides = ["CHANNEL_ADDRESSES"]
 
         tools = build_capability_tools([cap])
 
-        assert tools[0]["function"]["description"] == "Find EPICS channels by name or pattern"
+        desc = tools[0]["function"]["description"]
+        assert desc.startswith("Find EPICS channels by name or pattern")
+        assert "Provides: CHANNEL_ADDRESSES" in desc
 
 
 class TestExecuteLightweightTool:

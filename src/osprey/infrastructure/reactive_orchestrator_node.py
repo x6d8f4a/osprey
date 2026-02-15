@@ -408,6 +408,15 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
 
         # Validate and resolve inputs
         inputs = _resolve_inputs(capability, state)
+
+        # Pre-dispatch gate: check for unresolved requirements
+        active_caps = _get_active_capabilities(state)
+        missing = _check_unresolved_requirements(capability, inputs, active_caps)
+        if missing:
+            return _build_missing_requirements_response(
+                capability, missing, react_messages, react_step_count, logger
+            )
+
         step_with_inputs = PlannedStep(
             context_key=context_key,
             capability=capability,
@@ -462,6 +471,15 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
                 logger,
             )
         inputs = _resolve_inputs(capability, state)
+
+        # Pre-dispatch gate: check for unresolved requirements
+        active_caps = _get_active_capabilities(state)
+        missing = _check_unresolved_requirements(capability, inputs, active_caps)
+        if missing:
+            return _build_missing_requirements_response(
+                capability, missing, react_messages, react_step_count, logger
+            )
+
         step_with_inputs = PlannedStep(
             context_key=step.get("context_key", capability),
             capability=capability,
@@ -718,6 +736,51 @@ class ReactiveOrchestratorNode(BaseInfrastructureNode):
 # =============================================================================
 
 
+def _check_unresolved_requirements(
+    capability_name: str,
+    resolved_inputs: list[dict[str, str]],
+    active_capabilities: list,
+) -> list[tuple[str, str | None]]:
+    """Check if a capability's requirements are satisfied by the resolved inputs.
+
+    Compares the capability's ``requires`` list against the resolved inputs to
+    identify missing context types.  For each missing type, looks up which active
+    capability ``provides`` it so the LLM can be told what to call first.
+
+    :param capability_name: Name of the capability about to be dispatched
+    :param resolved_inputs: Inputs returned by ``_resolve_inputs()``
+    :param active_capabilities: Currently active capability instances
+    :return: List of ``(missing_context_type, provider_capability_name | None)`` tuples
+    """
+    registry = get_registry()
+    cap_instance = registry.get_capability(capability_name)
+    if not cap_instance:
+        return []
+
+    requires = getattr(cap_instance, "requires", []) or []
+    if not requires:
+        return []
+
+    # Collect context types that were actually resolved
+    resolved_types: set[str] = set()
+    for inp in resolved_inputs:
+        resolved_types.update(inp.keys())
+
+    # Build a map: context_type -> providing capability name (from active set)
+    provider_map: dict[str, str] = {}
+    for cap in active_capabilities:
+        for provided_type in getattr(cap, "provides", []) or []:
+            provider_map[provided_type] = getattr(cap, "name", "unknown")
+
+    missing: list[tuple[str, str | None]] = []
+    for req in requires:
+        context_type = req[0] if isinstance(req, tuple) else req
+        if context_type not in resolved_types:
+            missing.append((context_type, provider_map.get(context_type)))
+
+    return missing
+
+
 def _resolve_inputs(capability_name: str | None, state: AgentState) -> list[dict[str, str]]:
     """Auto-resolve inputs for a capability based on its requires and available context.
 
@@ -758,6 +821,80 @@ def _resolve_inputs(capability_name: str | None, state: AgentState) -> list[dict
             inputs.append({context_type: latest_key})
 
     return inputs
+
+
+def _get_active_capabilities(state: AgentState) -> list:
+    """Reconstruct the active capability instances from state.
+
+    :param state: Current agent state
+    :return: List of capability instances
+    """
+    registry = get_registry()
+    return [
+        cap
+        for name in state.get("planning_active_capabilities", [])
+        if (cap := registry.get_capability(name)) is not None
+    ]
+
+
+def _build_missing_requirements_response(
+    capability: str,
+    missing: list[tuple[str, str | None]],
+    react_messages: list[dict],
+    react_step_count: int,
+    logger,
+) -> dict[str, Any]:
+    """Build a state update that feeds a dependency error back to the LLM.
+
+    Instead of dispatching a capability whose requirements aren't met, this
+    returns an observation explaining what's missing so the LLM can
+    course-correct (e.g., call ``channel_finding`` before ``channel_write``).
+
+    :param capability: Name of the capability that was attempted
+    :param missing: List of ``(context_type, provider_name | None)`` tuples
+    :param react_messages: Current react message history (mutated in-place)
+    :param react_step_count: Current step count
+    :param logger: Logger instance
+    :return: State update dict that loops back to the orchestrator
+    """
+    parts = []
+    for context_type, provider in missing:
+        if provider:
+            parts.append(
+                f"Cannot execute {capability}: requires {context_type} context "
+                f"(produced by {provider}). Call {provider} first."
+            )
+        else:
+            parts.append(
+                f"Cannot execute {capability}: requires {context_type} context "
+                f"but no active capability provides it."
+            )
+    observation = " ".join(parts)
+
+    logger.warning(f"Pre-dispatch gate blocked {capability}: {observation}")
+
+    react_messages.append(
+        {"role": "assistant", "content": f"Action: {capability} (blocked — missing dependencies)"}
+    )
+    react_messages.append({"role": "observation", "content": observation})
+
+    return {
+        "react_messages": react_messages,
+        "react_step_count": react_step_count + 1,
+        "react_rejection_count": 0,
+        "control_has_error": False,
+        "control_error_info": None,
+        "control_last_error": None,
+        "control_retry_count": 0,
+        "control_current_step_retry_count": 0,
+        **create_status_update(
+            message=f"Reactive step {react_step_count + 1}: {capability} blocked (missing deps)",
+            progress=0.5,
+            complete=False,
+            node="reactive_orchestrator",
+            capability=capability,
+        ),
+    }
 
 
 def _format_execution_history(state: AgentState) -> str:

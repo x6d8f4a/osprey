@@ -99,10 +99,35 @@ def build_capability_tools(active_capabilities: list) -> list[dict]:
     :param active_capabilities: List of capability instances from the registry
     :return: List of OpenAI-format tool definitions
     """
+    # Build a map: context_type -> providing capability name
+    provider_map: dict[str, str] = {}
+    for cap in active_capabilities:
+        for provided_type in getattr(cap, "provides", []) or []:
+            provider_map[provided_type] = getattr(cap, "name", "unknown")
+
     tools = []
     for cap in active_capabilities:
         name = getattr(cap, "name", "unknown")
         description = getattr(cap, "description", "")
+
+        # Enrich description with dependency info
+        requires = getattr(cap, "requires", []) or []
+        provides = getattr(cap, "provides", []) or []
+        dep_parts: list[str] = []
+        if requires:
+            req_items = []
+            for req in requires:
+                ctx_type = req[0] if isinstance(req, tuple) else req
+                provider = provider_map.get(ctx_type)
+                if provider:
+                    req_items.append(f"{ctx_type} (from {provider})")
+                else:
+                    req_items.append(ctx_type)
+            dep_parts.append(f"Requires: {', '.join(req_items)}.")
+        if provides:
+            dep_parts.append(f"Provides: {', '.join(provides)}.")
+        if dep_parts:
+            description = f"{description} {' '.join(dep_parts)}"
 
         tools.append(
             {
