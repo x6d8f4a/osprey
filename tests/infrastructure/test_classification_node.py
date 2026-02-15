@@ -336,12 +336,8 @@ class TestExpandCapabilityDependencies:
         state = {"capability_context_data": {}}
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
-            result = _expand_capability_dependencies(
-                ["channel_write", "respond"], state, logger
-            )
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
+            result = _expand_capability_dependencies(["channel_write", "respond"], state, logger)
 
         assert "channel_finding" in result
         assert "channel_write" in result
@@ -355,15 +351,11 @@ class TestExpandCapabilityDependencies:
         ]
         registry = _mock_registry_for_expansion(caps)
         state = {
-            "capability_context_data": {
-                "CHANNEL_ADDRESSES": {"beam_channels": {"pvs": ["SR:C01"]}}
-            }
+            "capability_context_data": {"CHANNEL_ADDRESSES": {"beam_channels": {"pvs": ["SR:C01"]}}}
         }
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
             result = _expand_capability_dependencies(["channel_write"], state, logger)
 
         assert result == ["channel_write"]
@@ -379,9 +371,7 @@ class TestExpandCapabilityDependencies:
         state = {"capability_context_data": {}}
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
             result = _expand_capability_dependencies(["cap_c"], state, logger)
 
         assert set(result) == {"cap_c", "cap_b", "cap_a"}
@@ -393,9 +383,7 @@ class TestExpandCapabilityDependencies:
         state = {"capability_context_data": {}}
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
             result = _expand_capability_dependencies(["respond"], state, logger)
 
         assert result == ["respond"]
@@ -410,9 +398,7 @@ class TestExpandCapabilityDependencies:
         state = {"capability_context_data": {}}
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
             result = _expand_capability_dependencies(
                 ["channel_write", "channel_finding"], state, logger
             )
@@ -428,9 +414,7 @@ class TestExpandCapabilityDependencies:
         state = {"capability_context_data": {}}
         logger = MagicMock()
 
-        with patch(
-            "osprey.infrastructure.classification_node.get_registry", return_value=registry
-        ):
+        with patch("osprey.infrastructure.classification_node.get_registry", return_value=registry):
             result = _expand_capability_dependencies(["channel_write"], state, logger)
 
         assert result == ["channel_write"]
