@@ -130,9 +130,7 @@ class OspreyTUI(App):
         from textual.keys import format_key
 
         key = format_key(key)
-        tokens = [m.title() for m in modifiers] + [
-            key.upper() if len(key) == 1 else key
-        ]
+        tokens = [m.title() for m in modifiers] + [key.upper() if len(key) == 1 else key]
         return "+".join(tokens)
 
     def compose(self) -> ComposeResult:
@@ -383,19 +381,13 @@ class OspreyTUI(App):
         self._selection_mode = not self._selection_mode
         if self._selection_mode:
             # Disable mouse tracking so the terminal handles selection natively
-            self._write_terminal(
-                "\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l"
-            )
+            self._write_terminal("\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l")
         else:
             # Re-enable mouse tracking
-            self._write_terminal(
-                "\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h"
-            )
+            self._write_terminal("\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h")
         # Update InfoBar (no notification, no StatusPanel changes)
         try:
-            self.query_one("#info-bar", InfoBar).set_selection_mode(
-                self._selection_mode
-            )
+            self.query_one("#info-bar", InfoBar).set_selection_mode(self._selection_mode)
         except Exception:
             pass
 
@@ -467,9 +459,7 @@ class OspreyTUI(App):
 
         # Focus the welcome input field (call_after_refresh ensures it sticks)
         self.query_one("#welcome-input", ChatInput).focus()
-        self.call_after_refresh(
-            lambda: self.query_one("#welcome-input", ChatInput).focus()
-        )
+        self.call_after_refresh(lambda: self.query_one("#welcome-input", ChatInput).focus())
 
         # Note: QueueLogHandler removed as part of Phase 4 migration.
         # TUI now relies solely on typed events via LangGraph streaming.

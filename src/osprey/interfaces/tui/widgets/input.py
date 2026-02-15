@@ -402,12 +402,8 @@ class StatusPanel(Static):
         Args:
             parts: List of (text, style) tuples where style is "cmd" or "desc".
         """
-        cmd_style = Style.from_styles(
-            self.get_component_styles("status-panel--command")
-        )
-        desc_style = Style.from_styles(
-            self.get_component_styles("status-panel--description")
-        )
+        cmd_style = Style.from_styles(self.get_component_styles("status-panel--command"))
+        desc_style = Style.from_styles(self.get_component_styles("status-panel--description"))
 
         styled_parts = []
         for text, style in parts:
@@ -474,9 +470,7 @@ class CommandDropdown(OptionList):
         super().__init__(**kwargs)
         self._visible = False
         self._mode = "commands"  # "commands" or "options"
-        self._pending_command: str | None = (
-            None  # e.g., "/planning" when showing options
-        )
+        self._pending_command: str | None = None  # e.g., "/planning" when showing options
         self._pending_options: list[str] = []  # ["on", "off"] for the pending command
 
     def on_mount(self) -> None:
@@ -540,9 +534,7 @@ class CommandDropdown(OptionList):
 
         if matches:
             # Get styles from CSS
-            cmd_style = Style.from_styles(
-                self.get_component_styles("command-dropdown--command")
-            )
+            cmd_style = Style.from_styles(self.get_component_styles("command-dropdown--command"))
             desc_style = Style.from_styles(
                 self.get_component_styles("command-dropdown--description")
             )

@@ -588,9 +588,7 @@ class ArtifactViewer(ModalScreen[None]):
         try:
             system = platform.system()
             if system == "Darwin":
-                subprocess.run(
-                    ["pbcopy"], input=path.encode(), check=True
-                )
+                subprocess.run(["pbcopy"], input=path.encode(), check=True)
             elif system == "Linux":
                 subprocess.run(
                     ["xclip", "-selection", "clipboard"],
