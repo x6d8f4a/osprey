@@ -260,6 +260,7 @@ class E2EProject:
         except Exception as e:
             error = f"{type(e).__name__}: {str(e)}"
             response_text = f"ERROR: {error}"
+            final_state = None
             if self.verbose:
                 print(f"  ❌ Error: {error}")
 
