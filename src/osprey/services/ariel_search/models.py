@@ -7,7 +7,6 @@ This module defines the core data models for ARIEL search service:
 - SearchMode: Search mode enumeration
 - Supporting models for health checks, embedding tables, etc.
 
-See 04_OSPREY_INTEGRATION.md Sections 4.1-4.5 for full specification.
 """
 
 from dataclasses import dataclass, field
@@ -33,11 +32,10 @@ class AttachmentInfo(TypedDict):
 class EnhancedLogbookEntry(TypedDict):
     """ARIEL's enriched logbook entry - the core data model.
 
-    Core fields are always present (created by core_migration.py).
+    Core fields are always present.
     Enhancement fields are added by enabled enhancement modules during ingestion.
     """
 
-    # === CORE FIELDS (always present) ===
     entry_id: str  # Unique identifier from source system (PRIMARY KEY)
     source_system: str  # e.g., "ALS eLog", "JLab Logbook"
     timestamp: datetime  # Entry creation time in source system
@@ -48,13 +46,9 @@ class EnhancedLogbookEntry(TypedDict):
     created_at: datetime  # When ingested into ARIEL
     updated_at: datetime  # Last modification in ARIEL
 
-    # === ENHANCEMENT FIELDS (optional, added by modules) ===
-    # Added by semantic_processor if enabled
-    summary: NotRequired[str | None]  # AI-generated summary (V2)
-    keywords: NotRequired[list[str]]  # Extracted keywords
-
-    # Added by core migration for tracking
-    enhancement_status: NotRequired[dict[str, Any]]  # Per-module status tracking
+    summary: NotRequired[str | None]
+    keywords: NotRequired[list[str]]
+    enhancement_status: NotRequired[dict[str, Any]]
 
 
 def enhanced_entry_from_row(row: Any) -> EnhancedLogbookEntry:
@@ -68,14 +62,12 @@ def enhanced_entry_from_row(row: Any) -> EnhancedLogbookEntry:
         EnhancedLogbookEntry with all fields populated.
         Enhancement fields are included only if present in the row.
     """
-    # psycopg3 Row objects support dict() conversion
     row_dict = dict(row) if hasattr(row, "keys") else row
 
-    # Build entry with core fields (always present)
     entry: EnhancedLogbookEntry = {
         "entry_id": row_dict["entry_id"],
         "source_system": row_dict["source_system"],
-        "timestamp": row_dict["timestamp"],  # psycopg3 handles datetime conversion
+        "timestamp": row_dict["timestamp"],
         "author": row_dict.get("author", ""),
         "raw_text": row_dict["raw_text"],
         "attachments": row_dict.get("attachments", []),
@@ -84,7 +76,6 @@ def enhanced_entry_from_row(row: Any) -> EnhancedLogbookEntry:
         "updated_at": row_dict["updated_at"],
     }
 
-    # Add enhancement fields if present (NotRequired fields)
     if row_dict.get("summary") is not None:
         entry["summary"] = row_dict["summary"]
     if row_dict.get("keywords") is not None:
@@ -370,21 +361,20 @@ class MetadataSchema(TypedDict, total=False):
     """Unified metadata schema for cross-facility standardization.
 
     All fields are optional to accommodate different facilities.
-    See 01_DATA_LAYER.md Section 5.9 for full specification.
     """
 
-    # ALS-specific
+    # ALS
     logbook: str | None
     tag: str | None
     shift: str | None
     activity_type: str | None
 
-    # JLab-specific
+    # JLab
     logbook_name: str | None
     entry_type: str | None
     references: list[str] | None
 
-    # ORNL-specific
+    # ORNL
     event_time: str | None  # When the event occurred (vs entry_time)
     facility_section: str | None
 
@@ -409,11 +399,8 @@ def resolve_time_range(
     Returns:
         Tuple of (start_date, end_date), either or both may be None
     """
-    # Explicit tool params override request context
     if tool_start is not None or tool_end is not None:
         return (tool_start, tool_end)
-    # Fall back to request context
     if request.time_range:
         return request.time_range
-    # No filtering
     return (None, None)

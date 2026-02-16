@@ -40,19 +40,15 @@ if TYPE_CHECKING:
         requires_module as requires_module,
     )
 
-# Lazy imports for database-dependent modules
 __all__ = [
-    # Connection (lazy)
     "close_connection_pool",
     "create_connection_pool",
-    # Migrations
     "BaseMigration",
     "CoreMigration",
     "KNOWN_MIGRATIONS",
     "MigrationRunner",
     "model_to_table_name",
     "run_migrations",
-    # Repository
     "ARIELRepository",
     "requires_module",
 ]

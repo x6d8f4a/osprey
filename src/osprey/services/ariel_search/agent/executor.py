@@ -6,8 +6,6 @@ answers from multiple tool invocations.
 
 Search tools are auto-discovered from the Osprey registry via
 SearchToolDescriptor — adding a new search module requires zero changes here.
-
-See 03_AGENTIC_REASONING.md for specification.
 """
 
 from __future__ import annotations
@@ -45,8 +43,6 @@ if TYPE_CHECKING:
 logger = get_logger("ariel")
 
 
-# === System Prompt ===
-
 AGENT_SYSTEM_PROMPT = """You are ARIEL, an AI assistant for searching and analyzing facility logbook entries.
 
 Your purpose is to help users find relevant information in the electronic logbook system.
@@ -68,9 +64,6 @@ Your purpose is to help users find relevant information in the electronic logboo
 """
 
 
-# === Agent Result ===
-
-
 @dataclass(frozen=True)
 class AgentResult:
     """Result from agent execution.
@@ -90,9 +83,6 @@ class AgentResult:
     reasoning: str = ""
     diagnostics: tuple[SearchDiagnostic, ...] = field(default_factory=tuple)
     pipeline_details: PipelineDetails | None = None
-
-
-# === Agent Executor ===
 
 
 class AgentExecutor:
@@ -230,7 +220,6 @@ class AgentExecutor:
                 return time_range
             return (None, None)
 
-        # Capture descriptor in closure
         _execute = descriptor.execute
         _format = descriptor.format_result
         _needs_embedder = descriptor.needs_embedder
@@ -338,7 +327,6 @@ class AgentExecutor:
 
             result = await self._run_agent(query, tools)
 
-            # Deduplicate collected entry IDs (preserving order) and fetch full entries
             unique_ids = list(dict.fromkeys(collected_ids))
             entries: list[dict[str, Any]] = []
             if unique_ids:
@@ -433,28 +421,24 @@ class AgentExecutor:
         tool_name_to_mode = {d.name: d.search_mode for d in descriptors}
         messages = result.get("messages", [])
 
-        # Extract the final answer from the last AI message
         answer = None
         for msg in reversed(messages):
             if hasattr(msg, "content") and msg.type == "ai":
                 answer = msg.content
                 break
 
-        # Detect which retrieved entry IDs appear in the answer text
         sources: list[str] = []
         if answer and entries:
             sources = [
                 e["entry_id"] for e in entries if e.get("entry_id") and e["entry_id"] in answer
             ]
 
-        # Determine which search modes were used from tool calls
         search_modes_used: list[SearchMode] = []
         tool_invocations: list[AgentToolInvocation] = []
         steps: list[AgentStep] = []
         tool_call_order = 0
         step_order = 0
 
-        # Build a map of tool_call_id -> tool_name for result backfill
         call_id_to_name: dict[str, str] = {}
 
         for msg in messages:
@@ -475,10 +459,8 @@ class AgentExecutor:
                 content = getattr(msg, "content", "")
                 tool_calls = getattr(msg, "tool_calls", None) or []
 
-                # AI reasoning (non-empty content before/without tool calls)
                 if content and isinstance(content, str):
                     if not tool_calls:
-                        # Final answer or reasoning without tools
                         steps.append(
                             AgentStep(
                                 step_type="final_answer" if msg is messages[-1] else "reasoning",
@@ -531,7 +513,6 @@ class AgentExecutor:
                 t_name = call_id_to_name.get(t_id)
                 summary = str(content)[:200]
 
-                # Backfill result_summary on the matching invocation
                 for i, inv in enumerate(tool_invocations):
                     if inv.tool_name == t_name and inv.result_summary == "":
                         tool_invocations[i] = AgentToolInvocation(
@@ -553,7 +534,6 @@ class AgentExecutor:
                 step_order += 1
 
             else:
-                # Fallback: check for tool_calls on untyped messages
                 tool_calls = getattr(msg, "tool_calls", None) or []
                 for tc in tool_calls:
                     t_name = tc.get("name", "unknown")
@@ -583,7 +563,6 @@ class AgentExecutor:
                     if mode is not None and mode not in search_modes_used:
                         search_modes_used.append(mode)
 
-        # Build step summary
         tool_names = [inv.tool_name for inv in tool_invocations]
         unique_tools = list(dict.fromkeys(tool_names))
         if tool_invocations:

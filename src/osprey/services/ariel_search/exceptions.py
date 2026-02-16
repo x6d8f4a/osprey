@@ -4,7 +4,6 @@ This module defines the exception hierarchy for ARIEL search service errors.
 All exceptions inherit from ARIELException and are categorized by error type
 to enable appropriate recovery strategies.
 
-See 04_OSPREY_INTEGRATION.md Sections 2.1-2.2 for full specification.
 """
 
 from enum import Enum
@@ -63,8 +62,6 @@ class ARIELException(Exception):
         return self.category in (ErrorCategory.DATABASE, ErrorCategory.EMBEDDING)
 
 
-# === DATABASE category (is_retriable=True) ===
-
 
 class DatabaseConnectionError(ARIELException):
     """Database connection failure.
@@ -117,8 +114,6 @@ class DatabaseQueryError(ARIELException):
         super().__init__(message, ErrorCategory.DATABASE, details)
 
 
-# === EMBEDDING category (is_retriable=True) ===
-
 
 class EmbeddingGenerationError(ARIELException):
     """Embedding generation failure.
@@ -150,8 +145,6 @@ class EmbeddingGenerationError(ARIELException):
         self.input_text = input_text[:100] if input_text and len(input_text) > 100 else input_text
 
 
-# === SEARCH category (is_retriable=False) ===
-
 
 class SearchExecutionError(ARIELException):
     """Search execution failure.
@@ -181,8 +174,6 @@ class SearchExecutionError(ARIELException):
         self.search_mode = search_mode
         self.query = query
 
-
-# === INGESTION category (is_retriable=False) ===
 
 
 class IngestionError(ARIELException):
@@ -244,8 +235,6 @@ class AdapterNotFoundError(ARIELException):
         self.available_adapters = available_adapters or []
 
 
-# === CONFIGURATION category (is_retriable=False) ===
-
 
 class ConfigurationError(ARIELException):
     """Invalid configuration.
@@ -296,8 +285,6 @@ class ModuleNotEnabledError(ARIELException):
         super().__init__(message, ErrorCategory.CONFIGURATION, details)
         self.module_name = module_name
 
-
-# === TIMEOUT category (is_retriable=False) ===
 
 
 class SearchTimeoutError(ARIELException):

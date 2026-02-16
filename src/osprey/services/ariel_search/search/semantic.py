@@ -1,8 +1,6 @@
 """ARIEL semantic search module.
 
 This module provides embedding-based similarity search using pgvector.
-
-See 02_SEARCH_MODULES.md Section 4 for specification.
 """
 
 from __future__ import annotations
@@ -24,7 +22,6 @@ if TYPE_CHECKING:
 
 logger = get_logger("ariel")
 
-# Default similarity threshold
 DEFAULT_SIMILARITY_THRESHOLD = 0.5
 
 
@@ -72,10 +69,6 @@ async def semantic_search(
         f"threshold={similarity_threshold}, start_date={start_date}, end_date={end_date}"
     )
 
-    # Resolve similarity threshold using 3-tier resolution
-    # 1. Per-query parameter (highest priority)
-    # 2. Config value
-    # 3. Hardcoded default (lowest priority)
     threshold = similarity_threshold
     if threshold is None:
         semantic_config = config.search_modules.get("semantic")
@@ -87,13 +80,11 @@ async def semantic_search(
         else:
             threshold = DEFAULT_SIMILARITY_THRESHOLD
 
-    # Get the model to use for embedding
     model_name = config.get_search_model()
     if not model_name:
         logger.warning("No semantic search model configured")
         return []
 
-    # Get provider config for credentials (api_key, base_url)
     # Priority: search module provider > embedding provider > default
     semantic_module = config.search_modules.get("semantic")
     provider_name = (
@@ -102,21 +93,17 @@ async def semantic_search(
         or "ollama"
     )
 
-    # Resolve provider credentials via Osprey's config system
-    # This may fail in test environments without config.yml
     try:
         from osprey.utils.config import get_provider_config
 
         provider_config = get_provider_config(provider_name)
     except FileNotFoundError:
-        # Test environment without config.yml - use empty config
         logger.debug(f"No config.yml found, using empty provider config for '{provider_name}'")
         provider_config = {}
 
     base_url = provider_config.get("base_url") or embedder.default_base_url
     api_key = provider_config.get("api_key")
 
-    # Generate query embedding
     try:
         embeddings = embedder.execute_embedding(
             texts=[query],
@@ -130,7 +117,6 @@ async def semantic_search(
 
         query_embedding = embeddings[0]
 
-        # Check for dimension mismatch (GAP-C008)
         # Get expected dimension from config if available
         semantic_config = config.search_modules.get("semantic")
         if semantic_config and semantic_config.settings:
@@ -146,7 +132,6 @@ async def semantic_search(
         logger.error(f"Embedding generation failed: {e}")
         return []
 
-    # Execute semantic search via repository
     results = await repository.semantic_search(
         query_embedding=query_embedding,
         model_name=model_name,
@@ -173,8 +158,6 @@ async def semantic_search(
     logger.info(f"semantic_search: returning {len(results)} results")
     return results
 
-
-# === Tool descriptor for agent auto-discovery ===
 
 
 class SemanticSearchInput(BaseModel):
