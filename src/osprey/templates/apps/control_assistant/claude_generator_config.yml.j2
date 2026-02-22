@@ -58,6 +58,20 @@ api_config:
   disable_non_essential_model_calls: true  # Recommended for CBORG
   disable_telemetry: true                  # Recommended for CBORG
   max_output_tokens: 8192                  # Recommended to reduce throttling
+{% elif default_provider == 'amsc' %}
+# AMSC (American Science Cloud Model Routing)
+# AMSC routes to Anthropic's Claude models - fully compatible!
+api_config:
+  provider: "amsc"
+  api_key: ${AMSC_I2_API_KEY}
+  base_url: "https://api.i2-core.american-science-cloud.org/v1"
+  # Set your AMSC API key in .env: AMSC_I2_API_KEY=your-key
+
+  anthropic_model: "anthropic/claude-sonnet"
+  anthropic_small_fast_model: "anthropic/claude-haiku"
+  disable_non_essential_model_calls: true
+  disable_telemetry: true
+  max_output_tokens: 8192
 {% elif default_provider == 'argo' %}
 # ARGO (Argonne National Lab Model Routing)
 # ARGO routes to Anthropic's Claude models - Proxy needed!
@@ -257,8 +271,8 @@ phases:
 # CUSTOMIZATION: Create new profiles or modify phases list to customize workflow!
 #
 # Model names configured for Claude Code (requires Anthropic Claude models)
-{% if default_provider == 'cborg' %}
-# Using CBORG - compatible with Claude Code!
+{% if default_provider in ['cborg', 'amsc'] %}
+# Using {{ default_provider | upper }} - compatible with Claude Code!
 {% elif default_provider == 'anthropic' %}
 # Using Anthropic direct API - fully compatible!
 {% else %}
@@ -273,7 +287,7 @@ profiles:
   fast:
     phases: [generate]               # Direct phase specification
     save_prompts: true  # Save all prompts/responses to prompts/ folder for transparency
-{% if default_provider == 'cborg' %}
+{% if default_provider in ['cborg', 'amsc'] %}
     model: "anthropic/claude-haiku"
 {% else %}
     model: "claude-haiku-4-5-20251001"
@@ -288,7 +302,7 @@ profiles:
   robust:
     phases: [scan, plan, implement]  # Direct phase specification
     save_prompts: true  # Save all prompts/responses to prompts/ folder for transparency
-{% if default_provider == 'cborg' %}
+{% if default_provider in ['cborg', 'amsc'] %}
     model: "anthropic/claude-haiku"
 {% else %}
     model: "claude-haiku-4-5-20251001"
