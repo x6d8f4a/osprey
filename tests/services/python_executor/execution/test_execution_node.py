@@ -79,12 +79,23 @@ class TestSafetyViolationPreventsRetry:
         )
 
         with (
-            patch("osprey.services.python_executor.execution.node._create_execution_folder") as mock_folder,
-            patch("osprey.services.python_executor.execution.node._get_execution_method", return_value="local"),
+            patch(
+                "osprey.services.python_executor.execution.node._create_execution_folder"
+            ) as mock_folder,
+            patch(
+                "osprey.services.python_executor.execution.node._get_execution_method",
+                return_value="local",
+            ),
             patch("osprey.services.python_executor.execution.node._get_execution_mode_from_state"),
-            patch("osprey.services.python_executor.execution.node._create_error_notebook", new_callable=AsyncMock, return_value=None),
+            patch(
+                "osprey.services.python_executor.execution.node._create_error_notebook",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch("osprey.utils.config.get_full_configuration", return_value={}),
-            patch("osprey.services.python_executor.execution.node.LocalCodeExecutor") as MockExecutor,
+            patch(
+                "osprey.services.python_executor.execution.node.LocalCodeExecutor"
+            ) as MockExecutor,
         ):
             # Set up execution folder mock
             mock_exec_folder = MagicMock()
@@ -114,12 +125,23 @@ class TestSafetyViolationPreventsRetry:
         error = RuntimeError("CHANNEL LIMITS VIOLATION: TEST:PV value 150.0 exceeds max 100.0")
 
         with (
-            patch("osprey.services.python_executor.execution.node._create_execution_folder") as mock_folder,
-            patch("osprey.services.python_executor.execution.node._get_execution_method", return_value="local"),
+            patch(
+                "osprey.services.python_executor.execution.node._create_execution_folder"
+            ) as mock_folder,
+            patch(
+                "osprey.services.python_executor.execution.node._get_execution_method",
+                return_value="local",
+            ),
             patch("osprey.services.python_executor.execution.node._get_execution_mode_from_state"),
-            patch("osprey.services.python_executor.execution.node._create_error_notebook", new_callable=AsyncMock, return_value=None),
+            patch(
+                "osprey.services.python_executor.execution.node._create_error_notebook",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch("osprey.utils.config.get_full_configuration", return_value={}),
-            patch("osprey.services.python_executor.execution.node.LocalCodeExecutor") as MockExecutor,
+            patch(
+                "osprey.services.python_executor.execution.node.LocalCodeExecutor"
+            ) as MockExecutor,
         ):
             mock_exec_folder = MagicMock()
             mock_exec_folder.folder_path = MagicMock()
@@ -145,12 +167,23 @@ class TestSafetyViolationPreventsRetry:
         error = RuntimeError("Some regular execution error")
 
         with (
-            patch("osprey.services.python_executor.execution.node._create_execution_folder") as mock_folder,
-            patch("osprey.services.python_executor.execution.node._get_execution_method", return_value="local"),
+            patch(
+                "osprey.services.python_executor.execution.node._create_execution_folder"
+            ) as mock_folder,
+            patch(
+                "osprey.services.python_executor.execution.node._get_execution_method",
+                return_value="local",
+            ),
             patch("osprey.services.python_executor.execution.node._get_execution_mode_from_state"),
-            patch("osprey.services.python_executor.execution.node._create_error_notebook", new_callable=AsyncMock, return_value=None),
+            patch(
+                "osprey.services.python_executor.execution.node._create_error_notebook",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch("osprey.utils.config.get_full_configuration", return_value={}),
-            patch("osprey.services.python_executor.execution.node.LocalCodeExecutor") as MockExecutor,
+            patch(
+                "osprey.services.python_executor.execution.node.LocalCodeExecutor"
+            ) as MockExecutor,
         ):
             mock_exec_folder = MagicMock()
             mock_exec_folder.folder_path = MagicMock()
@@ -180,12 +213,23 @@ class TestSafetyViolationPreventsRetry:
         error = RuntimeError("Another execution error")
 
         with (
-            patch("osprey.services.python_executor.execution.node._create_execution_folder") as mock_folder,
-            patch("osprey.services.python_executor.execution.node._get_execution_method", return_value="local"),
+            patch(
+                "osprey.services.python_executor.execution.node._create_execution_folder"
+            ) as mock_folder,
+            patch(
+                "osprey.services.python_executor.execution.node._get_execution_method",
+                return_value="local",
+            ),
             patch("osprey.services.python_executor.execution.node._get_execution_mode_from_state"),
-            patch("osprey.services.python_executor.execution.node._create_error_notebook", new_callable=AsyncMock, return_value=None),
+            patch(
+                "osprey.services.python_executor.execution.node._create_error_notebook",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch("osprey.utils.config.get_full_configuration", return_value={}),
-            patch("osprey.services.python_executor.execution.node.LocalCodeExecutor") as MockExecutor,
+            patch(
+                "osprey.services.python_executor.execution.node.LocalCodeExecutor"
+            ) as MockExecutor,
         ):
             mock_exec_folder = MagicMock()
             mock_exec_folder.folder_path = MagicMock()

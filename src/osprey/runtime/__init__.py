@@ -53,7 +53,9 @@ __all__ = [
 _runtime_connector: Any | None = None
 _runtime_config: dict | None = None
 _connector_lock = asyncio.Lock()
-_limits_validator: "LimitsValidator | None" = None  # Injected by execution wrapper for subprocess safety
+_limits_validator: "LimitsValidator | None" = (
+    None  # Injected by execution wrapper for subprocess safety
+)
 
 
 def configure_from_context(context) -> None:

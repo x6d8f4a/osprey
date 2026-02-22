@@ -337,7 +337,9 @@ class TestRuntimeLimitsValidation:
     """Tests that _limits_validator fires before the connector is called (I-2)."""
 
     @pytest.mark.asyncio
-    async def test_limits_violation_raises_before_connector(self, mock_context_with_config, clear_runtime_state):
+    async def test_limits_violation_raises_before_connector(
+        self, mock_context_with_config, clear_runtime_state
+    ):
         """When _limits_validator rejects a value, ChannelLimitsViolationError is raised
         and _get_connector() is never called."""
         import osprey.runtime as runtime
@@ -366,7 +368,9 @@ class TestRuntimeLimitsValidation:
             assert exc_info.value.attempted_value == 150.0
 
     @pytest.mark.asyncio
-    async def test_no_validator_calls_connector_normally(self, mock_context_with_config, clear_runtime_state):
+    async def test_no_validator_calls_connector_normally(
+        self, mock_context_with_config, clear_runtime_state
+    ):
         """When _limits_validator is None, the connector is called normally."""
         import osprey.runtime as runtime
 
@@ -390,7 +394,9 @@ class TestRuntimeLimitsValidation:
             assert mock_connector.write_calls[0][1] == 42.0
 
     @pytest.mark.asyncio
-    async def test_valid_value_passes_through_to_connector(self, mock_context_with_config, clear_runtime_state):
+    async def test_valid_value_passes_through_to_connector(
+        self, mock_context_with_config, clear_runtime_state
+    ):
         """When _limits_validator approves the value, the connector write proceeds."""
         import osprey.runtime as runtime
 
