@@ -39,8 +39,8 @@ MODEL_MATRIX: dict[str, list[tuple[str, str]]] = {
         ("anthropic/claude-sonnet", "sonnet"),
     ],
     "amsc": [
-        ("anthropic/claude-haiku", "haiku"),
-        ("anthropic/claude-sonnet", "sonnet"),
+        ("claude-haiku", "haiku"),
+        ("claude-sonnet", "sonnet"),
     ],
     "ollama": [
         ("ministral-3:8b", "ministral"),
