@@ -1137,8 +1137,6 @@ def claude_config(output_file: str, force: bool):
         console.print("  3. Set API key in [accent].env[/accent]:")
         if default_provider == "cborg":
             console.print("     [dim]CBORG_API_KEY=your-key-here[/dim]")
-        elif default_provider == "amsc":
-            console.print("     [dim]AMSC_I2_API_KEY=your-key-here[/dim]")
         else:
             console.print("     [dim]ANTHROPIC_API_KEY=your-key-here[/dim]")
         console.print()

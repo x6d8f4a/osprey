@@ -88,7 +88,7 @@ python -m {{ package_name }}.services.channel_finder.benchmarks.cli
 
 The Claude Code generator requires advanced configuration in `claude_generator_config.yml`:
 
-{% if default_provider in ['cborg', 'anthropic', 'amsc'] %}
+{% if default_provider in ['cborg', 'anthropic'] %}
 **Provider Compatibility:** ✓ Your provider ({{ default_provider }}) is compatible with Claude Code!
 
 {% else %}
